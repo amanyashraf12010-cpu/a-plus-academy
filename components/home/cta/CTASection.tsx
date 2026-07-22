@@ -1,8 +1,27 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Container from "@/components/shared/Container";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
 
 export default function CTASection() {
+  const [user, setUser] = useState<any>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   return (
     <section className="py-24 bg-white">
       <Container>
@@ -28,22 +47,31 @@ export default function CTASection() {
             </p>
 
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              {user ? (
+                <Link
+                  href="/my-courses"
+                  className="rounded-xl bg-white px-12 py-4 font-bold text-[#7D79F1] transition hover:scale-105 hover:shadow-xl cursor-pointer"
+                >
+                  استكمل التعلم
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/register"
+                    className="rounded-xl bg-white px-8 py-4 font-bold text-[#7D79F1] transition hover:scale-105 hover:shadow-xl cursor-pointer"
+                  >
+                    ابدأ الآن
+                  </Link>
 
-              <Link
-                href="/register"
-                className="rounded-xl bg-white px-8 py-4 font-bold text-[#7D79F1] transition hover:scale-105 hover:shadow-xl"
-              >
-                ابدأ الآن
-              </Link>
-
-              <Link
-                href="/courses"
-                className="flex items-center gap-2 rounded-xl border border-white/30 px-8 py-4 font-semibold text-white backdrop-blur transition hover:bg-white/10"
-              >
-                تصفح الكورسات
-                <ArrowLeft size={18} />
-              </Link>
-
+                  <Link
+                    href="/#courses"
+                    className="flex items-center gap-2 rounded-xl border border-white/30 px-8 py-4 font-semibold text-white backdrop-blur transition hover:bg-white/10 cursor-pointer"
+                  >
+                    تصفح الكورسات
+                    <ArrowLeft size={18} />
+                  </Link>
+                </>
+              )}
             </div>
 
           </div>

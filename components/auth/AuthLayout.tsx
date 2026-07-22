@@ -31,13 +31,10 @@ export default function AuthLayout({
             <div className="absolute bottom-20 right-16 h-36 w-36 rounded-full bg-white/10" />
             <div className="absolute top-1/2 left-20 h-8 w-8 rounded-full bg-white/30" />
 
-            <Image
+            <img
               src="/auth-illustration.png"
               alt="Education"
-              width={430}
-              height={430}
-              className="drop-shadow-2xl"
-              priority
+              className="w-[430px] h-[430px] drop-shadow-2xl object-contain"
             />
 
             <h2 className="mt-10 text-4xl font-extrabold text-white">
@@ -55,6 +52,15 @@ export default function AuthLayout({
           <div className="flex items-center justify-center p-8 md:p-16">
 
             <div className="w-full max-w-md">
+
+              {/* Mobile Illustration (visible on mobile/tablet) */}
+              <div className="lg:hidden flex justify-center mb-6">
+                <img
+                  src="/auth-illustration.png"
+                  alt="Education"
+                  className="w-[160px] h-[160px] object-contain drop-shadow-md"
+                />
+              </div>
 
               <span className="mb-3 inline-block rounded-full bg-[#7D79F1]/10 px-4 py-2 text-sm font-semibold text-[#7D79F1]">
                 👋 مرحبًا بك

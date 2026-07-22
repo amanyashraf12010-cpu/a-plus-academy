@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 
-export default function NavLinks() {
+export default function NavLinks({ user }: { user: any }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -21,7 +21,7 @@ export default function NavLinks() {
     "absolute left-1/2 -bottom-1 h-[2px] w-0 bg-[#7D79F1] transition-all duration-300 group-hover:w-full group-hover:left-0";
 
   return (
-    <div className="flex items-center gap-14">
+    <div className="flex items-center gap-10 lg:gap-14">
 
       <span
         className={linkClass}
@@ -46,6 +46,26 @@ export default function NavLinks() {
         المدرسين
         <span className={underline}></span>
       </span>
+
+      {user && (
+        <>
+          <span
+            className={linkClass}
+            onClick={() => router.push("/my-courses")}
+          >
+            كورساتي
+            <span className={underline}></span>
+          </span>
+
+          <span
+            className={linkClass}
+            onClick={() => router.push("/profile")}
+          >
+            حسابي
+            <span className={underline}></span>
+          </span>
+        </>
+      )}
 
       <span
         className={linkClass}

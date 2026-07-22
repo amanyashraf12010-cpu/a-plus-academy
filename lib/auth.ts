@@ -56,20 +56,31 @@ export async function loginUser(email: string, password: string) {
     return { success: false, error: error.message };
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const { data: profileData, error: profileError } = await supabase
     .from("profiles")
     .select("*")
-    .eq("id", data.user.id)
-    console.log(data);
+    .eq("id", data.user.id);
 
-  if (profileError) {
-    return { success: false, error: profileError.message };
+  if (profileError || !profileData || profileData.length === 0) {
+    await supabase.auth.signOut();
+    return { success: false, error: profileError?.message || "لم يتم العثور على الحساب الخاص بك." };
+  }
+
+  const userProfile = profileData[0];
+
+  // التحقق من تفعيل الحساب للطلاب
+  if (userProfile.role === "student" && !userProfile.is_approved) {
+    await supabase.auth.signOut();
+    return {
+      success: false,
+      error: "حسابك قيد المراجعة حالياً. يرجى الانتظار لحين تفعيل الحساب من قبل الإدارة."
+    };
   }
 
   return {
     success: true,
     user: data.user,
-    profile,
+    profile: userProfile,
   };
 }
 export async function logoutUser() {

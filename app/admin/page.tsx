@@ -32,36 +32,37 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div>
+    <div className="space-y-8" dir="rtl">
 
-      <h1 className="text-3xl font-bold text-[#2D2B7A]">
-        📊 Dashboard
-      </h1>
-
-      <p className="text-gray-500 mt-2">
-        Overview of A Plus Academy
-      </p>
+      <div>
+        <h1 className="text-3xl font-extrabold text-[#2D2B7A]">
+          📊 لوحة التحكم الرئيسية
+        </h1>
+        <p className="text-gray-500 mt-2">
+          إحصائيات ونظرة عامة على منصة A+ Academy التعليمية
+        </p>
+      </div>
 
       {/* Cards */}
       <div className="grid md:grid-cols-3 gap-6 mt-8">
 
-        <div className="bg-white p-6 rounded-2xl border">
-          <h2 className="text-gray-500">Students</h2>
-          <p className="text-3xl font-bold text-[#7D79F1]">
+        <div className="bg-white p-6 rounded-2xl border shadow-sm">
+          <h2 className="text-gray-500 font-semibold text-sm">إجمالي الطلاب</h2>
+          <p className="text-4xl font-extrabold text-[#7D79F1] mt-2">
             {students.length}
           </p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border">
-          <h2 className="text-gray-500">Pending Requests</h2>
-          <p className="text-3xl font-bold text-orange-500">
+        <div className="bg-white p-6 rounded-2xl border shadow-sm">
+          <h2 className="text-gray-500 font-semibold text-sm">طلبات التفعيل المعلقة</h2>
+          <p className="text-4xl font-extrabold text-amber-500 mt-2">
             {pendingStudents.length}
           </p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border">
-          <h2 className="text-gray-500">Approved Students</h2>
-          <p className="text-3xl font-bold text-green-600">
+        <div className="bg-white p-6 rounded-2xl border shadow-sm">
+          <h2 className="text-gray-500 font-semibold text-sm">الحسابات المفعلة</h2>
+          <p className="text-4xl font-extrabold text-green-600 mt-2">
             {students.length - pendingStudents.length}
           </p>
         </div>
@@ -69,7 +70,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Pending Students */}
-      <div className="bg-white rounded-2xl border mt-10 p-6">
+      <div className="bg-white rounded-2xl border mt-10 p-6 shadow-sm">
 
         <h2 className="text-xl font-bold mb-6">
           الطلاب في انتظار الموافقة

@@ -20,8 +20,29 @@
 }
 
 body {
-   
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Custom premium pulse animation for Continue Learning button */
+@keyframes pulse-scale {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 10px 20px -3px rgba(125, 121, 241, 0.35);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 20px 30px -5px rgba(125, 121, 241, 0.6);
+  }
+}
+
+.animate-premium-pulse {
+  animation: pulse-scale 2s infinite ease-in-out;
+  transition: all 0.3s ease;
+}
+
+.animate-premium-pulse:hover {
+  animation-play-state: paused;
+  transform: scale(1.08);
 }

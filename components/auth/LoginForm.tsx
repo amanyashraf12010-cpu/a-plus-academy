@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import AuthInput from "./AuthInput";
 import PasswordInput from "./PasswordInput";
 import AuthButton from "./AuthButton";
@@ -12,30 +12,39 @@ export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const errorParam = searchParams.get("error");
+
+  useEffect(() => {
+    if (errorParam === "not_approved") {
+      setErrorMsg("حسابك قيد المراجعة حالياً. يرجى الانتظار لحين تفعيل الحساب من قبل الإدارة.");
+    }
+  }, [errorParam]);
 
   async function handleSubmit(e: React.FormEvent) {
-  e.preventDefault();
+    e.preventDefault();
+    setErrorMsg("");
+    setLoading(true);
 
-  setLoading(true);
+    const result = await loginUser(email, password);
 
-  const result = await loginUser(email, password);
+    setLoading(false);
 
-  setLoading(false);
+    if (!result.success) {
+      setErrorMsg(result.error || "حدث خطأ ما، يرجى المحاولة مرة أخرى.");
+      return;
+    }
 
-  if (!result.success) {
-    alert(result.error);
-    return;
+    // بعد نجاح الدخول
+    if (result.profile.role === "admin") {
+      router.push("/admin");
+    } else {
+      router.push("/my-courses");
+    }
   }
-
-  // بعد نجاح الدخول
-  if (result.profile.role === "admin") {
-    router.push("/admin");
-  } else {
-    router.push("/my-courses");
-  }
-}
 
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
@@ -46,6 +55,13 @@ export default function LoginForm() {
           أهلاً بعودتك 👋
         </h1>
       </div>
+
+      {/* Alert Banner */}
+      {errorMsg && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-medium text-center">
+          {errorMsg}
+        </div>
+      )}
 
       {/* Email */}
       <AuthInput
