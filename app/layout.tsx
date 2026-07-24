@@ -1,14 +1,7 @@
 import type { Metadata } from "next";
-import { Lateef } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/navbar/Navbar";
 
-
-const lateef = Lateef({
-  variable: "--font-lateef",
-  subsets: ["arabic"],
-  weight: ["200", "300", "400", "500", "600", "700", "800"],
-});
 
 export const metadata: Metadata = {
   title: "A Plus Academy",
@@ -24,8 +17,13 @@ export default function RootLayout({
     <html
       lang="ar"
       dir="rtl"
-      className={`${lateef.variable} h-full antialiased`}
+      className="h-full antialiased"
     >
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Lateef:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet" />
+      </head>
      <body className="bg-white text-[#02343F]">
 
   
