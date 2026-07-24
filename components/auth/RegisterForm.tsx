@@ -27,12 +27,28 @@ export default function RegisterForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const getTracks = () => {
-    if (system === "azhar") {
-      return ["علمي أزهر", "أدبي أزهر"];
+    if (!grade) return [];
+
+    if (grade === "first") {
+      return [];
     }
 
-    if (system === "general") {
-      return ["علمي علوم", "علمي رياضة", "أدبي"];
+    if (grade === "second") {
+      return [
+        "المسار الطبي وعلوم الحياة",
+        "مسار الهندسة وعلوم الحاسب",
+        "مسار الأعمال",
+        "مسار الآداب والفنون"
+      ];
+    }
+
+    if (grade === "third") {
+      if (system === "azhar") {
+        return ["علمي أزهر", "أدبي أزهر"];
+      }
+      if (system === "general") {
+        return ["علمي علوم", "علمي رياضة", "أدبي"];
+      }
     }
 
     return [];
@@ -55,7 +71,7 @@ export default function RegisterForm() {
     if (!governorate) newErrors.governorate = "اختر المحافظة";
     if (!gender) newErrors.gender = "اختر النوع";
     if (!system) newErrors.system = "اختر النظام";
-    if (!track) newErrors.track = "اختر التخصص";
+    if (grade !== "first" && !track) newErrors.track = "اختر التخصص";
     if (!grade) newErrors.grade = "اختر الصف";
     if (!parentJob.trim()) newErrors.parentJob = "أدخل مهنة ولي الأمر";
     if (!passwordRegex.test(password))
@@ -88,7 +104,7 @@ export default function RegisterForm() {
       governorate,
       gender,
       educationSystem: system,
-      track,
+      track: grade === "first" ? "عام" : track,
       grade,
     });
 
@@ -211,38 +227,46 @@ export default function RegisterForm() {
         )}
       </div>
 
-      {/* Track */}
-      {system && (
-        <div>
-          <select
-            className={selectClass}
-            value={track}
-            onChange={(e) => setTrack(e.target.value)}
-          >
-            <option value="">اختر التخصص</option>
-            {getTracks().map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-          {errors.track && (
-            <p className="text-sm text-red-500 font-medium mt-2">{errors.track}</p>
-          )}
-        </div>
-      )}
+      {/* Track Select Container - Always rendered in the grid to maintain column alignment */}
+      <div>
+        {grade !== "first" && system ? (
+          <div>
+            <select
+              className={selectClass}
+              value={track}
+              onChange={(e) => setTrack(e.target.value)}
+            >
+              <option value="">اختر التخصص</option>
+              {getTracks().map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+            {errors.track && (
+              <p className="text-sm text-red-500 font-medium mt-2">{errors.track}</p>
+            )}
+          </div>
+        ) : (
+          /* Empty placeholder cell to keep grid alignment stable on desktop */
+          <div className="hidden md:block h-full" />
+        )}
+      </div>
 
       {/* Grade */}
       <div>
         <select
           className={selectClass}
           value={grade}
-          onChange={(e) => setGrade(e.target.value)}
+          onChange={(e) => {
+            setGrade(e.target.value);
+            setTrack(""); // Clear track choice when switching grades
+          }}
         >
           <option value="">اختر الصف</option>
-          <option value="first">أولى ثانوي</option>
-          <option value="second">تانية ثانوي</option>
-          <option value="third">تالتة ثانوي</option>
+          <option value="first">الصف الأول الثانوي</option>
+          <option value="second">الصف الثاني الثانوي (بكالوريا)</option>
+          <option value="third">الصف الثالث الثانوي</option>
         </select>
         {errors.grade && (
           <p className="text-sm text-red-500 font-medium mt-2">{errors.grade}</p>
