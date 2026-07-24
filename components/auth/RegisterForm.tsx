@@ -117,8 +117,12 @@ export default function RegisterForm() {
     }
   };
 
-  const selectClass =
-    "w-full rounded-2xl border-2 border-[#7D79F1] bg-white px-4 py-4 text-[#2D2B7A] font-medium outline-none focus:ring-4 focus:ring-[#7D79F1]/20 transition";
+  const getSelectClass = (hasError: boolean) =>
+    `w-full rounded-2xl bg-white px-4 py-3 text-[#2D2B7A] outline-none transition focus:ring-2 ${
+      hasError
+        ? "border-2 border-red-500 focus:ring-red-200"
+        : "border border-gray-200 focus:border-[#7D79F1] focus:ring-[#7D79F1]/20"
+    }`;
 
   return (
     <form
@@ -162,9 +166,12 @@ export default function RegisterForm() {
         onChange={(e) => setSchool(e.target.value)}
       />
 
-      <div>
+      <div className="space-y-2">
+        <label className="block text-sm font-semibold text-[#02343F]">
+          المحافظة
+        </label>
         <select
-          className={selectClass}
+          className={getSelectClass(!!errors.governorate)}
           value={governorate}
           onChange={(e) => setGovernorate(e.target.value)}
         >
@@ -197,14 +204,17 @@ export default function RegisterForm() {
           <option>مطروح</option>
         </select>
         {errors.governorate && (
-          <p className="text-sm text-red-500 font-medium mt-2">{errors.governorate}</p>
+          <p className="text-sm text-red-500 font-medium">{errors.governorate}</p>
         )}
       </div>
 
       {/* 4. Gender & Grade */}
-      <div>
+      <div className="space-y-2">
+        <label className="block text-sm font-semibold text-[#02343F]">
+          النوع
+        </label>
         <select
-          className={selectClass}
+          className={getSelectClass(!!errors.gender)}
           value={gender}
           onChange={(e) => setGender(e.target.value)}
         >
@@ -213,13 +223,16 @@ export default function RegisterForm() {
           <option value="female">أنثى</option>
         </select>
         {errors.gender && (
-          <p className="text-sm text-red-500 font-medium mt-2">{errors.gender}</p>
+          <p className="text-sm text-red-500 font-medium">{errors.gender}</p>
         )}
       </div>
 
-      <div>
+      <div className="space-y-2">
+        <label className="block text-sm font-semibold text-[#02343F]">
+          الصف الدراسي
+        </label>
         <select
-          className={selectClass}
+          className={getSelectClass(!!errors.grade)}
           value={grade}
           onChange={(e) => {
             setGrade(e.target.value);
@@ -232,14 +245,17 @@ export default function RegisterForm() {
           <option value="third">الصف الثالث الثانوي</option>
         </select>
         {errors.grade && (
-          <p className="text-sm text-red-500 font-medium mt-2">{errors.grade}</p>
+          <p className="text-sm text-red-500 font-medium">{errors.grade}</p>
         )}
       </div>
 
       {/* 5. System & Track */}
-      <div className={grade === "first" ? "md:col-span-2" : ""}>
+      <div className={`space-y-2 ${grade === "first" ? "md:col-span-2" : ""}`}>
+        <label className="block text-sm font-semibold text-[#02343F]">
+          النظام التعليمي
+        </label>
         <select
-          className={selectClass}
+          className={getSelectClass(!!errors.system)}
           value={system}
           onChange={(e) => {
             setSystem(e.target.value);
@@ -251,14 +267,17 @@ export default function RegisterForm() {
           <option value="azhar">أزهر</option>
         </select>
         {errors.system && (
-          <p className="text-sm text-red-500 font-medium mt-2">{errors.system}</p>
+          <p className="text-sm text-red-500 font-medium">{errors.system}</p>
         )}
       </div>
 
       {grade !== "first" && system && (
-        <div>
+        <div className="space-y-2">
+          <label className="block text-sm font-semibold text-[#02343F]">
+            التخصص / الشعبة
+          </label>
           <select
-            className={selectClass}
+            className={getSelectClass(!!errors.track)}
             value={track}
             onChange={(e) => setTrack(e.target.value)}
           >
@@ -270,7 +289,7 @@ export default function RegisterForm() {
             ))}
           </select>
           {errors.track && (
-            <p className="text-sm text-red-500 font-medium mt-2">{errors.track}</p>
+            <p className="text-sm text-red-500 font-medium">{errors.track}</p>
           )}
         </div>
       )}
