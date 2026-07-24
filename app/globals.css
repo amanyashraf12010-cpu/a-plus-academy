@@ -8,7 +8,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-lemonada);
+  --font-sans: var(--font-lateef);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,7 +21,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-lemonada), Arial, Helvetica, sans-serif;
+  font-family: var(--font-lateef), Arial, Helvetica, sans-serif;
 }
 
 /* Custom premium pulse animation for Continue Learning button */
