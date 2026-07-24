@@ -125,25 +125,35 @@ export default function RegisterForm() {
       onSubmit={handleRegister}
       className="grid grid-cols-1 md:grid-cols-2 gap-5"
     >
-      {/* Full Name */}
+      {/* 1. Full Name */}
       <div className="md:col-span-2">
         <AuthInput
           label="الاسم الثلاثي"
           placeholder="ادخل الاسم الثلاثي"
           value={fullName}
+          error={errors.fullName}
           onChange={(e) => setFullName(e.target.value)}
         />
       </div>
 
-      {/* Phone */}
+      {/* 2. Phone & Email */}
       <AuthInput
         label="رقم الهاتف"
         placeholder="ادخل رقم الهاتف"
         value={phone}
+        error={errors.phone}
         onChange={(e) => setPhone(e.target.value)}
       />
 
-      {/* School */}
+      <AuthInput
+        label="البريد الإلكتروني"
+        placeholder="ادخل البريد الإلكتروني"
+        value={email}
+        error={errors.email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+
+      {/* 3. School & Governorate */}
       <AuthInput
         label="اسم المدرسة"
         placeholder="ادخل اسم المدرسة"
@@ -152,7 +162,6 @@ export default function RegisterForm() {
         onChange={(e) => setSchool(e.target.value)}
       />
 
-      {/* Governorate */}
       <div>
         <select
           className={selectClass}
@@ -192,7 +201,7 @@ export default function RegisterForm() {
         )}
       </div>
 
-      {/* Gender */}
+      {/* 4. Gender & Grade */}
       <div>
         <select
           className={selectClass}
@@ -208,52 +217,6 @@ export default function RegisterForm() {
         )}
       </div>
 
-      {/* System */}
-      <div>
-        <select
-          className={selectClass}
-          value={system}
-          onChange={(e) => {
-            setSystem(e.target.value);
-            setTrack("");
-          }}
-        >
-          <option value="">اختر النظام</option>
-          <option value="general">عام</option>
-          <option value="azhar">أزهر</option>
-        </select>
-        {errors.system && (
-          <p className="text-sm text-red-500 font-medium mt-2">{errors.system}</p>
-        )}
-      </div>
-
-      {/* Track Select Container - Always rendered in the grid to maintain column alignment */}
-      <div>
-        {grade !== "first" && system ? (
-          <div>
-            <select
-              className={selectClass}
-              value={track}
-              onChange={(e) => setTrack(e.target.value)}
-            >
-              <option value="">اختر التخصص</option>
-              {getTracks().map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-            {errors.track && (
-              <p className="text-sm text-red-500 font-medium mt-2">{errors.track}</p>
-            )}
-          </div>
-        ) : (
-          /* Empty placeholder cell to keep grid alignment stable on desktop */
-          <div className="hidden md:block h-full" />
-        )}
-      </div>
-
-      {/* Grade */}
       <div>
         <select
           className={selectClass}
@@ -273,16 +236,46 @@ export default function RegisterForm() {
         )}
       </div>
 
-      {/* Parent Job */}
-      <AuthInput
-        label="مهنة ولي الأمر"
-        placeholder="ادخل مهنة ولي الأمر"
-        value={parentJob}
-        error={errors.parentJob}
-        onChange={(e) => setParentJob(e.target.value)}
-      />
+      {/* 5. System & Track */}
+      <div className={grade === "first" ? "md:col-span-2" : ""}>
+        <select
+          className={selectClass}
+          value={system}
+          onChange={(e) => {
+            setSystem(e.target.value);
+            setTrack("");
+          }}
+        >
+          <option value="">اختر النظام</option>
+          <option value="general">عام</option>
+          <option value="azhar">أزهر</option>
+        </select>
+        {errors.system && (
+          <p className="text-sm text-red-500 font-medium mt-2">{errors.system}</p>
+        )}
+      </div>
 
-      {/* Parent Phone */}
+      {grade !== "first" && system && (
+        <div>
+          <select
+            className={selectClass}
+            value={track}
+            onChange={(e) => setTrack(e.target.value)}
+          >
+            <option value="">اختر التخصص</option>
+            {getTracks().map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          {errors.track && (
+            <p className="text-sm text-red-500 font-medium mt-2">{errors.track}</p>
+          )}
+        </div>
+      )}
+
+      {/* 6. Parent Phone & Parent Job */}
       <AuthInput
         label="رقم ولي الأمر"
         placeholder="ادخل رقم ولي الأمر"
@@ -291,16 +284,15 @@ export default function RegisterForm() {
         onChange={(e) => setParentPhone(e.target.value)}
       />
 
-      {/* Email */}
       <AuthInput
-        label="البريد الإلكتروني"
-        placeholder="ادخل البريد الإلكتروني"
-        value={email}
-        error={errors.email}
-        onChange={(e) => setEmail(e.target.value)}
+        label="مهنة ولي الأمر"
+        placeholder="ادخل مهنة ولي الأمر"
+        value={parentJob}
+        error={errors.parentJob}
+        onChange={(e) => setParentJob(e.target.value)}
       />
 
-      {/* Password */}
+      {/* 7. Password & Confirm Password */}
       <PasswordInput
         label="كلمة المرور"
         placeholder="ادخل كلمة المرور"
@@ -309,7 +301,6 @@ export default function RegisterForm() {
         onChange={(e) => setPassword(e.target.value)}
       />
 
-      {/* Confirm Password */}
       <PasswordInput
         label="تأكيد كلمة المرور"
         placeholder="تأكيد كلمة المرور"
