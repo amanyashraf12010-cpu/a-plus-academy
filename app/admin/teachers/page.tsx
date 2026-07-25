@@ -105,7 +105,7 @@ export default function AdminTeachersPage() {
         description,
         education_system: educationSystem,
         grade,
-        track,
+        track: grade === "الصف الأول الثانوي" ? "عام" : track,
       };
 
       if (modalMode === "add") {
@@ -294,7 +294,10 @@ export default function AdminTeachersPage() {
                   <select
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-[#2D2B7A] font-semibold bg-white cursor-pointer focus:border-[#7D79F1]"
                     value={grade}
-                    onChange={(e) => setGrade(e.target.value)}
+                    onChange={(e) => {
+                      setGrade(e.target.value);
+                      setTrack(""); // Clear track choice when switching grades
+                    }}
                   >
                     <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
                     <option value="الصف الثاني الثانوي">الصف الثاني الثانوي</option>
@@ -303,27 +306,37 @@ export default function AdminTeachersPage() {
                 </div>
 
                 {/* Track */}
-                <div className="col-span-2">
-                  <label className="block text-xs font-bold text-gray-500 mb-1.5">التخصص</label>
-                  <select
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-[#2D2B7A] font-semibold bg-white cursor-pointer focus:border-[#7D79F1]"
-                    value={track}
-                    onChange={(e) => setTrack(e.target.value)}
-                  >
-                    {educationSystem === "general" ? (
-                      <>
-                        <option value="علمي علوم">علمي علوم</option>
-                        <option value="علمي رياضة">علمي رياضة</option>
-                        <option value="أدبي">أدبي</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="علمي أزهر">علمي أزهر</option>
-                        <option value="أدبي أزهر">أدبي أزهر</option>
-                      </>
-                    )}
-                  </select>
-                </div>
+                {grade !== "الصف الأول الثانوي" && (
+                  <div className="col-span-2">
+                    <label className="block text-xs font-bold text-gray-500 mb-1.5">التخصص / الشعبة</label>
+                    <select
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-[#2D2B7A] font-semibold bg-white cursor-pointer focus:border-[#7D79F1]"
+                      value={track}
+                      onChange={(e) => setTrack(e.target.value)}
+                    >
+                      <option value="">اختر التخصص</option>
+                      {grade === "الصف الثاني الثانوي" ? (
+                        <>
+                          <option value="مسار الطب وعلوم الحياة">مسار الطب وعلوم الحياة</option>
+                          <option value="مسار الهندسة وعلوم الحاسب">مسار الهندسة وعلوم الحاسب</option>
+                          <option value="مسار الأعمال">مسار الأعمال</option>
+                          <option value="مسار الآداب والفنون التطبيقية">مسار الآداب والفنون التطبيقية</option>
+                        </>
+                      ) : educationSystem === "general" ? (
+                        <>
+                          <option value="علمي علوم">علمي علوم</option>
+                          <option value="علمي رياضة">علمي رياضة</option>
+                          <option value="أدبي">أدبي</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="علمي أزهر">علمي أزهر</option>
+                          <option value="أدبي أزهر">أدبي أزهر</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+                )}
 
                 {/* Description */}
                 <div className="col-span-2">

@@ -64,8 +64,8 @@ export default function TeachersSection() {
 
         {/* Title */}
         <SectionTitle
-          title="اختار مدرسك"
-          subtitle="تصفح أفضل المدرسين حسب الصف والنظام والشعبة"
+          title="اتعلم مع أفضل المدرسين"
+          subtitle="اختر المدرس اللي يناسبك وابدأ رحلتك التعليمية مع شرح مبسط وأسلوب مميز"
         />
 
         {/* Filters */}
