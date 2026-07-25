@@ -8,23 +8,29 @@ export default function TeacherCard({ teacher }: any) {
   return (
     <div
       onClick={() => router.push(`/teachers/${teacher.id}`)}
-      className="cursor-pointer bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-1.5 transition-all duration-300 flex flex-col items-center text-center"
+      className="group cursor-pointer bg-white rounded-[24px] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col"
     >
-      <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-50 border-4 border-[#7D79F1]/10 relative mb-4">
+      {/* Portrait Image Container */}
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-gray-50">
         <img
           src={teacher.image}
           alt={teacher.name}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
+        {/* Soft bottom gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent pointer-events-none" />
       </div>
 
-      <h3 className="font-bold text-lg text-[#2D2B7A] hover:text-[#7D79F1] transition-colors">
-        {teacher.name}
-      </h3>
+      {/* Info Content */}
+      <div className="p-5 flex flex-col items-start text-right">
+        <h3 className="font-bold text-lg text-[#2D2B7A] group-hover:text-[#7D79F1] transition-colors duration-300">
+          {teacher.name}
+        </h3>
 
-      <p className="text-xs bg-purple-50 text-[#7D79F1] px-3 py-1 rounded-full font-bold border border-purple-100 mt-2">
-        {teacher.subjects.join(" - ")}
-      </p>
+        <p className="text-xs bg-purple-50 text-[#7D79F1] px-3 py-1 rounded-full font-bold border border-purple-100 mt-2">
+          {teacher.subjects.join(" - ")}
+        </p>
+      </div>
     </div>
   );
 }
