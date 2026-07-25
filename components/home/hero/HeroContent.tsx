@@ -25,11 +25,11 @@ export default function HeroContent() {
     <div className="flex-1 text-right">
       
       <h1 className="text-4xl md:text-5xl font-bold text-[#02343F] leading-tight">
-        ابدأ رحلتك التعليمية مع A Plus Academy
+        ابدأ رحلتك نحو التفوق مع A+ Academy
       </h1>
 
       <p className="mt-5 text-gray-600 text-lg">
-        تعلم مع أفضل المدرسين في مكان واحد وابدأ طريق النجاح بخطوات بسيطة.
+        مع أفضل المدرسين، هتلاقي شرح بسيط، مذاكرة منظمة، ومحتوى يساعدك تحقق أعلى الدرجات بثقة
       </p>
 
       <div className="mt-8 flex gap-4 justify-end">
