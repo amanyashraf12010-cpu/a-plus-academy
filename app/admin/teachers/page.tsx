@@ -20,9 +20,9 @@ export default function AdminTeachersPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
-  const [educationSystem, setEducationSystem] = useState("general");
-  const [grade, setGrade] = useState("");
-  const [track, setTrack] = useState("");
+  const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
+  const [selectedSystems, setSelectedSystems] = useState<string[]>([]);
+  const [selectedTracks, setSelectedTracks] = useState<string[]>([]);
 
   async function loadTeachers() {
     try {
@@ -48,9 +48,9 @@ export default function AdminTeachersPage() {
     setImageFile(null);
     setSubject("");
     setDescription("");
-    setEducationSystem("general");
-    setGrade("الصف الأول الثانوي");
-    setTrack("علمي علوم");
+    setSelectedSystems(["general"]);
+    setSelectedGrades(["الصف الأول الثانوي"]);
+    setSelectedTracks(["عام"]);
     setShowModal(true);
   }
 
@@ -62,9 +62,9 @@ export default function AdminTeachersPage() {
     setImageFile(null);
     setSubject(teacher.subject || "");
     setDescription(teacher.description || "");
-    setEducationSystem(teacher.education_system || "general");
-    setGrade(teacher.grade || "الصف الأول الثانوي");
-    setTrack(teacher.track || "علمي علوم");
+    setSelectedSystems(teacher.education_system ? teacher.education_system.split(",") : ["general"]);
+    setSelectedGrades(teacher.grade ? teacher.grade.split(",") : ["الصف الأول الثانوي"]);
+    setSelectedTracks(teacher.track ? teacher.track.split(",") : ["عام"]);
     setShowModal(true);
   }
 
@@ -72,6 +72,15 @@ export default function AdminTeachersPage() {
     e.preventDefault();
     if (!name.trim()) {
       alert("اسم المدرس مطلوب");
+      return;
+    }
+
+    if (selectedGrades.length === 0) {
+      alert("من فضلك اختر صفاً دراسياً واحداً على الأقل للمدرس.");
+      return;
+    }
+    if (selectedSystems.length === 0) {
+      alert("من فضلك اختر نظاماً تعليمياً واحداً على الأقل للمدرس.");
       return;
     }
 
@@ -103,9 +112,11 @@ export default function AdminTeachersPage() {
         image: finalImageUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`,
         subject,
         description,
-        education_system: educationSystem,
-        grade,
-        track: grade === "الصف الأول الثانوي" ? "عام" : track,
+        education_system: selectedSystems.join(","),
+        grade: selectedGrades.join(","),
+        track: selectedGrades.includes("الصف الأول الثانوي") && !selectedTracks.includes("عام")
+          ? [...selectedTracks, "عام"].join(",")
+          : selectedTracks.join(","),
       };
 
       if (modalMode === "add") {
@@ -181,13 +192,22 @@ export default function AdminTeachersPage() {
 
                 <div className="space-y-2 text-sm text-gray-600 mb-6">
                   <p className="line-clamp-2">{teacher.description || "لا يوجد وصف حالياً لهذا المدرس."}</p>
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">
-                      {teacher.grade}
-                    </span>
-                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-md">
-                      {teacher.education_system === "general" ? "عام" : "أزهر"} - {teacher.track}
-                    </span>
+                  <div className="flex flex-wrap gap-1.5 pt-2">
+                    {teacher.grade && teacher.grade.split(",").map((g: string) => (
+                      <span key={g} className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-lg font-medium">
+                        {g.replace("الصف ", "")}
+                      </span>
+                    ))}
+                    {teacher.education_system && teacher.education_system.split(",").map((sys: string) => (
+                      <span key={sys} className="text-xs bg-purple-50 text-[#7D79F1] border border-purple-150 px-2.5 py-1 rounded-lg font-semibold">
+                        {sys === "general" ? "عام" : "أزهر"}
+                      </span>
+                    ))}
+                    {teacher.track && teacher.track.split(",").filter((t: string) => t !== "عام").map((t: string) => (
+                      <span key={t} className="text-xs bg-blue-50 text-blue-600 border border-blue-150 px-2.5 py-1 rounded-lg font-medium">
+                        {t}
+                      </span>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -276,65 +296,192 @@ export default function AdminTeachersPage() {
                 </div>
 
                 {/* Education System */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1.5">نظام التعليم</label>
-                  <select
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-[#2D2B7A] font-semibold bg-white cursor-pointer focus:border-[#7D79F1]"
-                    value={educationSystem}
-                    onChange={(e) => setEducationSystem(e.target.value)}
-                  >
-                    <option value="general">ثانوي عام</option>
-                    <option value="azhar">ثانوي أزهر</option>
-                  </select>
+                <div className="col-span-2 space-y-2">
+                  <label className="block text-xs font-bold text-gray-500 mb-1">نظام التعليم (يمكن اختيار أكثر من نظام)</label>
+                  <div className="flex gap-6 p-3 bg-gray-50 rounded-xl border border-gray-150">
+                    <label className="flex items-center gap-2 text-sm text-[#2D2B7A] font-semibold cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedSystems.includes("general")}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedSystems([...selectedSystems, "general"]);
+                          } else {
+                            setSelectedSystems(selectedSystems.filter(s => s !== "general"));
+                          }
+                        }}
+                        className="w-4.5 h-4.5 text-[#7D79F1] focus:ring-[#7D79F1]/20 border-gray-300 rounded cursor-pointer"
+                      />
+                      ثانوي عام
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-[#2D2B7A] font-semibold cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedSystems.includes("azhar")}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedSystems([...selectedSystems, "azhar"]);
+                          } else {
+                            setSelectedSystems(selectedSystems.filter(s => s !== "azhar"));
+                          }
+                        }}
+                        className="w-4.5 h-4.5 text-[#7D79F1] focus:ring-[#7D79F1]/20 border-gray-300 rounded cursor-pointer"
+                      />
+                      ثانوي أزهر
+                    </label>
+                  </div>
                 </div>
 
                 {/* Grade */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1.5">الصف الدراسي</label>
-                  <select
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-[#2D2B7A] font-semibold bg-white cursor-pointer focus:border-[#7D79F1]"
-                    value={grade}
-                    onChange={(e) => {
-                      setGrade(e.target.value);
-                      setTrack(""); // Clear track choice when switching grades
-                    }}
-                  >
-                    <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
-                    <option value="الصف الثاني الثانوي">الصف الثاني الثانوي</option>
-                    <option value="الصف الثالث الثانوي">الصف الثالث الثانوي</option>
-                  </select>
+                <div className="col-span-2 space-y-2">
+                  <label className="block text-xs font-bold text-gray-500 mb-1">الصفوف الدراسية (يمكن اختيار أكثر من صف)</label>
+                  <div className="grid grid-cols-3 gap-3 p-3 bg-gray-50 rounded-xl border border-gray-150">
+                    <label className="flex items-center gap-2 text-sm text-[#2D2B7A] font-semibold cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedGrades.includes("الصف الأول الثانوي")}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedGrades([...selectedGrades, "الصف الأول الثانوي"]);
+                          } else {
+                            setSelectedGrades(selectedGrades.filter(g => g !== "الصف الأول الثانوي"));
+                          }
+                        }}
+                        className="w-4.5 h-4.5 text-[#7D79F1] focus:ring-[#7D79F1]/20 border-gray-300 rounded cursor-pointer"
+                      />
+                      أولى ثانوي
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-[#2D2B7A] font-semibold cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedGrades.includes("الصف الثاني الثانوي")}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedGrades([...selectedGrades, "الصف الثاني الثانوي"]);
+                          } else {
+                            setSelectedGrades(selectedGrades.filter(g => g !== "الصف الثاني الثانوي"));
+                          }
+                        }}
+                        className="w-4.5 h-4.5 text-[#7D79F1] focus:ring-[#7D79F1]/20 border-gray-300 rounded cursor-pointer"
+                      />
+                      تانية ثانوي (بكالوريا)
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-[#2D2B7A] font-semibold cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedGrades.includes("الصف الثالث الثانوي")}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedGrades([...selectedGrades, "الصف الثالث الثانوي"]);
+                          } else {
+                            setSelectedGrades(selectedGrades.filter(g => g !== "الصف الثالث الثانوي"));
+                          }
+                        }}
+                        className="w-4.5 h-4.5 text-[#7D79F1] focus:ring-[#7D79F1]/20 border-gray-300 rounded cursor-pointer"
+                      />
+                      تالتة ثانوي
+                    </label>
+                  </div>
                 </div>
 
                 {/* Track */}
-                {grade !== "الصف الأول الثانوي" && (
-                  <div className="col-span-2">
-                    <label className="block text-xs font-bold text-gray-500 mb-1.5">التخصص / الشعبة</label>
-                    <select
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-[#2D2B7A] font-semibold bg-white cursor-pointer focus:border-[#7D79F1]"
-                      value={track}
-                      onChange={(e) => setTrack(e.target.value)}
-                    >
-                      <option value="">اختر التخصص</option>
-                      {grade === "الصف الثاني الثانوي" ? (
-                        <>
-                          <option value="مسار الطب وعلوم الحياة">مسار الطب وعلوم الحياة</option>
-                          <option value="مسار الهندسة وعلوم الحاسب">مسار الهندسة وعلوم الحاسب</option>
-                          <option value="مسار الأعمال">مسار الأعمال</option>
-                          <option value="مسار الآداب والفنون التطبيقية">مسار الآداب والفنون التطبيقية</option>
-                        </>
-                      ) : educationSystem === "general" ? (
-                        <>
-                          <option value="علمي علوم">علمي علوم</option>
-                          <option value="علمي رياضة">علمي رياضة</option>
-                          <option value="أدبي">أدبي</option>
-                        </>
-                      ) : (
-                        <>
-                          <option value="علمي أزهر">علمي أزهر</option>
-                          <option value="أدبي أزهر">أدبي أزهر</option>
-                        </>
+                {((selectedGrades.includes("الصف الثاني الثانوي")) || (selectedGrades.includes("الصف الثالث الثانوي"))) && (
+                  <div className="col-span-2 space-y-2">
+                    <label className="block text-xs font-bold text-gray-500 mb-1">التخصص / الشعبة</label>
+                    <div className="grid grid-cols-2 gap-3 bg-gray-50 p-4 rounded-xl border border-gray-150">
+                      
+                      {/* Second Grade Tracks */}
+                      {selectedGrades.includes("الصف الثاني الثانوي") && (
+                        <div className="col-span-2 space-y-2 border-b border-gray-200 pb-3 mb-2">
+                          <p className="text-xs font-bold text-gray-400">تخصصات الصف الثاني الثانوي (بكالوريا):</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {[
+                              "مسار الطب وعلوم الحياة",
+                              "مسار الهندسة وعلوم الحاسب",
+                              "مسار الأعمال",
+                              "مسار الآداب والفنون التطبيقية"
+                            ].map(t => (
+                              <label key={t} className="flex items-center gap-2 text-sm text-[#2D2B7A] font-medium cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedTracks.includes(t)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedTracks([...selectedTracks, t]);
+                                    } else {
+                                      setSelectedTracks(selectedTracks.filter(x => x !== t));
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-[#7D79F1] focus:ring-[#7D79F1]/20 border-gray-300 rounded cursor-pointer"
+                                />
+                                {t}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
                       )}
-                    </select>
+
+                      {/* Third Grade Tracks */}
+                      {selectedGrades.includes("الصف الثالث الثانوي") && (
+                        <div className="col-span-2 space-y-2">
+                          <p className="text-xs font-bold text-gray-400">تخصصات الصف الثالث الثانوي:</p>
+                          
+                          {/* General Third Grade Tracks */}
+                          {selectedSystems.includes("general") && (
+                            <div className="space-y-1.5 bg-white p-2.5 rounded-lg border mb-2">
+                              <p className="text-xs text-[#7D79F1] font-bold">ثانوي عام:</p>
+                              <div className="flex flex-wrap gap-4">
+                                {["علمي علوم", "علمي رياضة", "أدبي"].map(t => (
+                                  <label key={t} className="flex items-center gap-2 text-sm text-[#2D2B7A] font-medium cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedTracks.includes(t)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setSelectedTracks([...selectedTracks, t]);
+                                        } else {
+                                          setSelectedTracks(selectedTracks.filter(x => x !== t));
+                                        }
+                                      }}
+                                      className="w-4 h-4 text-[#7D79F1] focus:ring-[#7D79F1]/20 border-gray-300 rounded cursor-pointer"
+                                    />
+                                    {t}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Azhar Third Grade Tracks */}
+                          {selectedSystems.includes("azhar") && (
+                            <div className="space-y-1.5 bg-white p-2.5 rounded-lg border">
+                              <p className="text-xs text-[#7D79F1] font-bold">ثانوي أزهر:</p>
+                              <div className="flex flex-wrap gap-4">
+                                {["علمي أزهر", "أدبي أزهر"].map(t => (
+                                  <label key={t} className="flex items-center gap-2 text-sm text-[#2D2B7A] font-medium cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedTracks.includes(t)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setSelectedTracks([...selectedTracks, t]);
+                                        } else {
+                                          setSelectedTracks(selectedTracks.filter(x => x !== t));
+                                        }
+                                      }}
+                                      className="w-4 h-4 text-[#7D79F1] focus:ring-[#7D79F1]/20 border-gray-300 rounded cursor-pointer"
+                                    />
+                                    {t === "علمي أزهر" ? "علمي (أزهر)" : "أدبي (أزهر)"}
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                        </div>
+                      )}
+
+                    </div>
                   </div>
                 )}
 

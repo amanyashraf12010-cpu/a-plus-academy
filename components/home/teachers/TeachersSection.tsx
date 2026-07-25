@@ -31,9 +31,9 @@ export default function TeachersSection() {
         name: teacher.name,
         image: teacher.image || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(teacher.name)}`,
         subjects: [teacher.subject || "مادة"],
-        grades: [teacher.grade || ""],
-        system: teacher.education_system,
-        track: teacher.track
+        grades: teacher.grade ? teacher.grade.split(",") : [],
+        systems: teacher.education_system ? teacher.education_system.split(",") : [],
+        tracks: teacher.track ? teacher.track.split(",") : []
       }));
 
       setTeachersList(mapped);
@@ -51,8 +51,8 @@ export default function TeachersSection() {
   const filteredTeachers = teachersList.filter((t) => {
     return (
       (grade ? t.grades.includes(grade) : true) &&
-      (system ? t.system === system : true) &&
-      (track ? t.track === track : true)
+      (system ? t.systems.includes(system) : true) &&
+      (track ? t.tracks.includes(track) : true)
     );
   });
 
