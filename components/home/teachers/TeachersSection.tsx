@@ -31,6 +31,7 @@ export default function TeachersSection() {
         name: teacher.name,
         image: teacher.image || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(teacher.name)}`,
         subjects: [teacher.subject || "مادة"],
+        description: teacher.description || "",
         grades: teacher.grade ? teacher.grade.split(",") : [],
         systems: teacher.education_system ? teacher.education_system.split(",") : [],
         tracks: teacher.track ? teacher.track.split(",") : []
