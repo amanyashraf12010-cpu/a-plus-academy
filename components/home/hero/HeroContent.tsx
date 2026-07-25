@@ -29,7 +29,7 @@ export default function HeroContent() {
       </h1>
 
       <p className="mt-5 text-gray-600 text-lg">
-        مع أفضل المدرسين، هتلاقي شرح بسيط، مذاكرة منظمة، ومحتوى يساعدك تحقق أعلى الدرجات بثقة
+        مع أفضل المدرسين، هتلاقي شرح بسيط، مذاكرة منظمة، ومحتوى يساعدك تحقق أعلى الدرجات
       </p>
 
       <div className="mt-8 flex gap-4 justify-end">
