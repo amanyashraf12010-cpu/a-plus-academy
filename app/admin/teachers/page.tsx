@@ -11,6 +11,7 @@ export default function AdminTeachersPage() {
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<"add" | "edit">("add");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const supabase = createClient();
 
@@ -85,6 +86,7 @@ export default function AdminTeachersPage() {
     }
 
     try {
+      setSaving(true);
       let finalImageUrl = image;
 
       if (imageFile) {
@@ -130,6 +132,8 @@ export default function AdminTeachersPage() {
       loadTeachers();
     } catch (error: any) {
       alert("فشل الحفظ: " + error.message);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -502,9 +506,17 @@ export default function AdminTeachersPage() {
               <div className="flex gap-3 pt-4 border-t">
                 <button
                   type="submit"
-                  className="flex-1 py-3 px-4 bg-[#7D79F1] hover:bg-[#655EF0] text-white rounded-xl font-bold transition text-sm shadow-md"
+                  disabled={saving}
+                  className="flex-1 py-3 px-4 bg-[#7D79F1] hover:bg-[#655EF0] disabled:bg-gray-300 text-white rounded-xl font-bold transition text-sm shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
                 >
-                  حفظ البيانات
+                  {saving ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      جاري حفظ البيانات...
+                    </>
+                  ) : (
+                    "حفظ البيانات"
+                  )}
                 </button>
                 <button
                   type="button"
