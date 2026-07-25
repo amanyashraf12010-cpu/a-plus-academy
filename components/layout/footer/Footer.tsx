@@ -14,7 +14,7 @@ export default function Footer() {
           {/* BRAND */}
           <div className="max-w-2xl">
             <h2 className="text-3xl font-extrabold text-[#7D79F1]">
-              A Plus
+              A Plus Academy
             </h2>
 
             <p className="text-gray-400 mt-4 leading-7">
@@ -56,7 +56,7 @@ export default function Footer() {
 
         {/* BOTTOM BAR */}
         <div className="border-t border-white/10 mt-16 py-6 text-center text-gray-500 text-sm">
-          © {new Date().getFullYear()} A Plus. All rights reserved.
+          © {new Date().getFullYear()} A Plus Academy. All rights reserved.
         </div>
 
       </Container>
