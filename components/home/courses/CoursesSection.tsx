@@ -15,7 +15,7 @@ export default function CoursesSection() {
 
         <SectionTitle
           title="كورساتنا"
-          subtitle="اختر الكورس المناسب وابدأ رحلة التفوق"
+          subtitle="اختر المادة المناسبة ليك وابدأ المذاكرة مع أفضل المحتوى التعليمي"
         />
 
         <CoursesTabs
