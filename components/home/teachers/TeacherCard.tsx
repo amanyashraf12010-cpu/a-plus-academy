@@ -8,22 +8,23 @@ export default function TeacherCard({ teacher }: any) {
   return (
     <div
       onClick={() => router.push(`/teachers/${teacher.id}`)}
-      className="cursor-pointer bg-white rounded-2xl p-4 shadow hover:-translate-y-2 transition"
+      className="cursor-pointer bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-1.5 transition-all duration-300 flex flex-col items-center text-center"
     >
+      <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-50 border-4 border-[#7D79F1]/10 relative mb-4">
+        <img
+          src={teacher.image}
+          alt={teacher.name}
+          className="w-full h-full object-cover"
+        />
+      </div>
 
-      <img
-        src={teacher.image}
-        className="w-full h-40 object-cover rounded-xl"
-      />
-
-      <h3 className="mt-3 font-bold text-[#2D2B7A]">
+      <h3 className="font-bold text-lg text-[#2D2B7A] hover:text-[#7D79F1] transition-colors">
         {teacher.name}
       </h3>
 
-      <p className="text-gray-500 text-sm">
+      <p className="text-xs bg-purple-50 text-[#7D79F1] px-3 py-1 rounded-full font-bold border border-purple-100 mt-2">
         {teacher.subjects.join(" - ")}
       </p>
-
     </div>
   );
 }
