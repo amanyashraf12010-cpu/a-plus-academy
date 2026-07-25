@@ -38,12 +38,11 @@ export default function CTASection() {
             </span>
 
             <h2 className="mt-6 text-4xl font-extrabold text-white md:text-5xl">
-              جاهز تحقق حلمك وتجيب <span className="text-yellow-300">A+</span>؟
+              جاهز تحقق حلمك وتجيب <span className="text-yellow-300">+A</span>؟
             </h2>
 
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/90">
-              انضم لآلاف الطلاب اللي اختاروا A Plus Academy، واستفادوا من أفضل
-              المدرسين، والكورسات، والامتحانات، والمتابعة المستمرة.
+              انضم لآلاف الطلاب اللي اختاروا <span className="font-bold text-yellow-300">+A</span>، واستفادوا من أفضل المدرسين، والكورسات، والامتحانات، والمتابعة المستمرة.
             </p>
 
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
