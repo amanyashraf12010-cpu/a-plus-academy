@@ -102,6 +102,7 @@ function ExamsPageContent() {
       if (courseError) throw courseError;
       setCourseTitle(course.title);
 
+      let lessonTitleText = "";
       // 2. Fetch Lesson title if lessonId exists
       if (lessonId) {
         const { data: lesson, error: lessonError } = await supabase
@@ -111,6 +112,7 @@ function ExamsPageContent() {
           .single();
         if (lessonError) throw lessonError;
         setLessonTitle(lesson.title);
+        lessonTitleText = lesson.title;
       }
 
       // 3. Fetch Quiz record
@@ -140,9 +142,28 @@ function ExamsPageContent() {
         );
         setQuestions(sortedQuestions);
       } else {
-        // No quiz found, set default title
-        setQuiz(null);
-        setQuizTitle(lessonId ? `واجب درس: ` : `الامتحان الشامل لكورس: `);
+        // No quiz found, auto-create it with default settings so the admin can immediately add questions!
+        const defaultTitle = lessonId 
+          ? `واجب محاضرة: ${lessonTitleText || "الدرس"}` 
+          : `الامتحان النهائي الشامل: ${course.title || "الكورس"}`;
+          
+        const payload = {
+          course_id: courseId,
+          lesson_id: lessonId || null,
+          title: defaultTitle,
+          type: (lessonId ? "quiz" : "final") as "quiz" | "final",
+          passing_score: 50,
+          is_active: true
+        };
+
+        const newQuiz = await saveQuiz(payload);
+        setQuiz(newQuiz);
+        setQuizTitle(newQuiz.title);
+        setPassingScore(newQuiz.passing_score);
+        setDuration("");
+        setStartTime("");
+        setEndTime("");
+        setIsActive(newQuiz.is_active);
         setQuestions([]);
       }
 
