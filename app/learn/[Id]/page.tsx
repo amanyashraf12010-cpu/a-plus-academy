@@ -14,9 +14,14 @@ import {
   AlertTriangle, 
   Loader2, 
   ArrowRight,
-  Eye
+  Eye,
+  CheckCircle,
+  XCircle,
+  Award,
+  Clock
 } from "lucide-react";
 import Link from "next/link";
+import { getCourseProgressAndLocks } from "@/lib/quizzes";
 
 export default function LearnPage() {
   const params = useParams<any>();
@@ -27,6 +32,7 @@ export default function LearnPage() {
   const [course, setCourse] = useState<any>(null);
   const [lessons, setLessons] = useState<any[]>([]);
   const [activeLesson, setActiveLesson] = useState<any>(null);
+  const [progressInfo, setProgressInfo] = useState<any>(null);
   
   const [loading, setLoading] = useState(true);
   const [loadingVideo, setLoadingVideo] = useState(false);
@@ -61,23 +67,34 @@ export default function LearnPage() {
       }
       setCourse(courseData);
 
-      // 2. Get Lessons List
-      const { data: lessonsData, error: lessonsError } = await supabase
-        .from("lessons")
-        .select("*")
-        .eq("course_id", courseId)
-        .order("order", { ascending: true });
+      // 2. Fetch user session and calculate progress/locks
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const progressData = await getCourseProgressAndLocks(session.user.id, courseId);
+        setProgressInfo(progressData);
+        setLessons(progressData.lessons || []);
+        
+        // Select active lesson
+        if (progressData.lessons && progressData.lessons.length > 0) {
+          // Select first unlocked lesson or first lesson
+          const firstUnlocked = progressData.lessons.find((l: any) => !l.isLocked) || progressData.lessons[0];
+          setActiveLesson(firstUnlocked);
+        }
+      } else {
+        // Fallback for non-authenticated (should not happen due to routing guards)
+        const { data: lessonsData, error: lessonsError } = await supabase
+          .from("lessons")
+          .select("*")
+          .eq("course_id", courseId)
+          .order("order", { ascending: true });
 
-      if (lessonsError) {
-        console.error("خطأ في جلب دروس الكورس:", lessonsError.message);
-        throw lessonsError;
-      }
+        if (lessonsError) throw lessonsError;
 
-      setLessons(lessonsData || []);
-      
-      // Select first lesson by default
-      if (lessonsData && lessonsData.length > 0) {
-        setActiveLesson(lessonsData[0]);
+        const mappedLessons = (lessonsData || []).map((l: any) => ({ ...l, isLocked: false }));
+        setLessons(mappedLessons);
+        if (mappedLessons.length > 0) {
+          setActiveLesson(mappedLessons[0]);
+        }
       }
     } catch (error: any) {
       console.error("فشل تحميل تفاصيل محتوى الكورس:", error.message || error);
@@ -97,6 +114,10 @@ export default function LearnPage() {
   // Load Video URL and View Counts when activeLesson changes
   async function loadVideo(lesson: any) {
     if (!lesson) return;
+    if (lesson.isLocked) {
+      setVideoError("⚠️ هذه المحاضرة مغلقة حالياً. يجب اجتياز واجب المحاضرة السابقة أولاً بنسبة نجاح 50% أو أكثر لتتمكن من مشاهدة الفيديو.");
+      return;
+    }
     try {
       setLoadingVideo(true);
       setVideoError(null);
@@ -320,6 +341,16 @@ export default function LearnPage() {
                   >
                     المرفقات والملخصات
                   </button>
+                  <button
+                    onClick={() => setActiveTab("quiz")}
+                    className={`flex-1 py-4 font-bold transition text-sm ${
+                      activeTab === "quiz"
+                        ? "text-[#7D79F1] border-b-2 border-[#7D79F1]"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    الواجب المنزلي
+                  </button>
                 </div>
 
                 <div className="p-6">
@@ -355,41 +386,214 @@ export default function LearnPage() {
                       )}
                     </div>
                   )}
+
+                  {activeTab === "quiz" && (
+                    <div className="space-y-4">
+                      <h3 className="font-bold text-lg text-[#2D2B7A]">واجب الدرس: {activeLesson?.title}</h3>
+                      {activeLesson?.quizId ? (
+                        <div className="border border-gray-100 bg-gray-50 rounded-2xl p-5 space-y-4">
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-200">
+                            <div>
+                              <p className="text-sm font-bold text-[#2D2B7A]">واجب المحاضرة الإلكتروني</p>
+                              <p className="text-xs text-gray-500 mt-1">درجة النجاح المطلوبة: {activeLesson.passingScore}% أو أكثر</p>
+                            </div>
+                            
+                            <div>
+                              {activeLesson.quizStatus === "passed" && (
+                                <span className="bg-green-50 text-green-600 border border-green-200 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1">
+                                  <CheckCircle size={14} />
+                                  تم الاجتياز بنجاح ({activeLesson.highestScore}%)
+                                </span>
+                              )}
+                              {activeLesson.quizStatus === "failed" && (
+                                <span className="bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1">
+                                  <XCircle size={14} />
+                                  لم يتم الاجتياز ({activeLesson.highestScore}%)
+                                </span>
+                              )}
+                              {activeLesson.quizStatus === "not_started" && (
+                                <span className="bg-amber-50 text-amber-600 border border-amber-200 px-3 py-1.5 rounded-xl text-xs font-bold">
+                                  لم يتم البدء بعد
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="text-xs text-gray-500 space-y-1">
+                              <p>عدد محاولاتك الحالية: <span className="font-bold text-[#2D2B7A]">{activeLesson.quizAttemptsCount}</span></p>
+                              {activeLesson.highestScore !== null && (
+                                <p>أعلى نسبة محققة: <span className="font-bold text-[#7D79F1]">{activeLesson.highestScore}%</span></p>
+                              )}
+                            </div>
+
+                            <Link
+                              href={`/learn/${courseId}/quiz/${activeLesson.quizId}`}
+                              className="bg-[#7D79F1] text-white text-center px-6 py-3 rounded-xl text-xs font-bold hover:bg-[#655EF0] transition shadow-sm hover:shadow flex items-center justify-center gap-1.5"
+                            >
+                              <Award size={15} />
+                              {activeLesson.quizStatus === "passed"
+                                ? "إعادة حل الواجب للتمرّن"
+                                : activeLesson.quizAttemptsCount > 0
+                                ? "أعد المحاولة لتحقيق النجاح"
+                                : "بدء حل الواجب الآن"}
+                            </Link>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-gray-400 text-sm">لا يوجد واجب إلكتروني مضاف لهذه المحاضرة بعد.</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
             </div>
 
-            {/* Right side: Sidebar (Lessons Index) */}
+            {/* Right side: Sidebar (Lessons Index & Final Exam) */}
             <div className="space-y-4">
               <div className="bg-white rounded-3xl border shadow-sm p-6">
+                
+                {/* Course Progress */}
+                {progressInfo && (
+                  <div className="mb-6 pb-4 border-b">
+                    <div className="flex justify-between items-center text-xs font-bold mb-2">
+                      <span className="text-[#2D2B7A]">نسبة إكمال الكورس</span>
+                      <span className="text-[#7D79F1]">{progressInfo.courseProgress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-gradient-to-r from-[#7D79F1] to-[#655EF0] h-full rounded-full transition-all duration-500" 
+                        style={{ width: `${progressInfo.courseProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="mb-4">
                   <h2 className="text-lg font-extrabold text-[#2D2B7A]">فهرس الدروس</h2>
                   <p className="text-gray-400 text-xs mt-1 font-bold">يحتوي الكورس على {lessons.length} دروس</p>
                 </div>
 
-                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                <div className="space-y-3 max-h-[450px] overflow-y-auto pr-1">
                   {lessons.map((lesson, idx) => {
                     const isActive = lesson.id === activeLesson?.id;
+                    const isLocked = lesson.isLocked;
                     return (
                       <button
                         key={lesson.id}
-                        onClick={() => setActiveLesson(lesson)}
+                        onClick={() => {
+                          if (isLocked) {
+                            alert("⚠️ عذراً، هذه المحاضرة مغلقة! يرجى اجتياز واجب المحاضرة السابقة أولاً بنسبة نجاح 50% أو أكثر لتفتح لك هذه المحاضرة.");
+                            return;
+                          }
+                          setActiveLesson(lesson);
+                        }}
                         className={`w-full text-right p-4 rounded-2xl border transition flex items-center justify-between gap-3 text-sm cursor-pointer ${
                           isActive
                             ? "border-[#7D79F1] bg-[#F3F2FF] font-bold text-[#7D79F1]"
+                            : isLocked
+                            ? "border-gray-100 bg-gray-50/50 text-gray-400 cursor-not-allowed"
                             : "border-gray-100 hover:border-gray-200 text-gray-700 bg-white"
                         }`}
                       >
                         <div className="flex-1">
-                          <h4 className="font-bold text-[#2D2B7A]">{idx + 1}. {lesson.title}</h4>
-                          <p className="text-gray-400 text-xs mt-1">{lesson.duration || "غير محدد المدة"}</p>
+                          <h4 className={`font-bold ${isLocked ? "text-gray-400" : "text-[#2D2B7A]"}`}>
+                            {idx + 1}. {lesson.title}
+                          </h4>
+                          <p className="text-gray-400 text-xs mt-1 flex items-center gap-1.5">
+                            <span>{lesson.duration || "غير محدد المدة"}</span>
+                            {lesson.quizId && (
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                                lesson.quizStatus === "passed"
+                                  ? "bg-green-50 text-green-600 border-green-150"
+                                  : lesson.quizStatus === "failed"
+                                  ? "bg-red-50 text-red-600 border-red-150"
+                                  : "bg-gray-100 text-gray-500 border-gray-200"
+                              }`}>
+                                {lesson.quizStatus === "passed" ? "تم حل الواجب" : lesson.quizStatus === "failed" ? "لم تجتز الواجب" : "له واجب"}
+                              </span>
+                            )}
+                          </p>
                         </div>
-                        <Play size={16} className={isActive ? "text-[#7D79F1]" : "text-gray-300"} />
+                        {isLocked ? (
+                          <Lock size={16} className="text-gray-300" />
+                        ) : (
+                          <Play size={16} className={isActive ? "text-[#7D79F1]" : "text-gray-300"} />
+                        )}
                       </button>
                     );
                   })}
                 </div>
+
+                {/* Final Exam Section */}
+                {progressInfo?.finalExam && (
+                  <div className="mt-6 border-t pt-6">
+                    <div className={`p-5 rounded-2xl border transition ${
+                      progressInfo.finalExamUnlocked 
+                        ? "bg-gradient-to-br from-indigo-50/50 to-purple-50/50 border-[#E8E5FF]" 
+                        : "bg-gray-50 border-gray-150 opacity-75"
+                    }`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-extrabold text-[#2D2B7A] text-sm flex items-center gap-1.5">
+                          🏆 الامتحان الشامل النهائي
+                        </h3>
+                        {!progressInfo.finalExamUnlocked && (
+                          <Lock size={16} className="text-gray-400" />
+                        )}
+                      </div>
+
+                      <p className="text-xs text-gray-500 leading-relaxed mb-4">
+                        {progressInfo.finalExamUnlocked 
+                          ? "تهانينا! لقد أنهيت جميع محاضرات الكورس، يمكنك الآن البدء في الامتحان النهائي لقياس مستواك والحصول على شهادتك."
+                          : "يفتح هذا الامتحان الشامل تلقائياً بعد مشاهدة جميع المحاضرات واجتياز كل الواجبات المنزلية بنسبة 50% فأكثر."}
+                      </p>
+
+                      {progressInfo.finalExam.status === "submitted" ? (
+                        <div className="bg-white p-3.5 rounded-xl border border-gray-100 mb-4 text-xs font-semibold text-[#2D2B7A] space-y-2 shadow-sm">
+                          <div className="flex justify-between">
+                            <span>حالة تسليم الامتحان:</span>
+                            <span className="text-green-600">تم التسليم بنجاح</span>
+                          </div>
+                          <div className="flex justify-between border-t pt-2">
+                            <span>درجة الامتحان:</span>
+                            <span className="text-[#7D79F1] font-bold text-sm">{progressInfo.finalExam.score}%</span>
+                          </div>
+                        </div>
+                      ) : progressInfo.finalExam.startTime && new Date(progressInfo.finalExam.startTime) > new Date() ? (
+                        <div className="bg-amber-50 text-amber-850 p-3 rounded-xl border border-amber-100 text-xs font-semibold mb-4 text-center">
+                          الامتحان سيبدأ في: {new Date(progressInfo.finalExam.startTime).toLocaleString("ar-EG")}
+                        </div>
+                      ) : progressInfo.finalExam.endTime && new Date(progressInfo.finalExam.endTime) < new Date() ? (
+                        <div className="bg-red-50 text-red-850 p-3 rounded-xl border border-red-100 text-xs font-semibold mb-4 text-center">
+                          انتهى موعد الامتحان في: {new Date(progressInfo.finalExam.endTime).toLocaleString("ar-EG")}
+                        </div>
+                      ) : null}
+
+                      {progressInfo.finalExamUnlocked && (
+                        <div className="space-y-2">
+                          {progressInfo.finalExam.status !== "submitted" && (
+                            <Link
+                              href={`/learn/${courseId}/quiz/${progressInfo.finalExam.id}`}
+                              className="w-full bg-[#7D79F1] hover:bg-[#655EF0] text-white text-center py-3 rounded-xl text-xs font-bold block transition shadow-sm"
+                            >
+                              بدء الامتحان النهائي الشامل
+                            </Link>
+                          )}
+                          {progressInfo.finalExam.status === "submitted" && (
+                            <Link
+                              href={`/learn/${courseId}/quiz/${progressInfo.finalExam.id}`}
+                              className="w-full bg-white hover:bg-gray-50 border border-gray-200 text-[#7D79F1] text-center py-3 rounded-xl text-xs font-bold block transition shadow-sm"
+                            >
+                              مراجعة الامتحان التفصيلية
+                            </Link>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
               </div>
             </div>
 

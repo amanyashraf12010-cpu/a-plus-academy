@@ -100,6 +100,13 @@ export default function AdminCoursesPage() {
                   الدروس ({course.video_count || 0})
                 </Link>
 
+                <Link
+                  href={`/admin/courses/exams?courseId=${course.id}`}
+                  className="flex-1 py-2 px-3 bg-indigo-55 hover:bg-indigo-100 text-indigo-650 transition rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
+                >
+                  🏆 الامتحان النهائي
+                </Link>
+
                 <button
                   onClick={() => handleDelete(course.id)}
                   className="p-2 bg-red-50 text-red-600 hover:bg-red-100 transition rounded-xl"

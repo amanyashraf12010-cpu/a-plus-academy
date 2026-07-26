@@ -195,6 +195,13 @@ function LessonsContent() {
 
               {/* Actions */}
               <div className="flex items-center gap-3">
+                <Link
+                  href={`/admin/courses/exams?courseId=${courseId}&lessonId=${lesson.id}`}
+                  className="py-2 px-3 bg-purple-50 hover:bg-purple-100 text-[#7D79F1] transition rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
+                  title="إدارة واجب الدرس"
+                >
+                  📚 الواجب
+                </Link>
                 <button
                   onClick={() => openEditModal(lesson)}
                   className="p-2.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition"

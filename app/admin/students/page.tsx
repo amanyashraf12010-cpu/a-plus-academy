@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getStudents, approveStudent, rejectStudent } from "@/lib/admin";
 import { Search, Check, Trash2, Phone, User, GraduationCap, MapPin, Eye } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
 
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<any[]>([]);
@@ -12,6 +13,104 @@ export default function AdminStudentsPage() {
   const [gradeFilter, setGradeFilter] = useState("");
   const [approvalFilter, setApprovalFilter] = useState("all");
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+
+  const [studentPerformance, setStudentPerformance] = useState<any[]>([]);
+  const [loadingPerformance, setLoadingPerformance] = useState(false);
+
+  const supabase = createClient();
+
+  async function loadStudentPerformanceData(studentId: string) {
+    try {
+      setLoadingPerformance(true);
+      setStudentPerformance([]);
+      
+      // 1. Fetch Subscriptions
+      const { data: subs, error: subsError } = await supabase
+        .from("subscriptions")
+        .select("*, courses(*)")
+        .eq("user_id", studentId)
+        .eq("status", "approved");
+
+      if (subsError) throw subsError;
+
+      // 2. Fetch Attempts
+      const { data: attempts, error: attError } = await supabase
+        .from("student_quiz_attempts")
+        .select("*, quizzes(*)")
+        .eq("user_id", studentId)
+        .eq("status", "submitted")
+        .order("submitted_at", { ascending: false });
+
+      if (attError) throw attError;
+
+      // Group attempts by quiz
+      const quizAttemptsMap = new Map<string, any[]>();
+      (attempts || []).forEach((att: any) => {
+        if (!quizAttemptsMap.has(att.quiz_id)) {
+          quizAttemptsMap.set(att.quiz_id, []);
+        }
+        quizAttemptsMap.get(att.quiz_id)!.push(att);
+      });
+
+      // 3. For each course, fetch its quizzes and calculate progress
+      const perfDetails = await Promise.all((subs || []).map(async (sub: any) => {
+        const course = sub.courses;
+        if (!course) return null;
+
+        // Fetch quizzes of this course
+        const { data: quizzes, error: qError } = await supabase
+          .from("quizzes")
+          .select("*")
+          .eq("course_id", course.id)
+          .eq("is_active", true);
+
+        const quizStats = (quizzes || []).map((q: any) => {
+          const quizAtts = quizAttemptsMap.get(q.id) || [];
+          const attemptsCount = quizAtts.length;
+          const highestScore = attemptsCount > 0 
+            ? Math.max(...quizAtts.map((a: any) => Number(a.score)))
+            : null;
+          
+          return {
+            id: q.id,
+            title: q.title,
+            type: q.type,
+            attemptsCount,
+            highestScore,
+            passed: highestScore !== null ? highestScore >= q.passing_score : false
+          };
+        });
+
+        // Calculate progress
+        const completedLessonQuizzes = quizStats.filter((q: any) => q.type === "quiz" && q.passed).length;
+        const totalLessonQuizzes = quizStats.filter((q: any) => q.type === "quiz").length;
+        const progress = totalLessonQuizzes > 0
+          ? Math.round((completedLessonQuizzes / totalLessonQuizzes) * 100)
+          : 100;
+
+        return {
+          courseId: course.id,
+          courseTitle: course.title,
+          progress,
+          quizStats
+        };
+      }));
+
+      setStudentPerformance(perfDetails.filter(Boolean));
+    } catch (error) {
+      console.error("فشل جلب تفاصيل أداء الطالب:", error);
+    } finally {
+      setLoadingPerformance(false);
+    }
+  }
+
+  useEffect(() => {
+    if (selectedStudent) {
+      loadStudentPerformanceData(selectedStudent.id);
+    }
+  }, [selectedStudent]);
+
+  const supabaseAdmin = createClient(); // Keep local client configuration compatible
 
   async function loadStudents() {
     try {
@@ -253,6 +352,48 @@ export default function AdminStudentsPage() {
                   <p className="text-gray-400 text-xs mb-2">بيانات ولي الأمر</p>
                   <p className="mb-1"><strong>رقم ولي الأمر:</strong> {selectedStudent.parent_phone}</p>
                   <p><strong>وظيفة ولي الأمر:</strong> {selectedStudent.parent_job || "غير محددة"}</p>
+                </div>
+
+                <div className="border-t pt-4 mt-4 space-y-4">
+                  <h4 className="font-extrabold text-[#2D2B7A] text-sm">📖 الكورسات ومتابعة الأداء</h4>
+
+                  {loadingPerformance ? (
+                    <div className="text-center py-4 text-xs text-gray-400">جاري تحميل تقارير التقدم...</div>
+                  ) : studentPerformance.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center">الطالب غير مشترك في أي كورس بعد.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {studentPerformance.map((courseItem: any) => (
+                        <div key={courseItem.courseId} className="bg-gray-50 p-3.5 rounded-2xl border text-xs space-y-2">
+                          <div className="flex justify-between items-center font-bold text-[#2D2B7A]">
+                            <span className="line-clamp-1">{courseItem.courseTitle}</span>
+                            <span className="bg-purple-100 text-[#7D79F1] px-2 py-0.5 rounded text-[10px]">{courseItem.progress}%</span>
+                          </div>
+                          
+                          {/* Progress bar */}
+                          <div className="w-full bg-gray-250 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-[#7D79F1] h-full rounded-full" style={{ width: `${courseItem.progress}%` }} />
+                          </div>
+
+                          {/* Quiz stats list */}
+                          {courseItem.quizStats?.length > 0 ? (
+                            <div className="pt-2 border-t border-gray-200/50 space-y-1.5">
+                              {courseItem.quizStats.map((qs: any) => (
+                                <div key={qs.id} className="flex justify-between text-[11px] text-gray-500">
+                                  <span>{qs.type === "final" ? "🏆 الامتحان النهائي" : `📝 ${qs.title}`}</span>
+                                  <span className={qs.highestScore !== null ? (qs.passed ? "text-green-600 font-bold" : "text-red-500") : "text-gray-400"}>
+                                    {qs.highestScore !== null ? `${qs.highestScore}% (محاولات: ${qs.attemptsCount})` : "لم يحل بعد"}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-gray-400">لا توجد واجبات أو امتحانات شاملة مفعلة لهذا الكورس.</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-3 border-t pt-4 mt-4">
