@@ -8,10 +8,10 @@ export default function TeacherCard({ teacher }: any) {
   return (
     <div
       onClick={() => router.push(`/teachers/${teacher.id}`)}
-      className="group cursor-pointer bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col items-center text-center"
+      className="group cursor-pointer bg-white rounded-3xl p-5 border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col items-center text-center"
     >
-      {/* Smaller Rounded Square Image Container */}
-      <div className="w-28 h-28 rounded-2xl overflow-hidden bg-gray-50 border border-gray-100 relative mb-4">
+      {/* 1:1 Aspect Square Image spanning full inner card width */}
+      <div className="w-full aspect-square rounded-2xl overflow-hidden bg-gray-50 border border-gray-100 relative mb-4">
         <img
           src={teacher.image}
           alt={teacher.name}
