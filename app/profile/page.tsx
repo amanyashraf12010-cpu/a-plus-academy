@@ -10,6 +10,7 @@ import { X, Phone, GraduationCap, AlertCircle } from "lucide-react";
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(null);
+  const [attempts, setAttempts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -70,6 +71,34 @@ export default function ProfilePage() {
       setEditPhone(profileData.phone || "");
       setEditSchool(profileData.school || "");
       setEditParentPhone(profileData.parent_phone || "");
+
+      // Fetch student quiz attempts
+      const { data: attemptsData, error: attemptsError } = await supabase
+        .from("student_quiz_attempts")
+        .select(`
+          id,
+          score,
+          correct_count,
+          total_questions,
+          status,
+          submitted_at,
+          quizzes (
+            id,
+            title,
+            type,
+            passing_score,
+            courses (
+              title
+            )
+          )
+        `)
+        .eq("user_id", user.id)
+        .eq("status", "submitted")
+        .order("submitted_at", { ascending: false });
+
+      if (attemptsError) throw attemptsError;
+      setAttempts(attemptsData || []);
+
     } catch (error) {
       console.error("فشل تحميل بيانات الملف الشخصي:", error);
     } finally {
@@ -167,6 +196,77 @@ export default function ProfilePage() {
         <ProfileHeader profile={profile} />
 
         <ProfileStats profile={profile} />
+
+        {/* Solved Quizzes & Exams Results */}
+        <div className="bg-white rounded-3xl border shadow-sm p-6 space-y-6" dir="rtl">
+          <h2 className="text-xl font-extrabold text-[#2D2B7A] border-b pb-3 flex items-center gap-2">
+            📊 نتائج الاختبارات والواجبات
+          </h2>
+
+          {attempts.length === 0 ? (
+            <p className="text-gray-400 text-center py-6 font-medium">
+              لم تقم بحل أي واجبات أو امتحانات بعد.
+            </p>
+          ) : (
+            <div className="divide-y divide-gray-100 overflow-hidden">
+              {attempts.map((attempt) => {
+                const quiz: any = attempt.quizzes;
+                const courseTitle = quiz?.courses?.title || "كورس غير محدد";
+                const isPassed = attempt.score !== null ? attempt.score >= (quiz?.passing_score || 50) : false;
+                const formattedDate = attempt.submitted_at 
+                  ? new Date(attempt.submitted_at).toLocaleDateString('ar-EG', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    })
+                  : "غير محدد";
+
+                return (
+                  <div key={attempt.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
+                          quiz?.type === 'final' 
+                            ? 'bg-amber-50 text-amber-600 border border-amber-200' 
+                            : 'bg-purple-50 text-[#7D79F1] border border-purple-200'
+                        }`}>
+                          {quiz?.type === 'final' ? '🏆 امتحان شامل' : '📚 واجب محاضرة'}
+                        </span>
+                        <h4 className="font-bold text-[#2D2B7A] text-sm md:text-base">
+                          {quiz?.title || "عنوان التقييم"}
+                        </h4>
+                      </div>
+                      <p className="text-xs text-gray-500 font-semibold">
+                        الكورس: {courseTitle} | تاريخ الحل: {formattedDate}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      {/* Stats */}
+                      <div className="text-left md:text-right">
+                        <div className="text-base font-extrabold text-[#2D2B7A]">
+                          {Math.round(Number(attempt.score))}%
+                        </div>
+                        <div className="text-[10px] text-gray-400 font-bold">
+                          الإجابات: {attempt.correct_count} من {attempt.total_questions}
+                        </div>
+                      </div>
+
+                      {/* Success/Fail badge */}
+                      <span className={`px-3 py-1.5 rounded-xl text-xs font-bold ${
+                        isPassed 
+                          ? 'bg-green-50 text-green-600 border border-green-200' 
+                          : 'bg-red-50 text-red-600 border border-red-200'
+                      }`}>
+                        {isPassed ? '🟢 اجتاز' : '🔴 لم يجتز'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         <ProfileActions onEdit={() => setShowEditModal(true)} />
 
