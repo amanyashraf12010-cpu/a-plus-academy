@@ -92,20 +92,20 @@ export default function AdminCoursesPage() {
 
               {/* Actions */}
               <div className="flex gap-2 mt-6 border-t pt-4">
-                <Link
+                <a
                   href={`/admin/lesson?courseId=${course.id}`}
                   className="flex-1 py-2 px-3 bg-purple-50 hover:bg-purple-100 text-[#7D79F1] transition rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
                 >
                   <Play size={14} />
                   الدروس ({course.video_count || 0})
-                </Link>
+                </a>
 
-                <Link
+                <a
                   href={`/admin/courses/exams?courseId=${course.id}`}
                   className="flex-1 py-2 px-3 bg-indigo-55 hover:bg-indigo-100 text-indigo-650 transition rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
                 >
                   🏆 الامتحان النهائي
-                </Link>
+                </a>
 
                 <button
                   onClick={() => handleDelete(course.id)}
