@@ -180,21 +180,21 @@ function LessonsContent() {
           {lessons.map((lesson, index) => (
             <div
               key={lesson.id}
-              className="p-5 flex items-center justify-between hover:bg-[#F3F2FF]/20 transition"
+              className="p-5 flex items-center justify-between hover:bg-[#F3F2FF]/20 transition gap-4"
             >
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 min-w-0">
                 {/* Order circle */}
-                <div className="w-10 h-10 rounded-full bg-[#F3F2FF] text-[#7D79F1] font-bold flex items-center justify-center border border-[#7D79F1]/20">
+                <div className="w-10 h-10 rounded-full bg-[#F3F2FF] text-[#7D79F1] font-bold flex items-center justify-center border border-[#7D79F1]/20 shrink-0">
                   {lesson.order || index + 1}
                 </div>
-                <div>
-                  <h3 className="font-bold text-[#2D2B7A] text-lg">{lesson.title}</h3>
-                  <p className="text-xs text-gray-400 mt-1 dir-ltr text-right line-clamp-1">{lesson.video_url}</p>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-[#2D2B7A] text-lg truncate">{lesson.title}</h3>
+                  <p className="text-xs text-gray-400 mt-1 dir-ltr text-right truncate">{lesson.video_url}</p>
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 shrink-0">
                 <Link
                   href={`/admin/courses/exams?courseId=${courseId}&lessonId=${lesson.id}`}
                   className="py-2 px-3 bg-purple-50 hover:bg-purple-100 text-[#7D79F1] transition rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
