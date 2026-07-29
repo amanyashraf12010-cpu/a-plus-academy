@@ -34,7 +34,7 @@ export default function CourseCard({ course }: CourseCardProps) {
       "
       >
         {/* الصورة */}
-        <div className="relative overflow-hidden h-60">
+        <div className="relative overflow-hidden aspect-[16/9] w-full">
 
           <Image
             src={course.image}

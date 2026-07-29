@@ -41,7 +41,7 @@ export default function CourseHero({ course }: any) {
 
         {/* Right */}
 
-        <div className="relative h-[320px] rounded-3xl overflow-hidden shadow-2xl">
+        <div className="relative aspect-[16/9] w-full rounded-3xl overflow-hidden shadow-2xl">
 
           <Image
             src={course.image}

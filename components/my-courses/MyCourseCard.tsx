@@ -7,7 +7,7 @@ export default function MyCourseCard({ course }: any) {
     <div className="bg-white rounded-3xl border shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden">
 
       {/* Image */}
-      <div className="relative h-56">
+      <div className="relative aspect-[16/9] w-full">
 
         <Image
           src={course.image}
