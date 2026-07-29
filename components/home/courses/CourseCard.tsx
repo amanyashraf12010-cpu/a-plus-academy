@@ -45,11 +45,15 @@ export default function CourseCard({ course }: CourseCardProps) {
           />
 
           {/* Badge */}
-          {course.badge && (
+          {Number(course.price) === 0 ? (
+            <span className="absolute top-4 right-4 bg-gradient-to-r from-emerald-500 to-green-600 text-white text-xs px-3.5 py-1.5 rounded-full shadow-lg font-black tracking-wide flex items-center gap-1">
+              <span>🎁</span> كورس مجاني
+            </span>
+          ) : course.badge ? (
             <span className="absolute top-4 right-4 bg-[#7D79F1] text-white text-xs px-3 py-1 rounded-full shadow-lg">
               {course.badge}
             </span>
-          )}
+          ) : null}
         </div>
 
         {/* المحتوى */}
@@ -102,30 +106,59 @@ export default function CourseCard({ course }: CourseCardProps) {
                 السعر
               </p>
 
-              <h4 className="text-3xl font-bold text-[#7D79F1]">
-                {course.price}
-                <span className="text-base mr-1">
-                  جنيه
-                </span>
-              </h4>
+              {Number(course.price) === 0 ? (
+                <h4 className="text-2xl font-black text-green-600">
+                  مجاني 🎉
+                </h4>
+              ) : (
+                <h4 className="text-3xl font-bold text-[#7D79F1]">
+                  {course.price}
+                  <span className="text-base mr-1">
+                    جنيه
+                  </span>
+                </h4>
+              )}
 
             </div>
 
-            <button
-              className="
-              px-5
-              py-3
-              rounded-xl
-              bg-[#7D79F1]
-              text-white
-              font-semibold
-              transition
-              duration-300
-              hover:bg-[#655EF0]
-            "
-            >
-              اشترك الآن
-            </button>
+            {Number(course.price) === 0 ? (
+              <button
+                className="
+                px-5
+                py-3
+                rounded-xl
+                bg-gradient-to-r
+                from-emerald-500
+                to-green-600
+                text-white
+                font-bold
+                transition
+                duration-300
+                hover:from-emerald-600
+                hover:to-green-700
+                shadow-md
+                hover:shadow-lg
+              "
+              >
+                ابدأ التعلم 🚀
+              </button>
+            ) : (
+              <button
+                className="
+                px-5
+                py-3
+                rounded-xl
+                bg-[#7D79F1]
+                text-white
+                font-semibold
+                transition
+                duration-300
+                hover:bg-[#655EF0]
+              "
+              >
+                اشترك الآن
+              </button>
+            )}
 
           </div>
 
