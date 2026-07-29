@@ -48,6 +48,74 @@ export async function subscribeToCourse(
   }
 }
 
+export async function subscribeToFreeCourse(courseId: string) {
+  const supabase = createClient();
+
+  // 1. Get current logged-in user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) throw new Error("يجب تسجيل الدخول أولاً.");
+
+  // 2. Check if already has a subscription
+  const { data: existingSub, error: checkError } = await supabase
+    .from("subscriptions")
+    .select("status")
+    .eq("user_id", user.id)
+    .eq("course_id", courseId)
+    .maybeSingle();
+
+  if (existingSub) {
+    if (existingSub.status === "approved") {
+      return { success: true, message: "أنت مشترك بالفعل في هذا الكورس." };
+    }
+    // If pending, upgrade to approved since it's a free course!
+    const { error: updateError } = await supabase
+      .from("subscriptions")
+      .update({ status: "approved" })
+      .eq("user_id", user.id)
+      .eq("course_id", courseId);
+
+    if (updateError) throw updateError;
+    return { success: true, message: "تم تفعيل اشتراكك بنجاح!" };
+  }
+
+  // 3. Insert subscription record directly as approved!
+  const { error: dbError } = await supabase
+    .from("subscriptions")
+    .insert([
+      {
+        user_id: user.id,
+        course_id: courseId,
+        payment_method: "free",
+        receipt_url: null,
+        status: "approved"
+      }
+    ]);
+
+  if (dbError) throw dbError;
+  return { success: true, message: "تم تسجيلك في الكورس بنجاح!" };
+}
+
+export async function getCourseSubscriptionStatus(courseId: string) {
+  const supabase = createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { isLoggedIn: false, status: null };
+
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .select("status")
+    .eq("user_id", user.id)
+    .eq("course_id", courseId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("خطأ في جلب حالة الاشتراك:", error.message);
+    return { isLoggedIn: true, status: null };
+  }
+
+  return { isLoggedIn: true, status: data ? data.status : null };
+}
+
 // =========================================================================
 // 2. My Enrolled Courses
 // =========================================================================

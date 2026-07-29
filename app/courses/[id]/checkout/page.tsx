@@ -59,6 +59,11 @@ export default function CheckoutPage() {
           return;
         }
 
+        if (Number(dbCourse.price) === 0) {
+          router.push(`/courses/${id}`);
+          return;
+        }
+
         setCourse({
           id: dbCourse.id,
           title: dbCourse.title,
