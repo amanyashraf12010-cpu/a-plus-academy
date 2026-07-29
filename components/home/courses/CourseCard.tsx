@@ -13,11 +13,14 @@ interface CourseCardProps {
     price: number;
     badge?: string;
   };
+  isSubscribed?: boolean;
 }
 
-export default function CourseCard({ course }: CourseCardProps) {
+export default function CourseCard({ course, isSubscribed = false }: CourseCardProps) {
+  const targetHref = isSubscribed ? `/learn/${course.id}` : `/courses/${course.id}`;
+
   return (
-    <Link href={`/courses/${course.id}`}>
+    <Link href={targetHref}>
       <div
         className="
         group
@@ -121,7 +124,25 @@ export default function CourseCard({ course }: CourseCardProps) {
 
             </div>
 
-            {Number(course.price) === 0 ? (
+            {isSubscribed ? (
+              <button
+                className="
+                px-5
+                py-3
+                rounded-xl
+                bg-green-600
+                text-white
+                font-bold
+                transition
+                duration-300
+                hover:bg-green-700
+                shadow-md
+                hover:shadow-lg
+              "
+              >
+                استكمل التعلم 📚
+              </button>
+            ) : Number(course.price) === 0 ? (
               <button
                 className="
                 px-5

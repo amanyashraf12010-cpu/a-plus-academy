@@ -10,12 +10,29 @@ interface Props {
 
 export default function CoursesGrid({ activeTab }: Props) {
   const [courses, setCourses] = useState<any[]>([]);
+  const [subscribedIds, setSubscribedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   async function loadCourses() {
     try {
       setLoading(true);
       const supabase = createClient();
+
+      // Fetch user approved subscriptions if logged in
+      const { data: { user } } = await supabase.auth.getUser();
+      const subSet = new Set<string>();
+      if (user) {
+        const { data: userSubs } = await supabase
+          .from("subscriptions")
+          .select("course_id")
+          .eq("user_id", user.id)
+          .eq("status", "approved");
+
+        userSubs?.forEach((sub: any) => {
+          subSet.add(sub.course_id);
+        });
+      }
+      setSubscribedIds(subSet);
 
       // 1. Fetch Course details
       const { data, error } = await supabase
@@ -76,7 +93,11 @@ export default function CoursesGrid({ activeTab }: Props) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
       {filteredCourses.map((course) => (
-        <CourseCard key={course.id} course={course} />
+        <CourseCard 
+          key={course.id} 
+          course={course} 
+          isSubscribed={subscribedIds.has(course.id)}
+        />
       ))}
     </div>
   );
