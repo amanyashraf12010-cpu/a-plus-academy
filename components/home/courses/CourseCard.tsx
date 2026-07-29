@@ -74,8 +74,6 @@ export default function CourseCard({ course }: CourseCardProps) {
 
               <Users size={18} />
 
-              <span>{course.students}</span>
-
             </div>
 
           </div>

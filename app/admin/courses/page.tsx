@@ -84,9 +84,10 @@ export default function AdminCoursesPage() {
                 <p className="text-sm text-gray-500 mt-1">👨‍🏫 المدرس: {course.teachers?.name || "غير محدد"}</p>
                 <p className="text-xs text-gray-400 mt-2 line-clamp-2">{course.description || "لا يوجد وصف لهذا الكورس."}</p>
 
-                <div className="flex gap-4 mt-4 pt-3 border-t text-xs text-gray-500">
+                <div className="flex flex-wrap gap-4 mt-4 pt-3 border-t text-xs text-gray-500">
                   <span>📚 المادة: {course.subject}</span>
                   <span>🎓 الصف: {course.grade}</span>
+                  <span>👥 الطلاب المشتركين: <strong className="text-[#7D79F1] font-bold">{course.subscriptions ? course.subscriptions.filter((s: any) => s.status === "approved").length : 0}</strong></span>
                 </div>
               </div>
 

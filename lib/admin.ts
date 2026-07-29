@@ -160,7 +160,7 @@ export async function getCourses() {
 
   const { data, error } = await supabase
     .from("courses")
-    .select("*, teachers(name)")
+    .select("*, teachers(name), subscriptions(status)")
     .order("created_at", { ascending: false });
 
   if (error) throw error;
