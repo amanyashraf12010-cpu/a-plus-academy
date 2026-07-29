@@ -97,7 +97,35 @@ export default function ProfilePage() {
         .order("submitted_at", { ascending: false });
 
       if (attemptsError) throw attemptsError;
-      setAttempts(attemptsData || []);
+
+      // Group and filter attempts: if a quiz has a 100% attempt, only show that one. Otherwise, show all attempts.
+      const filteredAttempts: any[] = [];
+      const perfectQuizIds = new Set<string>();
+
+      // First, find all quiz IDs where the user has a 100% score
+      attemptsData?.forEach((att: any) => {
+        if (Number(att.score) === 100 && att.quizzes?.id) {
+          perfectQuizIds.add(att.quizzes.id);
+        }
+      });
+
+      // Then, filter the attempts list
+      attemptsData?.forEach((att: any) => {
+        const qId = att.quizzes?.id;
+        if (qId) {
+          if (perfectQuizIds.has(qId)) {
+            // If this quiz has a 100% attempt, we ONLY keep the 100% attempt
+            if (Number(att.score) === 100) {
+              filteredAttempts.push(att);
+            }
+          } else {
+            // Otherwise keep all attempts for this quiz
+            filteredAttempts.push(att);
+          }
+        }
+      });
+
+      setAttempts(filteredAttempts);
 
     } catch (error) {
       console.error("فشل تحميل بيانات الملف الشخصي:", error);

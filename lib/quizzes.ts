@@ -50,6 +50,19 @@ export async function startQuizAttempt(quizId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("يجب تسجيل الدخول أولاً لبدء الامتحان.");
 
+  // Check if they already have a 100% attempt
+  const { data: perfectAttempts, error: checkError } = await supabase
+    .from("student_quiz_attempts")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("quiz_id", quizId)
+    .eq("status", "submitted")
+    .eq("score", 100.00);
+
+  if (perfectAttempts && perfectAttempts.length > 0) {
+    throw new Error("لقد حصلت بالفعل على الدرجة النهائية 100% في هذا الواجب. لا يمكنك إعادة المحاولة.");
+  }
+
   // 2. Create attempt
   const { data, error } = await supabase
     .from("student_quiz_attempts")

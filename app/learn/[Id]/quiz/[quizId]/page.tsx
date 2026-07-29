@@ -110,6 +110,41 @@ export default function StudentQuizPage() {
 
       // 3. Fetch past attempts
       const pastAttempts = await getQuizAttempts(user.id, quizData.id);
+      const perfectAttempt = pastAttempts.find((att: any) => att.status === "submitted" && att.score === 100);
+
+      if (perfectAttempt) {
+        setSubmittedResult(perfectAttempt);
+        setAttempt(perfectAttempt);
+
+        // Restore student answers for the perfect attempt
+        const { data: savedAnswers, error: answersError } = await supabase
+          .from("student_answers")
+          .select("*")
+          .eq("attempt_id", perfectAttempt.id);
+
+        if (!answersError && savedAnswers) {
+          const restoredAnswers: Record<string, string> = {};
+          savedAnswers.forEach((ans: any) => {
+            restoredAnswers[ans.question_id] = ans.selected_option;
+          });
+          setSelectedAnswers(restoredAnswers);
+        }
+
+        // Shuffle questions and choices
+        const rawQuestions = quizData.questions || [];
+        const shuffledQ = shuffleArray(rawQuestions);
+        setQuestions(shuffledQ);
+
+        const optionsMap: Record<string, any[]> = {};
+        rawQuestions.forEach((q: any) => {
+          optionsMap[q.id] = shuffleArray(q.options || []);
+        });
+        setShuffledOptionsMap(optionsMap);
+
+        setLoading(false);
+        return;
+      }
+
       const activeAttempt = pastAttempts.find((att: any) => att.status === "in_progress");
       const submittedAttempt = pastAttempts.find((att: any) => att.status === "submitted");
 
@@ -357,7 +392,7 @@ export default function StudentQuizPage() {
               >
                 العودة للمحاضرات
               </button>
-              {quiz.type === "quiz" && (
+              {quiz.type === "quiz" && Number(finalScore) < 100 && (
                 <button
                   onClick={() => {
                     if (confirm("هل تريد بالفعل إعادة البدء وحل المحاضرة مرة أخرى للتمرين؟ سيبدأ عداد محاولاتك من جديد.")) {
