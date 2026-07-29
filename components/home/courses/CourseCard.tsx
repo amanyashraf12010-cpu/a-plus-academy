@@ -125,23 +125,44 @@ export default function CourseCard({ course, isSubscribed = false }: CourseCardP
             </div>
 
             {isSubscribed ? (
-              <button
-                className="
-                px-5
-                py-3
-                rounded-xl
-                bg-green-600
-                text-white
-                font-bold
-                transition
-                duration-300
-                hover:bg-green-700
-                shadow-md
-                hover:shadow-lg
-              "
-              >
-                استكمل التعلم 📚
-              </button>
+              Number(course.price) === 0 ? (
+                <button
+                  className="
+                  px-5
+                  py-3
+                  rounded-xl
+                  bg-gradient-to-r
+                  from-emerald-500
+                  to-green-600
+                  text-white
+                  font-bold
+                  transition
+                  duration-300
+                  hover:from-emerald-600
+                  hover:to-green-700
+                  shadow-md
+                  hover:shadow-lg
+                "
+                >
+                  استكمل التعلم 📚
+                </button>
+              ) : (
+                <button
+                  className="
+                  px-5
+                  py-3
+                  rounded-xl
+                  bg-[#7D79F1]
+                  text-white
+                  font-semibold
+                  transition
+                  duration-300
+                  hover:bg-[#655EF0]
+                "
+                >
+                  استكمل التعلم 📚
+                </button>
+              )
             ) : Number(course.price) === 0 ? (
               <button
                 className="

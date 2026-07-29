@@ -61,9 +61,13 @@ export default function EnrollCard({ course }: any) {
     }
 
     if (isLoggedIn && subStatus === "approved") {
+      const buttonColorClass = Number(course.price) === 0
+        ? "bg-green-600 hover:bg-green-700"
+        : "bg-[#7D79F1] hover:bg-[#655EF0]";
+
       return (
         <Link href={`/learn/${course.id}`} className="w-full">
-          <button className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white text-lg font-bold py-4 rounded-2xl transition duration-300 shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer">
+          <button className={`w-full mt-4 ${buttonColorClass} text-white text-lg font-bold py-4 rounded-2xl transition duration-300 shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer`}>
             <PlayCircle size={20} />
             استمر في التعلم (أنت مشترك)
           </button>
