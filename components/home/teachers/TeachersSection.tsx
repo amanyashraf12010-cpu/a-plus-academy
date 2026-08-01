@@ -13,6 +13,7 @@ export default function TeachersSection() {
   const [grade, setGrade] = useState("");
   const [system, setSystem] = useState("");
   const [track, setTrack] = useState("");
+  const [visibleCount, setVisibleCount] = useState(3);
 
   async function loadTeachers() {
     try {
@@ -49,6 +50,10 @@ export default function TeachersSection() {
   useEffect(() => {
     loadTeachers();
   }, []);
+
+  useEffect(() => {
+    setVisibleCount(3);
+  }, [grade, system, track]);
 
   const filteredTeachers = teachersList.filter((t) => {
     return (
@@ -113,7 +118,20 @@ export default function TeachersSection() {
             </div>
           ) : (
             /* ✅ Teachers Grid */
-            <TeachersGrid teachers={filteredTeachers} />
+            <>
+              <TeachersGrid teachers={filteredTeachers.slice(0, visibleCount)} />
+              
+              {filteredTeachers.length > visibleCount && (
+                <div className="flex justify-center mt-12">
+                  <button
+                    onClick={() => setVisibleCount(filteredTeachers.length)}
+                    className="px-8 py-4 bg-[#7D79F1] hover:bg-[#655EF0] text-white font-bold text-base rounded-2xl transition duration-300 shadow-md hover:shadow-lg flex items-center gap-2 cursor-pointer"
+                  >
+                    عرض المزيد من المدرسين 👁️
+                  </button>
+                </div>
+              )}
+            </>
           )}
 
         </div>
