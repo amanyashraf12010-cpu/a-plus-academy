@@ -22,6 +22,7 @@ export default function TeachersSection() {
       const { data, error } = await supabase
         .from("teachers")
         .select("*")
+        .order("order", { ascending: true })
         .order("created_at", { ascending: false });
 
       if (error) throw error;

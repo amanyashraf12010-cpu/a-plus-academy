@@ -24,6 +24,7 @@ export default function AdminTeachersPage() {
   const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
   const [selectedSystems, setSelectedSystems] = useState<string[]>([]);
   const [selectedTracks, setSelectedTracks] = useState<string[]>([]);
+  const [order, setOrder] = useState<number>(0);
 
   async function loadTeachers() {
     try {
@@ -52,6 +53,7 @@ export default function AdminTeachersPage() {
     setSelectedSystems(["general"]);
     setSelectedGrades(["الصف الأول الثانوي"]);
     setSelectedTracks(["عام"]);
+    setOrder(0);
     setShowModal(true);
   }
 
@@ -66,6 +68,7 @@ export default function AdminTeachersPage() {
     setSelectedSystems(teacher.education_system ? teacher.education_system.split(",") : ["general"]);
     setSelectedGrades(teacher.grade ? teacher.grade.split(",") : ["الصف الأول الثانوي"]);
     setSelectedTracks(teacher.track ? teacher.track.split(",") : ["عام"]);
+    setOrder(Number(teacher.order) || 0);
     setShowModal(true);
   }
 
@@ -119,6 +122,7 @@ export default function AdminTeachersPage() {
         track: selectedGrades.includes("الصف الأول الثانوي") && !selectedTracks.includes("عام")
           ? [...selectedTracks, "عام"].join(",")
           : selectedTracks.join(","),
+        order: Number(order) || 0,
       };
 
       if (modalMode === "add") {
@@ -187,7 +191,12 @@ export default function AdminTeachersPage() {
                     className="w-16 h-16 rounded-2xl object-cover bg-gray-100 border-2 border-[#7D79F1]/20"
                   />
                   <div>
-                    <h2 className="text-lg font-bold text-[#2D2B7A]">{teacher.name}</h2>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg font-bold text-[#2D2B7A]">{teacher.name}</h2>
+                      <span className="text-[10px] bg-gray-100 text-gray-500 border px-1.5 py-0.5 rounded-md font-bold">
+                        ترتيب: {teacher.order ?? 0}
+                      </span>
+                    </div>
                     <span className="text-xs bg-purple-50 text-[#7D79F1] border border-purple-200 px-2 py-0.5 rounded-lg font-semibold inline-block mt-1">
                       {teacher.subject}
                     </span>
@@ -296,6 +305,19 @@ export default function AdminTeachersPage() {
                       const file = e.target.files?.[0];
                       if (file) setImageFile(file);
                     }}
+                  />
+                </div>
+
+                {/* Order */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5">ترتيب الظهور (رقمي)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="أصغر رقم يظهر أولاً"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium"
+                    value={order}
+                    onChange={(e) => setOrder(Number(e.target.value) || 0)}
                   />
                 </div>
 

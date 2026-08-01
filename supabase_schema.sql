@@ -37,6 +37,7 @@ create table if not exists public.teachers (
   education_system text,
   grade text,
   track text,
+  "order" integer default 0,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

@@ -93,6 +93,7 @@ export async function getTeachers() {
   const { data, error } = await supabase
     .from("teachers")
     .select("*")
+    .order("order", { ascending: true })
     .order("created_at", { ascending: false });
 
   if (error) throw error;
@@ -107,6 +108,7 @@ export async function addTeacher(teacher: {
   education_system?: string;
   grade?: string;
   track?: string;
+  order?: number;
 }) {
   const supabase = createClient();
 
@@ -127,6 +129,7 @@ export async function updateTeacher(id: string, teacher: {
   education_system?: string;
   grade?: string;
   track?: string;
+  order?: number;
 }) {
   const supabase = createClient();
 
