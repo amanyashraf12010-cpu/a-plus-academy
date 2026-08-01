@@ -66,7 +66,7 @@ export default function TeachersSection() {
   const noResults = filteredTeachers.length === 0;
 
   return (
-    <section className="py-20 bg-white">
+    <section id="teachers-section" className="py-20 bg-white">
       <Container>
 
         {/* Title */}
@@ -121,13 +121,25 @@ export default function TeachersSection() {
             <>
               <TeachersGrid teachers={filteredTeachers.slice(0, visibleCount)} />
               
-              {filteredTeachers.length > visibleCount && (
+              {filteredTeachers.length > 3 && (
                 <div className="flex justify-center mt-12">
                   <button
-                    onClick={() => setVisibleCount(filteredTeachers.length)}
+                    onClick={() => {
+                      if (visibleCount > 3) {
+                        setVisibleCount(3);
+                        const el = document.getElementById("teachers-section");
+                        if (el) el.scrollIntoView({ behavior: "smooth" });
+                      } else {
+                        setVisibleCount(filteredTeachers.length);
+                      }
+                    }}
                     className="px-8 py-4 bg-[#7D79F1] hover:bg-[#655EF0] text-white font-bold text-base rounded-2xl transition duration-300 shadow-md hover:shadow-lg flex items-center gap-2 cursor-pointer"
                   >
-                    عرض المزيد من المدرسين 👁️
+                    {visibleCount > 3 ? (
+                      <>عرض أقل ⬆️</>
+                    ) : (
+                      <>عرض المزيد من المدرسين 👁️</>
+                    )}
                   </button>
                 </div>
               )}
