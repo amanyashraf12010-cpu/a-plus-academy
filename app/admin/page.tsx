@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getStudents, approveStudent } from "@/lib/admin";
+import { getStudents, approveStudent, rejectStudent } from "@/lib/admin";
 
 export default function AdminDashboard() {
   const [students, setStudents] = useState<any[]>([]);
@@ -25,6 +25,16 @@ export default function AdminDashboard() {
   async function handleApprove(id: string) {
     await approveStudent(id);
     loadStudents();
+  }
+
+  async function handleReject(id: string) {
+    if (!confirm("هل أنت متأكد من رفض وحذف هذا الطالب نهائياً؟")) return;
+    try {
+      await rejectStudent(id);
+      loadStudents();
+    } catch (error: any) {
+      alert("فشل الرفض: " + error.message);
+    }
   }
 
   const pendingStudents = students.filter(
@@ -116,12 +126,20 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => handleApprove(student.id)}
-                  className="bg-green-600 hover:bg-green-700 text-white font-extrabold px-6 py-2.5 rounded-xl shadow-md hover:shadow-lg transition duration-200 cursor-pointer self-start md:self-auto"
-                >
-                  قبول وتفعيل
-                </button>
+                <div className="flex flex-wrap gap-2.5 self-start md:self-auto">
+                  <button
+                    onClick={() => handleApprove(student.id)}
+                    className="bg-green-600 hover:bg-green-700 text-white font-extrabold px-5 py-2.5 rounded-xl shadow-md hover:shadow-lg transition duration-200 cursor-pointer"
+                  >
+                    قبول وتفعيل
+                  </button>
+                  <button
+                    onClick={() => handleReject(student.id)}
+                    className="bg-red-50 hover:bg-red-100 text-red-600 font-extrabold px-5 py-2.5 rounded-xl border border-red-200 transition duration-200 cursor-pointer"
+                  >
+                    رفض وحذف
+                  </button>
+                </div>
 
               </div>
 
