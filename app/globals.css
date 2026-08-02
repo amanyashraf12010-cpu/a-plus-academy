@@ -45,3 +45,20 @@ body {
   animation-play-state: paused;
   transform: scale(1.08);
 }
+
+/* Anti-copy text selection protection */
+body.no-select {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+body.no-select input,
+body.no-select textarea,
+body.no-select [contenteditable="true"] {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/layout/navbar/Navbar";
 import WhatsAppFloat from "@/components/shared/WhatsAppFloat";
+import ProtectionWrapper from "@/components/shared/ProtectionWrapper";
 
 export const metadata: Metadata = {
   title: "A Plus Academy",
@@ -34,6 +35,9 @@ export default function RootLayout({
 
     {/* Floating WhatsApp Button */}
     <WhatsAppFloat />
+
+    {/* Global copy/selection/shortcut protection */}
+    <ProtectionWrapper />
 
   </body>
     </html>
