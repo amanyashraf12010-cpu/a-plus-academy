@@ -41,6 +41,9 @@ export async function registerUser(formData: RegisterData) {
     return { success: false, error: error.message }
   }
 
+  // Force sign out immediately to prevent automatic login before admin approval
+  await supabase.auth.signOut()
+
   return { success: true, user: data.user }
 }
 
