@@ -111,7 +111,7 @@ export default function RegisterForm() {
     setLoading(false);
 
     if (result.success) {
-      setSuccess("تم إنشاء الحساب بنجاح 🎉 في انتظار موافقة الإدارة");
+      setSuccess("تم إنشاء الحساب بنجاح 🎉 في انتظار موافقة الإدارة (سيتم تفعيل الحساب خلال 24 ساعة)");
     } else {
       setErrors({ email: result.error || "حدث خطأ، حاول مرة أخرى" });
     }
