@@ -77,10 +77,21 @@ export async function loginUser(email: string, password: string) {
     };
   }
 
+  // Generate and save active session ID for single-device restriction
+  const newSessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  if (typeof window !== "undefined") {
+    localStorage.setItem("active_session_id", newSessionId);
+  }
+
+  await supabase
+    .from("profiles")
+    .update({ current_session_id: newSessionId })
+    .eq("id", data.user.id);
+
   return {
     success: true,
     user: data.user,
-    profile: userProfile,
+    profile: { ...userProfile, current_session_id: newSessionId },
   };
 }
 export async function logoutUser() {

@@ -23,6 +23,7 @@ create table if not exists public.profiles (
   education_system text,
   track text,
   grade text,
+  current_session_id text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   constraint check_different_phones check (phone <> parent_phone)
 );
