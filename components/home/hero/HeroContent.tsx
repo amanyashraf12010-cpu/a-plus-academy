@@ -25,7 +25,7 @@ export default function HeroContent() {
     <div className="flex-1 text-right">
       
       <h1 className="text-4xl md:text-5xl font-bold text-[#02343F] leading-tight">
-        ابدأ رحلتك نحو التفوق مع A+ Academy
+        ابدأ رحلتك نحو التفوق مع منصة +A
       </h1>
 
       <p className="mt-5 text-gray-600 text-lg">

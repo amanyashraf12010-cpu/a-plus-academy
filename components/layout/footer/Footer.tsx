@@ -1,6 +1,6 @@
 import Container from "@/components/shared/Container";
 import Link from "next/link";
-import { FaFacebook, FaInstagram, FaYoutube, FaTiktok } from "react-icons/fa";
+import { FaFacebook, FaInstagram, FaYoutube, FaTiktok, FaWhatsapp } from "react-icons/fa";
 
 export default function Footer() {
   return (
@@ -14,7 +14,7 @@ export default function Footer() {
           {/* BRAND */}
           <div className="max-w-2xl">
             <h2 className="text-3xl font-extrabold text-[#7D79F1]">
-              A Plus Academy
+              منصة +A
             </h2>
 
             <p className="text-gray-400 mt-4 leading-7">
@@ -28,6 +28,16 @@ export default function Footer() {
             <h3 className="font-bold mb-4">تابعنا</h3>
 
             <div className="flex gap-4 justify-center">
+
+              <a
+                href="https://wa.me/201014257625"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-3 rounded-xl bg-white/10 hover:bg-[#25D366] transition cursor-pointer"
+                title="واتساب"
+              >
+                <FaWhatsapp size={18} />
+              </a>
 
               <a
                 href="https://www.tiktok.com/@aplus.edu?_r=1&_t=ZS-98KJugN2G4z"
@@ -80,7 +90,7 @@ export default function Footer() {
 
         {/* BOTTOM BAR */}
         <div className="border-t border-white/10 mt-16 py-6 text-center text-gray-500 text-sm">
-          © {new Date().getFullYear()} A Plus Academy. All rights reserved.
+          © {new Date().getFullYear()} منصة +A. جميع الحقوق محفوظة.
         </div>
 
       </Container>
