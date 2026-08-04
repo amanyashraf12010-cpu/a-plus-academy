@@ -108,6 +108,14 @@ export default function AdminCoursesPage() {
                   🏆 الامتحان النهائي
                 </a>
 
+                <a
+                  href={`/admin/courses/edit?id=${course.id}`}
+                  className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 transition rounded-xl flex items-center justify-center"
+                  title="تعديل الكورس"
+                >
+                  <Edit2 size={16} />
+                </a>
+
                 <button
                   onClick={() => handleDelete(course.id)}
                   className="p-2 bg-red-50 text-red-600 hover:bg-red-100 transition rounded-xl"

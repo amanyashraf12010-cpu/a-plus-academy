@@ -170,6 +170,19 @@ export async function getCourses() {
   return data;
 }
 
+export async function getCourse(id: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("courses")
+    .select("*, teachers(name)")
+    .eq("id", id)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function addCourse(course: {
   title: string;
   description?: string;
