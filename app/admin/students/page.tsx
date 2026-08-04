@@ -52,7 +52,7 @@ export default function AdminStudentsPage() {
         quizAttemptsMap.get(att.quiz_id)!.push(att);
       });
 
-      // 3. For each course, fetch its quizzes and calculate progress
+      // 3. For each course, fetch its quizzes, lessons, video progress and calculate progress
       const perfDetails = await Promise.all((subs || []).map(async (sub: any) => {
         const course = sub.courses;
         if (!course) return null;
@@ -81,18 +81,60 @@ export default function AdminStudentsPage() {
           };
         });
 
+        // Fetch Lessons & Video Progress
+        const { data: lessons } = await supabase
+          .from("lessons")
+          .select("*")
+          .eq("course_id", course.id)
+          .order("order", { ascending: true });
+
+        let lessonStats: any[] = [];
+        let videoProgressPercent = 100;
+
+        if (lessons && lessons.length > 0) {
+          const lessonIds = lessons.map((l: any) => l.id);
+          const { data: vpData } = await supabase
+            .from("video_progress")
+            .select("*")
+            .eq("user_id", studentId)
+            .in("lesson_id", lessonIds);
+
+          const vpMap = new Map<string, number>(
+            (vpData || []).map((vp: any) => [vp.lesson_id, vp.views_count || 0])
+          );
+
+          let completedLessons = 0;
+          lessonStats = lessons.map((l: any) => {
+            const viewsCount = vpMap.get(l.id) || 0;
+            if (viewsCount > 0) completedLessons++;
+            return {
+              id: l.id,
+              title: l.title,
+              viewsCount
+            };
+          });
+
+          videoProgressPercent = Math.round((completedLessons / lessons.length) * 100);
+        }
+
         // Calculate progress
         const completedLessonQuizzes = quizStats.filter((q: any) => q.type === "quiz" && q.passed).length;
         const totalLessonQuizzes = quizStats.filter((q: any) => q.type === "quiz").length;
-        const progress = totalLessonQuizzes > 0
-          ? Math.round((completedLessonQuizzes / totalLessonQuizzes) * 100)
-          : 100;
+        
+        let progress = 100;
+        if (totalLessonQuizzes > 0) {
+          progress = Math.round((completedLessonQuizzes / totalLessonQuizzes) * 100);
+        } else if (lessons && lessons.length > 0) {
+          progress = videoProgressPercent;
+        }
 
         return {
           courseId: course.id,
           courseTitle: course.title,
           progress,
-          quizStats
+          quizStats,
+          lessonStats,
+          videoProgressPercent
         };
       }));
 
@@ -375,9 +417,25 @@ export default function AdminStudentsPage() {
                             <div className="bg-[#7D79F1] h-full rounded-full" style={{ width: `${courseItem.progress}%` }} />
                           </div>
 
+                          {/* Lectures Progress */}
+                          {courseItem.lessonStats?.length > 0 && (
+                            <div className="pt-2 border-t border-gray-200/50 space-y-1.5">
+                              <p className="text-[10px] text-gray-400 font-bold flex items-center gap-1">🎥 تقدم مشاهدة المحاضرات:</p>
+                              {courseItem.lessonStats.map((ls: any) => (
+                                <div key={ls.id} className="flex justify-between items-center text-[10px] text-gray-600 bg-white/70 p-1.5 rounded border border-gray-150">
+                                  <span className="font-semibold line-clamp-1 flex-1 text-right">{ls.title}</span>
+                                  <span className={`font-bold mr-2 text-left ${ls.viewsCount > 0 ? "text-[#7D79F1]" : "text-gray-400"}`}>
+                                    {ls.viewsCount > 0 ? `شوهد: ${ls.viewsCount} / 4 مرات` : "لم يُشاهد بعد"}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
                           {/* Quiz stats list */}
                           {courseItem.quizStats?.length > 0 ? (
                             <div className="pt-2 border-t border-gray-200/50 space-y-1.5">
+                              <p className="text-[10px] text-gray-400 font-bold">📝 أداء الامتحانات والواجبات:</p>
                               {courseItem.quizStats.map((qs: any) => (
                                 <div key={qs.id} className="flex justify-between text-[11px] text-gray-500">
                                   <span>{qs.type === "final" ? "🏆 الامتحان النهائي" : `📝 ${qs.title}`}</span>
