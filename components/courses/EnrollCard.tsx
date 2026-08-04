@@ -61,9 +61,7 @@ export default function EnrollCard({ course }: any) {
     }
 
     if (isLoggedIn && subStatus === "approved") {
-      const buttonColorClass = Number(course.price) === 0
-        ? "bg-green-600 hover:bg-green-700"
-        : "bg-[#7D79F1] hover:bg-[#655EF0]";
+      const buttonColorClass = "bg-[#7D79F1] hover:bg-[#655EF0]";
 
       return (
         <Link href={`/learn/${course.id}`} className="w-full">
@@ -117,7 +115,7 @@ export default function EnrollCard({ course }: any) {
       <div className="text-center">
         <h2 className="text-4xl font-black text-[#2D2B7A] tracking-tight">
           {Number(course.price) === 0 ? (
-            <span className="text-green-600 font-bold">كورس مجاني 🎉</span>
+            <span className="text-[#7D79F1] font-bold">كورس مجاني 🎉</span>
           ) : (
             `${course.price} جنيه`
           )}

@@ -52,7 +52,7 @@ export default function CourseCard({ course, isSubscribed = false }: CourseCardP
 
           {/* Badge */}
           {Number(course.price) === 0 ? (
-            <span className="absolute top-4 right-4 bg-gradient-to-r from-emerald-500 to-green-600 text-white text-xs px-3.5 py-1.5 rounded-full shadow-lg font-black tracking-wide flex items-center gap-1">
+            <span className="absolute top-4 right-4 bg-gradient-to-r from-[#7D79F1] to-[#5B57E6] text-white text-xs px-3.5 py-1.5 rounded-full shadow-lg font-black tracking-wide flex items-center gap-1">
               <span>🎁</span> كورس مجاني
             </span>
           ) : course.badge ? (
@@ -112,7 +112,7 @@ export default function CourseCard({ course, isSubscribed = false }: CourseCardP
                 </p>
 
                 {Number(course.price) === 0 ? (
-                  <h4 className="text-2xl font-black text-green-600">
+                  <h4 className="text-2xl font-black text-[#7D79F1]">
                     مجاني 🎉
                   </h4>
                 ) : (
@@ -133,15 +133,12 @@ export default function CourseCard({ course, isSubscribed = false }: CourseCardP
                     px-5
                     py-3
                     rounded-xl
-                    bg-gradient-to-r
-                    from-emerald-500
-                    to-green-600
+                    bg-[#7D79F1]
                     text-white
                     font-bold
                     transition
                     duration-300
-                    hover:from-emerald-600
-                    hover:to-green-700
+                    hover:bg-[#655EF0]
                     shadow-md
                     hover:shadow-lg
                   "
@@ -171,15 +168,12 @@ export default function CourseCard({ course, isSubscribed = false }: CourseCardP
                   px-5
                   py-3
                   rounded-xl
-                  bg-gradient-to-r
-                  from-emerald-500
-                  to-green-600
+                  bg-[#7D79F1]
                   text-white
                   font-bold
                   transition
                   duration-300
-                  hover:from-emerald-600
-                  hover:to-green-700
+                  hover:bg-[#655EF0]
                   shadow-md
                   hover:shadow-lg
                 "
