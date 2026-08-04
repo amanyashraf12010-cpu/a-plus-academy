@@ -19,7 +19,7 @@ export default function AddCoursePage() {
   const [teacherId, setTeacherId] = useState("");
   const [price, setPrice] = useState("");
   const [image, setImage] = useState("");
-  const [grade, setGrade] = useState("الصف الأول الثانوي");
+  const [selectedGrades, setSelectedGrades] = useState<string[]>(["الصف الأول الثانوي"]);
   const [subject, setSubject] = useState("");
   const [duration, setDuration] = useState("");
 
@@ -49,13 +49,18 @@ export default function AddCoursePage() {
 
     setSaving(true);
 
+    if (selectedGrades.length === 0) {
+      alert("من فضلك اختر صفاً دراسياً واحداً على الأقل للكورس.");
+      return;
+    }
+
     const payload = {
       title,
       description,
       teacher_id: teacherId,
       price: parseFloat(price) || 0,
       image: image.trim() || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600",
-      grade,
+      grade: selectedGrades.join(","),
       subject,
       duration: duration || "غير محدد",
       video_count: 0
@@ -156,20 +161,33 @@ export default function AddCoursePage() {
             </div>
 
             {/* Grade Select */}
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-xs font-bold text-gray-500 mb-1.5 flex items-center gap-1.5">
-                <GraduationCap size={14} /> الصف الدراسي *
+                <GraduationCap size={14} /> الصف الدراسي * (يمكن اختيار أكثر من صف للكورسات المشتركة/التأسيسية)
               </label>
-              <select
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-[#2D2B7A] font-semibold bg-white cursor-pointer focus:border-[#7D79F1]"
-                value={grade}
-                onChange={(e) => setGrade(e.target.value)}
-                required
-              >
-                <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
-                <option value="الصف الثاني الثانوي">الصف الثاني الثانوي</option>
-                <option value="الصف الثالث الثانوي">الصف الثالث الثانوي</option>
-              </select>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                {[
+                  "الصف الأول الثانوي",
+                  "الصف الثاني الثانوي",
+                  "الصف الثالث الثانوي"
+                ].map((g) => (
+                  <label key={g} className="flex items-center gap-2 text-sm text-[#2D2B7A] font-black cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={selectedGrades.includes(g)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedGrades([...selectedGrades, g]);
+                        } else {
+                          setSelectedGrades(selectedGrades.filter((item) => item !== g));
+                        }
+                      }}
+                      className="w-4.5 h-4.5 text-[#7D79F1] focus:ring-[#7D79F1]/20 border-gray-300 rounded cursor-pointer"
+                    />
+                    {g}
+                  </label>
+                ))}
+              </div>
             </div>
 
             {/* Subject */}
