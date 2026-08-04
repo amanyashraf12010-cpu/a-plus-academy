@@ -20,9 +20,12 @@ export default function CourseCard({ course, isSubscribed = false }: CourseCardP
   const targetHref = isSubscribed ? `/learn/${course.id}` : `/courses/${course.id}`;
 
   return (
-    <Link href={targetHref}>
+    <Link href={targetHref} className="flex h-full">
       <div
         className="
+        w-full
+        flex
+        flex-col
         group
         overflow-hidden
         rounded-3xl
@@ -37,7 +40,7 @@ export default function CourseCard({ course, isSubscribed = false }: CourseCardP
       "
       >
         {/* الصورة */}
-        <div className="relative overflow-hidden aspect-[16/9] w-full">
+        <div className="relative overflow-hidden aspect-[16/9] w-full flex-shrink-0">
 
           <Image
             src={course.image}
@@ -61,71 +64,108 @@ export default function CourseCard({ course, isSubscribed = false }: CourseCardP
 
         {/* المحتوى */}
 
-        <div className="p-6">
+        <div className="p-6 flex-1 flex flex-col justify-between">
 
-          {/* Rating */}
+          <div>
+            {/* Rating */}
+            <div className="flex items-center justify-between mb-5">
 
-          <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2 text-[#F59E0B]">
 
-            <div className="flex items-center gap-2 text-[#F59E0B]">
+                <Star size={18} fill="currentColor" />
 
-              <Star size={18} fill="currentColor" />
+                <span className="font-semibold text-gray-700">
+                  {course.rating}
+                </span>
 
-              <span className="font-semibold text-gray-700">
-                {course.rating}
-              </span>
+              </div>
+
+              <div className="flex items-center gap-2 text-gray-500">
+
+                <Users size={18} />
+
+              </div>
 
             </div>
 
-            <div className="flex items-center gap-2 text-gray-500">
+            {/* Title */}
+            <h3 className="text-xl font-bold text-[#02343F] leading-relaxed group-hover:text-[#7D79F1] transition min-h-[3.75rem] line-clamp-2">
+              {course.title}
+            </h3>
 
-              <Users size={18} />
-
-            </div>
-
+            {/* Teacher */}
+            <p className="mt-2 text-gray-500">
+              {course.teacher}
+            </p>
           </div>
 
-          {/* Title */}
+          <div>
+            <hr className="my-6" />
 
-          <h3 className="text-xl font-bold text-[#02343F] leading-relaxed group-hover:text-[#7D79F1] transition">
-            {course.title}
-          </h3>
+            {/* Price */}
+            <div className="flex items-center justify-between">
 
-          {/* Teacher */}
+              <div>
 
-          <p className="mt-2 text-gray-500">
-            {course.teacher}
-          </p>
+                <p className="text-gray-400 text-sm">
+                  السعر
+                </p>
 
-          <hr className="my-6" />
+                {Number(course.price) === 0 ? (
+                  <h4 className="text-2xl font-black text-green-600">
+                    مجاني 🎉
+                  </h4>
+                ) : (
+                  <h4 className="text-3xl font-bold text-[#7D79F1]">
+                    {course.price}
+                    <span className="text-base mr-1">
+                      جنيه
+                    </span>
+                  </h4>
+                )}
 
-          {/* Price */}
+              </div>
 
-          <div className="flex items-center justify-between">
-
-            <div>
-
-              <p className="text-gray-400 text-sm">
-                السعر
-              </p>
-
-              {Number(course.price) === 0 ? (
-                <h4 className="text-2xl font-black text-green-600">
-                  مجاني 🎉
-                </h4>
-              ) : (
-                <h4 className="text-3xl font-bold text-[#7D79F1]">
-                  {course.price}
-                  <span className="text-base mr-1">
-                    جنيه
-                  </span>
-                </h4>
-              )}
-
-            </div>
-
-            {isSubscribed ? (
-              Number(course.price) === 0 ? (
+              {isSubscribed ? (
+                Number(course.price) === 0 ? (
+                  <button
+                    className="
+                    px-5
+                    py-3
+                    rounded-xl
+                    bg-gradient-to-r
+                    from-emerald-500
+                    to-green-600
+                    text-white
+                    font-bold
+                    transition
+                    duration-300
+                    hover:from-emerald-600
+                    hover:to-green-700
+                    shadow-md
+                    hover:shadow-lg
+                  "
+                  >
+                    استكمل التعلم 📚
+                  </button>
+                ) : (
+                  <button
+                    className="
+                    px-5
+                    py-3
+                    rounded-xl
+                    bg-[#7D79F1]
+                    text-white
+                    font-semibold
+                    transition
+                    duration-300
+                    hover:bg-[#655EF0]
+                  "
+                  >
+                    استكمل التعلم 📚
+                  </button>
+                )
+              ) : Number(course.price) === 0 ? (
                 <button
                   className="
                   px-5
@@ -144,7 +184,7 @@ export default function CourseCard({ course, isSubscribed = false }: CourseCardP
                   hover:shadow-lg
                 "
                 >
-                  استكمل التعلم 📚
+                  ابدأ التعلم 🚀
                 </button>
               ) : (
                 <button
@@ -160,48 +200,11 @@ export default function CourseCard({ course, isSubscribed = false }: CourseCardP
                   hover:bg-[#655EF0]
                 "
                 >
-                  استكمل التعلم 📚
+                  اشترك الآن
                 </button>
-              )
-            ) : Number(course.price) === 0 ? (
-              <button
-                className="
-                px-5
-                py-3
-                rounded-xl
-                bg-gradient-to-r
-                from-emerald-500
-                to-green-600
-                text-white
-                font-bold
-                transition
-                duration-300
-                hover:from-emerald-600
-                hover:to-green-700
-                shadow-md
-                hover:shadow-lg
-              "
-              >
-                ابدأ التعلم 🚀
-              </button>
-            ) : (
-              <button
-                className="
-                px-5
-                py-3
-                rounded-xl
-                bg-[#7D79F1]
-                text-white
-                font-semibold
-                transition
-                duration-300
-                hover:bg-[#655EF0]
-              "
-              >
-                اشترك الآن
-              </button>
-            )}
+              )}
 
+            </div>
           </div>
 
         </div>
