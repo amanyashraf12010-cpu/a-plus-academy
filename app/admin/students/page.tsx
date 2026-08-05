@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getStudents, approveStudent, rejectStudent } from "@/lib/admin";
+import { getStudents, approveStudent, rejectStudent, resetStudentVideoProgress } from "@/lib/admin";
 import { Search, Check, Trash2, Phone, User, GraduationCap, MapPin, Eye } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
@@ -438,11 +438,32 @@ export default function AdminStudentsPage() {
                             <div className="pt-2 border-t border-gray-200/50 space-y-1.5">
                               <p className="text-[10px] text-gray-400 font-bold flex items-center gap-1">🎥 تقدم مشاهدة المحاضرات:</p>
                               {courseItem.lessonStats.map((ls: any) => (
-                                <div key={ls.id} className="flex justify-between items-center text-[10px] text-gray-600 bg-white/70 p-1.5 rounded border border-gray-150">
+                                <div key={ls.id} className="flex justify-between items-center text-[10px] text-gray-600 bg-white/70 p-1.5 rounded border border-gray-150 gap-2">
                                   <span className="font-semibold line-clamp-1 flex-1 text-right">{ls.title}</span>
-                                  <span className={`font-bold mr-2 text-left ${ls.viewsCount > 0 ? "text-[#7D79F1]" : "text-gray-400"}`}>
-                                    {ls.viewsCount > 0 ? `شوهد: ${ls.viewsCount} / 4 مرات` : "لم يُشاهد بعد"}
-                                  </span>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <span className={`font-bold text-left ${ls.viewsCount > 0 ? "text-[#7D79F1]" : "text-gray-400"}`}>
+                                      {ls.viewsCount > 0 ? `شوهد: ${ls.viewsCount} / 4 - مرات` : "لم يُشاهد بعد"}
+                                    </span>
+                                    {ls.viewsCount > 0 && (
+                                      <button
+                                        onClick={async () => {
+                                          if (confirm(`هل أنت متأكد من تصفير وإعادة تعيين مشاهدات الطالب لهذا الدرس؟`)) {
+                                            try {
+                                              await resetStudentVideoProgress(selectedStudent.id, ls.id);
+                                              alert("تم تصفير عدد المشاهدات بنجاح.");
+                                              loadStudentPerformanceData(selectedStudent.id);
+                                            } catch (err: any) {
+                                              alert("فشل إعادة التعيين: " + err.message);
+                                            }
+                                          }
+                                        }}
+                                        className="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 rounded border border-red-200 bg-red-50 hover:bg-red-100 transition cursor-pointer text-[9px]"
+                                        title="تصفير المشاهدات"
+                                      >
+                                        تصفير 🔄
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               ))}
                             </div>

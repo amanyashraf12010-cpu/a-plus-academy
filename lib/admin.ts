@@ -317,3 +317,15 @@ export async function getReceiptSignedUrl(filePath: string) {
   if (error) throw error;
   return data.signedUrl;
 }
+
+export async function resetStudentVideoProgress(userId: string, lessonId: string) {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("video_progress")
+    .update({ views_count: 0 })
+    .eq("user_id", userId)
+    .eq("lesson_id", lessonId);
+
+  if (error) throw error;
+}
