@@ -240,6 +240,20 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
     return { lessons: [], courseProgress: 0, finalExamUnlocked: false };
   }
 
+  // Fetch video progress to track lesson completion when there is no quiz
+  const lessonIds = lessons.map((l: any) => l.id);
+  const { data: vpData } = await supabase
+    .from("video_progress")
+    .select("lesson_id, views_count")
+    .eq("user_id", userId)
+    .in("lesson_id", lessonIds);
+
+  const watchedLessonIds = new Set(
+    (vpData || [])
+      .filter((vp: any) => (vp.views_count || 0) > 0)
+      .map((vp: any) => vp.lesson_id)
+  );
+
   // 2. Fetch all quizzes for these lessons + final exam
   const { data: quizzes, error: quizzesError } = await supabase
     .from("quizzes")
@@ -350,7 +364,13 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
   // 5. Calculate course progress (%)
   // Progress = (number of lessons completed / total lessons) * 100
   // A lesson is completed if: it has no quiz, OR its quiz is passed.
-  const completedLessons = lessonsWithLockState.filter(l => l.quizStatus === "passed" || l.quizStatus === "no_quiz").length;
+  const completedLessons = lessonsWithLockState.filter((l: any) => {
+    if (l.quizId) {
+      return l.quizStatus === "passed";
+    } else {
+      return watchedLessonIds.has(l.id);
+    }
+  }).length;
   const courseProgress = lessons.length > 0 ? Math.round((completedLessons / lessons.length) * 100) : 0;
 
   // 6. Check if final exam is unlocked (all lessons completed/passed)

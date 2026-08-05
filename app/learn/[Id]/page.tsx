@@ -40,6 +40,30 @@ export default function LearnPage() {
   const [videoError, setVideoError] = useState<string | null>(null);
   const [viewsCount, setViewsCount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState("description");
+  const [hasIncrementedView, setHasIncrementedView] = useState(false);
+
+  // Trigger view increment in database when reaching 50%
+  async function triggerViewIncrement() {
+    if (hasIncrementedView || !activeLesson) return;
+    try {
+      const { data: newCount, error } = await supabase
+        .rpc("increment_video_views", { p_lesson_id: activeLesson.id });
+
+      if (error) {
+        if (error.message.includes("تجاوزت الحد الأقصى")) {
+          alert("⚠️ لقد تجاوزت الحد الأقصى للمشاهدات المسموح بها لهذا الفيديو (4 مرات).");
+          setVideoUrl(null);
+          setVideoError("⚠️ لقد تجاوزت الحد الأقصى للمشاهدات المسموح بها لهذا الفيديو (4 مرات).");
+        }
+        throw error;
+      }
+      setHasIncrementedView(true);
+      setViewsCount(newCount);
+      console.log("Views incremented successfully. New count:", newCount);
+    } catch (err: any) {
+      console.error("Failed to increment views:", err.message);
+    }
+  }
 
   // Load Course and Lessons List
   async function loadCourseDetails() {
@@ -122,14 +146,15 @@ export default function LearnPage() {
       setLoadingVideo(true);
       setVideoError(null);
       setVideoUrl(null);
+      setHasIncrementedView(false); // Reset tracking flag for this video load
 
-      // 1. Fetch secure video link (triggers DB view increment)
+      // 1. Fetch secure video link
       const url = await getLessonVideoUrl(lesson.id);
       setVideoUrl(url);
 
       // 2. Fetch views count
       const views = await getVideoProgress(lesson.id);
-      setViewsCount(views || 1); // fallback to 1 as it gets incremented on load
+      setViewsCount(views || 0); // true count before viewing
     } catch (error: any) {
       console.error("فشل تحميل الفيديو:", error.message || error);
       setVideoError(error.message || "فشل تحميل الفيديو، يرجى المحاولة لاحقاً.");
@@ -144,6 +169,93 @@ export default function LearnPage() {
     }
   }, [activeLesson]);
 
+  // Track YouTube and Vimeo player halfway mark
+  useEffect(() => {
+    if (!videoUrl || !activeLesson || hasIncrementedView) return;
+
+    const isYouTube = videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be");
+    const isVimeo = videoUrl.includes("vimeo.com");
+
+    let intervalId: any;
+    let vimeoPlayer: any;
+    let ytPlayer: any;
+
+    if (isYouTube) {
+      // Load YouTube API if not already loaded
+      if (!(window as any).YT) {
+        const tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName("script")[0];
+        firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+      }
+
+      const setupYtPlayer = () => {
+        try {
+          ytPlayer = new (window as any).YT.Player("yt-player", {
+            events: {
+              onStateChange: (event: any) => {
+                // If video is playing (state = 1)
+                if (event.data === (window as any).YT.PlayerState.PLAYING) {
+                  intervalId = setInterval(() => {
+                    if (ytPlayer && typeof ytPlayer.getCurrentTime === "function") {
+                      const currentTime = ytPlayer.getCurrentTime();
+                      const duration = ytPlayer.getDuration();
+                      if (duration > 0 && currentTime >= duration / 2) {
+                        triggerViewIncrement();
+                        clearInterval(intervalId);
+                      }
+                    }
+                  }, 1000);
+                } else {
+                  if (intervalId) clearInterval(intervalId);
+                }
+              }
+            }
+          });
+        } catch (e) {
+          console.error("Error setting up YouTube player:", e);
+        }
+      };
+
+      const checkYt = setInterval(() => {
+        if ((window as any).YT && (window as any).YT.Player) {
+          clearInterval(checkYt);
+          setupYtPlayer();
+        }
+      }, 500);
+
+      return () => {
+        clearInterval(checkYt);
+        if (intervalId) clearInterval(intervalId);
+      };
+    } else if (isVimeo) {
+      const loadVimeo = () => {
+        const iframe = document.getElementById("vimeo-player") as HTMLIFrameElement;
+        if (!iframe) return;
+
+        const setupVimeoPlayer = () => {
+          vimeoPlayer = new (window as any).Vimeo.Player(iframe);
+          vimeoPlayer.on("timeupdate", (data: any) => {
+            if (data.percent >= 0.5) {
+              triggerViewIncrement();
+            }
+          });
+        };
+
+        if (!(window as any).Vimeo) {
+          const script = document.createElement("script");
+          script.src = "https://player.vimeo.com/api/player.js";
+          script.onload = setupVimeoPlayer;
+          document.body.appendChild(script);
+        } else {
+          setupVimeoPlayer();
+        }
+      };
+
+      setTimeout(loadVimeo, 1000);
+    }
+  }, [videoUrl, activeLesson, hasIncrementedView]);
+
   // Helper to extract YouTube/Vimeo Embed links
   function getEmbedUrl(url: string) {
     if (!url) return null;
@@ -152,7 +264,7 @@ export default function LearnPage() {
     const ytReg = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
     const ytMatch = url.match(ytReg);
     if (ytMatch && ytMatch[1]) {
-      return `https://www.youtube.com/embed/${ytMatch[1]}?rel=0&modestbranding=1`;
+      return `https://www.youtube.com/embed/${ytMatch[1]}?rel=0&modestbranding=1&enablejsapi=1`;
     }
 
     // Vimeo RegExp
@@ -262,6 +374,7 @@ export default function LearnPage() {
                   embedUrl ? (
                     // Iframe player for YouTube or Vimeo
                     <iframe
+                      id={videoUrl.includes("vimeo.com") ? "vimeo-player" : "yt-player"}
                       src={embedUrl}
                       className="w-full h-full"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -275,6 +388,12 @@ export default function LearnPage() {
                       controlsList="nodownload"
                       onContextMenu={(e) => e.preventDefault()}
                       className="w-full h-full object-contain"
+                      onTimeUpdate={(e) => {
+                        const video = e.currentTarget;
+                        if (video.duration && video.currentTime >= video.duration / 2) {
+                          triggerViewIncrement();
+                        }
+                      }}
                     />
                   )
                 ) : (
@@ -293,7 +412,7 @@ export default function LearnPage() {
                     <span>عدد مشاهداتك لهذا الدرس:</span>
                   </div>
                   <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full">
-                    {viewsCount} / 3 مشاهدات مسموحة
+                    {viewsCount} / 4 مشاهدات مسموحة
                   </span>
                 </div>
               )}
