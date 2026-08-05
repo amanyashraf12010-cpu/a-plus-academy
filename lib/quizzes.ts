@@ -230,7 +230,7 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
   // 1. Fetch all lessons
   const { data: lessons, error: lessonsError } = await supabase
     .from("lessons")
-    .select("id, title, order")
+    .select("id, title, order, pdf_url")
     .eq("course_id", courseId)
     .order("order", { ascending: true });
 

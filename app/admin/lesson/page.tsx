@@ -23,6 +23,8 @@ function LessonsContent() {
   const [title, setTitle] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [order, setOrder] = useState("0");
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [uploadingPdf, setUploadingPdf] = useState(false);
 
   const supabase = createClient();
 
@@ -70,6 +72,7 @@ function LessonsContent() {
     setSelectedLessonId(null);
     setTitle("");
     setVideoUrl("");
+    setPdfUrl("");
     setOrder(String(lessons.length + 1));
     setShowModal(true);
   }
@@ -79,6 +82,7 @@ function LessonsContent() {
     setSelectedLessonId(lesson.id);
     setTitle(lesson.title);
     setVideoUrl(lesson.video_url);
+    setPdfUrl(lesson.pdf_url || "");
     setOrder(String(lesson.order));
     setShowModal(true);
   }
@@ -94,7 +98,8 @@ function LessonsContent() {
       course_id: courseId!,
       title,
       video_url: videoUrl,
-      order: parseInt(order) || 0
+      order: parseInt(order) || 0,
+      pdf_url: pdfUrl.trim() || undefined
     };
 
     try {
@@ -112,7 +117,8 @@ function LessonsContent() {
         await updateLesson(selectedLessonId, {
           title,
           video_url: videoUrl,
-          order: parseInt(order) || 0
+          order: parseInt(order) || 0,
+          pdf_url: pdfUrl.trim() || undefined
         });
         alert("تم تحديث الدرس بنجاح.");
       }
@@ -269,6 +275,56 @@ function LessonsContent() {
                 <p className="text-[10px] text-gray-400 mt-1">
                   اكتب رابط فيديو كامل (يبدأ بـ http) للاستضافة الخارجية، أو مسار الملف لـ Supabase Private bucket.
                 </p>
+              </div>
+
+              {/* PDF Attachment URL */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1.5 flex justify-between items-center">
+                  <span>رابط ملف PDF أو المرفق (اختياري)</span>
+                  {uploadingPdf && <span className="text-[10px] text-[#7D79F1] animate-pulse">جاري الرفع...</span>}
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="رابط مباشر للملف أو مسار التحميل"
+                    className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium text-xs"
+                    value={pdfUrl}
+                    onChange={(e) => setPdfUrl(e.target.value)}
+                  />
+                  <label className="px-3 py-3 bg-[#7D79F1] hover:bg-[#655EF0] text-white rounded-xl font-bold cursor-pointer transition text-[10px] shrink-0 flex items-center justify-center">
+                    رفع ملف
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          setUploadingPdf(true);
+                          // Upload to teachers-images bucket
+                          const { data, error } = await supabase.storage
+                            .from("teachers-images")
+                            .upload(`lessons_attachments/${Date.now()}_${file.name}`, file);
+
+                          if (error) throw error;
+                          
+                          // Get public URL
+                          const { data: { publicUrl } } = supabase.storage
+                            .from("teachers-images")
+                            .getPublicUrl(data.path);
+
+                          setPdfUrl(publicUrl);
+                          alert("تم رفع الملف بنجاح 🎉");
+                        } catch (err: any) {
+                          alert("فشل رفع الملف: " + err.message);
+                        } finally {
+                          setUploadingPdf(false);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
               </div>
 
               {/* Order */}
