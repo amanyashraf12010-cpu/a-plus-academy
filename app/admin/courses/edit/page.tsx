@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getCourse, updateCourse, getTeachers } from "@/lib/admin";
+import { getCourse, updateCourse, getTeachers, getCourses } from "@/lib/admin";
 import { ArrowRight, BookOpen, User, DollarSign, Image as ImageIcon, FileText, Clock, GraduationCap } from "lucide-react";
 import Link from "next/link";
 
@@ -25,6 +25,11 @@ function EditCourseForm() {
   const [subject, setSubject] = useState("");
   const [duration, setDuration] = useState("");
 
+  // Optional fields states
+  const [coursesList, setCoursesList] = useState<any[]>([]);
+  const [whatWillLearn, setWhatWillLearn] = useState("");
+  const [selectedRelatedCourses, setSelectedRelatedCourses] = useState<string[]>([]);
+
   useEffect(() => {
     async function loadData() {
       if (!courseId) {
@@ -39,6 +44,10 @@ function EditCourseForm() {
         const teachersList = await getTeachers();
         setTeachers(teachersList);
 
+        // Load courses list (excluding current course)
+        const coursesData = await getCourses();
+        setCoursesList((coursesData || []).filter((c: any) => c.id !== courseId));
+
         // Load course details
         const courseData = await getCourse(courseId);
         setTitle(courseData.title);
@@ -48,6 +57,13 @@ function EditCourseForm() {
         setImage(courseData.image || "");
         setSubject(courseData.subject || "");
         setDuration(courseData.duration || "");
+        setWhatWillLearn(courseData.what_will_learn || "");
+
+        if (courseData.related_courses) {
+          setSelectedRelatedCourses(courseData.related_courses.split(",").map((i: string) => i.trim()).filter(Boolean));
+        } else {
+          setSelectedRelatedCourses([]);
+        }
 
         // Set grades
         if (courseData.grade) {
@@ -91,6 +107,8 @@ function EditCourseForm() {
       grade: selectedGrades.join(","),
       subject,
       duration: duration || "غير محدد",
+      what_will_learn: whatWillLearn.trim() || undefined,
+      related_courses: selectedRelatedCourses.join(",") || undefined
     };
 
     try {
@@ -262,6 +280,48 @@ function EditCourseForm() {
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium"
             />
           </div>
+
+          {/* What will learn */}
+          <div className="md:col-span-2">
+            <label className="block text-xs font-bold text-gray-500 mb-1.5 flex items-center gap-1.5">
+              <FileText size={14} /> ماذا ستتعلم؟ (اختياري - اكتب كل نقطة في سطر منفصل)
+            </label>
+            <textarea
+              placeholder="مثال:&#10;شرح مبسط لقوانين الحركة&#10;حل أكثر من 100 مسألة نموذجية&#10;ملخص شامل لكل فصل"
+              rows={4}
+              value={whatWillLearn}
+              onChange={(e) => setWhatWillLearn(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium"
+            />
+          </div>
+
+          {/* Related Courses */}
+          {coursesList.length > 0 && (
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-gray-500 mb-1.5 flex items-center gap-1.5">
+                <BookOpen size={14} /> كورسات قد تعجبك (ترشيحات اختيارية تظهر بصفحة الكورس)
+              </label>
+              <div className="max-h-48 overflow-y-auto p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-2.5">
+                {coursesList.map((c) => (
+                  <label key={c.id} className="flex items-center gap-2 text-sm text-[#2D2B7A] font-semibold cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={selectedRelatedCourses.includes(c.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedRelatedCourses([...selectedRelatedCourses, c.id]);
+                        } else {
+                          setSelectedRelatedCourses(selectedRelatedCourses.filter((id) => id !== c.id));
+                        }
+                      }}
+                      className="w-4 h-4 text-[#7D79F1] focus:ring-[#7D79F1]/20 border-gray-300 rounded cursor-pointer"
+                    />
+                    {c.title}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
         </div>
 

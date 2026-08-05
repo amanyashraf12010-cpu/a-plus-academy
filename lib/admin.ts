@@ -193,6 +193,8 @@ export async function addCourse(course: {
   price?: number;
   video_count?: number;
   duration?: string;
+  what_will_learn?: string;
+  related_courses?: string;
 }) {
   const supabase = createClient();
 
@@ -215,6 +217,8 @@ export async function updateCourse(id: string, course: {
   price?: number;
   video_count?: number;
   duration?: string;
+  what_will_learn?: string;
+  related_courses?: string;
 }) {
   const supabase = createClient();
 

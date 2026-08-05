@@ -14,7 +14,12 @@ async function run() {
     console.error("Error fetching courses:", courseErr);
     return;
   }
-  console.log("Courses:", courses.map(c => ({ id: c.id, title: c.title })));
+  if (courses.length > 0) {
+    console.log("Course keys in DB:", Object.keys(courses[0]));
+    console.log("Full first course data:", courses[0]);
+  } else {
+    console.log("No courses found");
+  }
 
   // 2. Fetch all lessons
   const { data: lessons, error: lessonErr } = await supabase

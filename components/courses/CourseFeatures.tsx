@@ -1,4 +1,6 @@
 export default function CourseFeatures({ course }: any) {
+  if (!course.features || course.features.length === 0) return null;
+
   return (
     <div className="bg-white rounded-3xl shadow-sm border p-8">
 
@@ -8,7 +10,7 @@ export default function CourseFeatures({ course }: any) {
 
       <div className="grid md:grid-cols-2 gap-5">
 
-        {course.features?.map((item: string, index: number) => (
+        {course.features.map((item: string, index: number) => (
 
           <div
             key={index}
