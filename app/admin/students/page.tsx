@@ -446,7 +446,9 @@ export default function AdminStudentsPage() {
                               ))}
                             </div>
                           ) : (
-                            <p className="text-[10px] text-gray-400">لا توجد واجبات أو امتحانات شاملة مفعلة لهذا الكورس.</p>
+                            (!courseItem.lessonStats || courseItem.lessonStats.length === 0) && (
+                              <p className="text-[10px] text-gray-400">لا توجد محاضرات أو امتحانات مضافة لهذا الكورس بعد 📂</p>
+                            )
                           )}
                         </div>
                       ))}
