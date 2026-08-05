@@ -71,7 +71,7 @@ export default function RegisterForm() {
     if (!governorate) newErrors.governorate = "اختر المحافظة";
     if (!gender) newErrors.gender = "اختر النوع";
     if (!system) newErrors.system = "اختر النظام";
-    if (grade !== "first" && !track) newErrors.track = "اختر التخصص";
+    if (grade !== "first" && grade !== "prep3" && !track) newErrors.track = "اختر التخصص";
     if (!grade) newErrors.grade = "اختر الصف";
     if (!parentJob.trim()) newErrors.parentJob = "أدخل مهنة ولي الأمر";
     if (!passwordRegex.test(password))
@@ -240,6 +240,7 @@ export default function RegisterForm() {
           }}
         >
           <option value="">اختر الصف</option>
+          <option value="prep3">الصف الثالث الإعدادي</option>
           <option value="first">الصف الأول الثانوي</option>
           <option value="second">الصف الثاني الثانوي (بكالوريا)</option>
           <option value="third">الصف الثالث الثانوي</option>
@@ -250,7 +251,7 @@ export default function RegisterForm() {
       </div>
 
       {/* 5. System & Track */}
-      <div className={`space-y-2 ${grade === "first" ? "md:col-span-2" : ""}`}>
+      <div className={`space-y-2 ${(grade === "first" || grade === "prep3") ? "md:col-span-2" : ""}`}>
         <label className="block text-sm font-semibold text-[#02343F]">
           النظام التعليمي
         </label>
@@ -271,7 +272,7 @@ export default function RegisterForm() {
         )}
       </div>
 
-      {grade !== "first" && system && (
+      {grade !== "first" && grade !== "prep3" && system && (
         <div className="space-y-2">
           <label className="block text-sm font-semibold text-[#02343F]">
             التخصص / الشعبة

@@ -5,6 +5,21 @@ import { getStudents, approveStudent, rejectStudent } from "@/lib/admin";
 import { Search, Check, Trash2, Phone, User, GraduationCap, MapPin, Eye } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
+function mapGradeToArabic(grade: string) {
+  switch (grade) {
+    case "first":
+      return "الصف الأول الثانوي";
+    case "second":
+      return "الصف الثاني الثانوي";
+    case "third":
+      return "الصف الثالث الثانوي";
+    case "prep3":
+      return "الصف الثالث الإعدادي";
+    default:
+      return grade || "غير محدد";
+  }
+}
+
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<any[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
@@ -260,9 +275,10 @@ export default function AdminStudentsPage() {
             onChange={(e) => setGradeFilter(e.target.value)}
           >
             <option value="">كل الصفوف الدراسية</option>
-            <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
-            <option value="الصف الثاني الثانوي">الصف الثاني الثانوي</option>
-            <option value="الصف الثالث الثانوي">الصف الثالث الثانوي</option>
+            <option value="first">الصف الأول الثانوي</option>
+            <option value="second">الصف الثاني الثانوي</option>
+            <option value="third">الصف الثالث الثانوي</option>
+            <option value="prep3">الصف الثالث الإعدادي</option>
           </select>
 
           {/* Status filter */}
@@ -309,7 +325,7 @@ export default function AdminStudentsPage() {
                         </div>
                       </td>
                       <td className="p-4 text-sm font-semibold">{student.phone}</td>
-                      <td className="p-4 text-sm">{student.grade}</td>
+                      <td className="p-4 text-sm">{mapGradeToArabic(student.grade)}</td>
                       <td className="p-4 text-center">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-bold inline-block ${
@@ -372,12 +388,12 @@ export default function AdminStudentsPage() {
               <div className="space-y-3 text-sm text-gray-700">
                 <div className="flex items-center gap-3">
                   <GraduationCap className="text-gray-400" size={18} />
-                  <span><strong>الصف:</strong> {selectedStudent.grade}</span>
+                  <span><strong>الصف:</strong> {mapGradeToArabic(selectedStudent.grade)}</span>
                 </div>
                 
                 <div className="flex items-center gap-3">
                   <User className="text-gray-400" size={18} />
-                  <span><strong>النظام:</strong> {selectedStudent.education_system === "general" ? "عام" : "أزهر"} - {selectedStudent.track}</span>
+                  <span><strong>النظام:</strong> {selectedStudent.education_system === "general" ? "عام" : "أزهر"}{selectedStudent.grade !== "prep3" && ` - ${selectedStudent.track}`}</span>
                 </div>
 
                 <div className="flex items-center gap-3">

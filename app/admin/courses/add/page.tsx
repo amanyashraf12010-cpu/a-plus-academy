@@ -167,6 +167,7 @@ export default function AddCoursePage() {
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
                 {[
+                  "الصف الثالث الإعدادي",
                   "الصف الأول الثانوي",
                   "الصف الثاني الثانوي",
                   "الصف الثالث الثانوي"

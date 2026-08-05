@@ -3,6 +3,21 @@
 import { useEffect, useState } from "react";
 import { getStudents, approveStudent, rejectStudent } from "@/lib/admin";
 
+function mapGradeToArabic(grade: string) {
+  switch (grade) {
+    case "first":
+      return "الصف الأول الثانوي";
+    case "second":
+      return "الصف الثاني الثانوي";
+    case "third":
+      return "الصف الثالث الثانوي";
+    case "prep3":
+      return "الصف الثالث الإعدادي";
+    default:
+      return grade || "غير محدد";
+  }
+}
+
 export default function AdminDashboard() {
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,7 +121,7 @@ export default function AdminDashboard() {
                       {student.full_name}
                     </p>
                     <span className="px-2.5 py-0.5 rounded-lg text-xs font-extrabold bg-[#F3F2FF] text-[#7D79F1] border border-purple-200">
-                      {student.grade} ({student.education_system === "general" ? "ثانوي عام" : "ثانوي أزهر"})
+                      {mapGradeToArabic(student.grade)} ({student.grade === "prep3" ? (student.education_system === "general" ? "إعدادي عام" : "إعدادي أزهر") : (student.education_system === "general" ? "ثانوي عام" : "ثانوي أزهر")})
                     </span>
                   </div>
 
