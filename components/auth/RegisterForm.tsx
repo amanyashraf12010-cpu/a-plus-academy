@@ -43,7 +43,7 @@ export default function RegisterForm() {
         ];
       }
       if (system === "general") {
-        return ["علمي", "أدبي"];
+        return ["علمي علوم", "علمي رياضة", "أدبي"];
       }
       if (system === "azhar") {
         return ["علمي أزهر", "أدبي أزهر"];
