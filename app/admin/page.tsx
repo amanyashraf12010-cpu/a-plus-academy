@@ -137,7 +137,7 @@ export default function AdminDashboard() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-y-2 gap-x-6 text-sm text-[#02343F] font-bold bg-[#F8FAFC] p-3 rounded-xl border border-slate-100">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-y-2.5 gap-x-6 text-sm text-[#02343F] font-bold bg-[#F8FAFC] p-4 rounded-2xl border border-slate-100">
                     <div>
                       <span className="text-slate-500 font-extrabold ml-1">📱 هاتف الطالب:</span>
                       <span className="text-slate-900 font-black select-all">{student.phone || "غير مسجل"}</span>
@@ -149,6 +149,28 @@ export default function AdminDashboard() {
                     <div>
                       <span className="text-slate-500 font-extrabold ml-1">📍 المحافظة:</span>
                       <span className="text-slate-900 font-black">{student.governorate || "غير مسجل"}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 font-extrabold ml-1">🏫 المدرسة:</span>
+                      <span className="text-slate-900 font-black">{student.school || "غير مسجل"}</span>
+                    </div>
+                    <div className="md:col-span-2">
+                      <span className="text-slate-500 font-extrabold ml-1">✉️ البريد الإلكتروني:</span>
+                      <span className="text-slate-900 font-black select-all">{student.email || "غير مسجل"}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 font-extrabold ml-1">🧬 النوع:</span>
+                      <span className="text-slate-900 font-black">{student.gender === "male" ? "ذكر" : "أنثى"}</span>
+                    </div>
+                    {student.grade !== "prep3" && student.grade !== "first" && (
+                      <div>
+                        <span className="text-slate-500 font-extrabold ml-1">📚 الشعبة / التخصص:</span>
+                        <span className="text-[#7D79F1] font-black">{student.track || "عام"}</span>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-slate-500 font-extrabold ml-1">💼 مهنة ولي الأمر:</span>
+                      <span className="text-slate-900 font-black">{student.parent_job || "غير مسجل"}</span>
                     </div>
                   </div>
                 </div>
