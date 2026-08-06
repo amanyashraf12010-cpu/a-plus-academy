@@ -18,6 +18,17 @@ interface RegisterData {
 export async function registerUser(formData: RegisterData) {
   const supabase = createClient()
 
+  // التحقق من عدم تكرار رقم الهاتف
+  const { data: existingPhone, error: phoneError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("phone", formData.phone)
+    .maybeSingle();
+
+  if (existingPhone) {
+    return { success: false, error: "رقم الهاتف هذا مسجل بالفعل لحساب آخر. يرجى تسجيل الدخول أو استخدام رقم هاتف مختلف." };
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email: formData.email,
     password: formData.password,
