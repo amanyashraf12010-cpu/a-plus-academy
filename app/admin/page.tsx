@@ -121,7 +121,19 @@ export default function AdminDashboard() {
                       {student.full_name}
                     </p>
                     <span className="px-2.5 py-0.5 rounded-lg text-xs font-extrabold bg-[#F3F2FF] text-[#7D79F1] border border-purple-200">
-                      {mapGradeToArabic(student.grade)} ({student.grade === "prep3" ? (student.education_system === "general" ? "إعدادي عام" : "إعدادي أزهر") : (student.education_system === "general" ? "ثانوي عام" : "ثانوي أزهر")})
+                      {mapGradeToArabic(student.grade)} ({
+                        student.grade === "prep3"
+                          ? (student.education_system === "general" ? "إعدادي عام" : "إعدادي أزهر")
+                          : (() => {
+                              const prefix = "ثانوي";
+                              const sys = student.education_system;
+                              if (sys === "general") return `${prefix} عام`;
+                              if (sys === "azhar") return `${prefix} أزهر`;
+                              if (sys === "general_baccalaureate") return `${prefix} عام (بكالوريا)`;
+                              if (sys === "azhar_baccalaureate") return `${prefix} أزهر (بكالوريا)`;
+                              return sys || "غير محدد";
+                            })()
+                      })
                     </span>
                   </div>
 

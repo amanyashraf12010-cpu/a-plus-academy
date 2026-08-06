@@ -211,11 +211,20 @@ export default function AdminTeachersPage() {
                         {g.replace("الصف ", "")}
                       </span>
                     ))}
-                    {teacher.education_system && teacher.education_system.split(",").map((sys: string) => (
-                      <span key={sys} className="text-xs bg-purple-50 text-[#7D79F1] border border-purple-150 px-2.5 py-1 rounded-lg font-semibold">
-                        {sys === "general" ? "عام" : "أزهر"}
-                      </span>
-                    ))}
+                    {teacher.education_system && teacher.education_system.split(",").map((sys: string) => {
+                      const mapSystemLabel = (s: string) => {
+                        if (s === "general") return "عام";
+                        if (s === "azhar") return "أزهر";
+                        if (s === "general_baccalaureate") return "عام (بكالوريا)";
+                        if (s === "azhar_baccalaureate") return "أزهر (بكالوريا)";
+                        return s;
+                      };
+                      return (
+                        <span key={sys} className="text-xs bg-purple-50 text-[#7D79F1] border border-purple-150 px-2.5 py-1 rounded-lg font-semibold">
+                          {mapSystemLabel(sys)}
+                        </span>
+                      );
+                    })}
                     {teacher.track && teacher.track.split(",").filter((t: string) => t !== "عام").map((t: string) => (
                       <span key={t} className="text-xs bg-blue-50 text-blue-600 border border-blue-150 px-2.5 py-1 rounded-lg font-medium">
                         {t}
@@ -324,7 +333,7 @@ export default function AdminTeachersPage() {
                 {/* Education System */}
                 <div className="col-span-2 space-y-2">
                   <label className="block text-xs font-bold text-gray-500 mb-1">نظام التعليم (يمكن اختيار أكثر من نظام)</label>
-                  <div className="flex gap-6 p-3 bg-gray-50 rounded-xl border border-gray-150">
+                  <div className="grid grid-cols-2 gap-4 p-3 bg-gray-50 rounded-xl border border-gray-150">
                     <label className="flex items-center gap-2 text-sm text-[#2D2B7A] font-semibold cursor-pointer">
                       <input
                         type="checkbox"
@@ -354,6 +363,36 @@ export default function AdminTeachersPage() {
                         className="w-4.5 h-4.5 text-[#7D79F1] focus:ring-[#7D79F1]/20 border-gray-300 rounded cursor-pointer"
                       />
                       ثانوي أزهر
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-[#2D2B7A] font-semibold cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedSystems.includes("general_baccalaureate")}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedSystems([...selectedSystems, "general_baccalaureate"]);
+                          } else {
+                            setSelectedSystems(selectedSystems.filter(s => s !== "general_baccalaureate"));
+                          }
+                        }}
+                        className="w-4.5 h-4.5 text-[#7D79F1] focus:ring-[#7D79F1]/20 border-gray-300 rounded cursor-pointer"
+                      />
+                      ثانوي عام (بكالوريا)
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-[#2D2B7A] font-semibold cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedSystems.includes("azhar_baccalaureate")}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedSystems([...selectedSystems, "azhar_baccalaureate"]);
+                          } else {
+                            setSelectedSystems(selectedSystems.filter(s => s !== "azhar_baccalaureate"));
+                          }
+                        }}
+                        className="w-4.5 h-4.5 text-[#7D79F1] focus:ring-[#7D79F1]/20 border-gray-300 rounded cursor-pointer"
+                      />
+                      ثانوي أزهر (بكالوريا)
                     </label>
                   </div>
                 </div>

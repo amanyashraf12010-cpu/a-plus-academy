@@ -51,13 +51,23 @@ export default function ProfilePage() {
         .eq("user_id", user.id)
         .eq("status", "approved");
 
+      const mapSystemLabel = (sys: string, gr: string) => {
+        const isPrep = gr === "prep3";
+        const prefix = isPrep ? "إعدادي" : "ثانوي";
+        if (sys === "general") return `${prefix} عام`;
+        if (sys === "azhar") return `${prefix} أزهر`;
+        if (sys === "general_baccalaureate") return `${prefix} عام (بكالوريا)`;
+        if (sys === "azhar_baccalaureate") return `${prefix} أزهر (بكالوريا)`;
+        return sys || "غير محدد";
+      };
+
       const mapped = {
         name: profileData.full_name,
         email: profileData.email || user.email,
         phone: profileData.phone,
         courses: count || 0,
         grade: profileData.grade || "غير محدد",
-        education_system: profileData.education_system === "general" ? "ثانوي عام" : "ثانوي أزهر",
+        education_system: mapSystemLabel(profileData.education_system, profileData.grade),
         track: profileData.track || "غير محدد",
         school: profileData.school || "غير محدد",
         governorate: profileData.governorate || "غير محدد",

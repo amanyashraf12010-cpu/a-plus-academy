@@ -34,19 +34,27 @@ export default function RegisterForm() {
     }
 
     if (grade === "second") {
-      return [
-        "المسار الطبي وعلوم الحياة",
-        "مسار الهندسة وعلوم الحاسب",
-        "مسار الأعمال",
-        "مسار الآداب والفنون"
-      ];
-    }
-
-    if (grade === "third") {
+      if (system.includes("baccalaureate")) {
+        return [
+          "المسار الطبي وعلوم الحياة",
+          "مسار الهندسة وعلوم الحاسب",
+          "مسار الأعمال",
+          "مسار الآداب والفنون"
+        ];
+      }
+      if (system === "general") {
+        return ["علمي", "أدبي"];
+      }
       if (system === "azhar") {
         return ["علمي أزهر", "أدبي أزهر"];
       }
-      if (system === "general") {
+    }
+
+    if (grade === "third") {
+      if (system === "azhar" || system === "azhar_baccalaureate") {
+        return ["علمي أزهر", "أدبي أزهر"];
+      }
+      if (system === "general" || system === "general_baccalaureate") {
         return ["علمي علوم", "علمي رياضة", "أدبي"];
       }
     }
@@ -104,7 +112,7 @@ export default function RegisterForm() {
       governorate,
       gender,
       educationSystem: system,
-      track: grade === "first" ? "عام" : track,
+      track: (grade === "first" || grade === "prep3") ? "عام" : track,
       grade,
     });
 
@@ -242,7 +250,7 @@ export default function RegisterForm() {
           <option value="">اختر الصف</option>
           <option value="prep3">الصف الثالث الإعدادي</option>
           <option value="first">الصف الأول الثانوي</option>
-          <option value="second">الصف الثاني الثانوي (بكالوريا)</option>
+          <option value="second">الصف الثاني الثانوي</option>
           <option value="third">الصف الثالث الثانوي</option>
         </select>
         {errors.grade && (
@@ -266,6 +274,8 @@ export default function RegisterForm() {
           <option value="">اختر النظام</option>
           <option value="general">عام</option>
           <option value="azhar">أزهر</option>
+          <option value="general_baccalaureate">عام (بكالوريا)</option>
+          <option value="azhar_baccalaureate">أزهر (بكالوريا)</option>
         </select>
         {errors.system && (
           <p className="text-sm text-red-500 font-medium">{errors.system}</p>

@@ -393,7 +393,14 @@ export default function AdminStudentsPage() {
                 
                 <div className="flex items-center gap-3">
                   <User className="text-gray-400" size={18} />
-                  <span><strong>النظام:</strong> {selectedStudent.education_system === "general" ? "عام" : "أزهر"}{selectedStudent.grade !== "prep3" && ` - ${selectedStudent.track}`}</span>
+                  <span><strong>النظام:</strong> {(() => {
+                    const sys = selectedStudent.education_system;
+                    if (sys === "general") return "عام";
+                    if (sys === "azhar") return "أزهر";
+                    if (sys === "general_baccalaureate") return "عام (بكالوريا)";
+                    if (sys === "azhar_baccalaureate") return "أزهر (بكالوريا)";
+                    return sys || "غير محدد";
+                  })()}{selectedStudent.grade !== "prep3" && ` - ${selectedStudent.track}`}</span>
                 </div>
 
                 <div className="flex items-center gap-3">
