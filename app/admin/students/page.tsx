@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getStudents, approveStudent, rejectStudent, resetStudentVideoProgress } from "@/lib/admin";
-import { Search, Check, Trash2, Phone, User, GraduationCap, MapPin, Eye } from "lucide-react";
+import { Search, Check, Trash2, Phone, User, GraduationCap, MapPin, Eye, School, Mail } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
 function mapGradeToArabic(grade: string) {
@@ -397,6 +397,11 @@ export default function AdminStudentsPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                  <School className="text-gray-400" size={18} />
+                  <span><strong>المدرسة:</strong> {selectedStudent.school || "غير محددة"}</span>
+                </div>
+
+                <div className="flex items-center gap-3">
                   <MapPin className="text-gray-400" size={18} />
                   <span><strong>المحافظة:</strong> {selectedStudent.governorate}</span>
                 </div>
@@ -404,6 +409,11 @@ export default function AdminStudentsPage() {
                 <div className="flex items-center gap-3">
                   <Phone className="text-gray-400" size={18} />
                   <span><strong>الهاتف:</strong> {selectedStudent.phone}</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Mail className="text-gray-400" size={18} />
+                  <span><strong>البريد الإلكتروني:</strong> {selectedStudent.email || "بدون بريد إلكتروني"}</span>
                 </div>
 
                 <div className="border-t pt-3 mt-3">
