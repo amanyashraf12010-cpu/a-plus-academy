@@ -62,26 +62,46 @@ export default function RegisterForm() {
     return [];
   };
 
+  const getCleanData = () => {
+    const cleanEmail = email.trim().toLowerCase();
+    const normalizePhone = (num: string) => {
+      let clean = num.trim().replace(/[\s-()]/g, "");
+      if (clean.startsWith("+2")) clean = clean.substring(2);
+      if (clean.startsWith("002")) clean = clean.substring(3);
+      if (clean.startsWith("2") && clean.length === 12) clean = clean.substring(1);
+      return clean;
+    };
+    return {
+      cleanEmail,
+      cleanPhone: normalizePhone(phone),
+      cleanParentPhone: normalizePhone(parentPhone),
+      cleanFullName: fullName.trim(),
+      cleanSchool: school.trim(),
+      cleanParentJob: parentJob.trim()
+    };
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
+    const { cleanEmail, cleanPhone, cleanParentPhone, cleanFullName, cleanSchool, cleanParentJob } = getCleanData();
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^01[0125][0-9]{8}$/;
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
 
-    if (!fullName.trim()) newErrors.fullName = "الاسم الثلاثي مطلوب";
-    if (!emailRegex.test(email)) newErrors.email = "البريد الإلكتروني غير صحيح";
-    if (!phoneRegex.test(phone)) newErrors.phone = "رقم الهاتف غير صحيح";
-    if (!phoneRegex.test(parentPhone)) newErrors.parentPhone = "رقم ولي الأمر غير صحيح";
-    if (phone === parentPhone)
+    if (!cleanFullName) newErrors.fullName = "الاسم الثلاثي مطلوب";
+    if (!emailRegex.test(cleanEmail)) newErrors.email = "البريد الإلكتروني غير صحيح";
+    if (!phoneRegex.test(cleanPhone)) newErrors.phone = "رقم الهاتف غير صحيح";
+    if (!phoneRegex.test(cleanParentPhone)) newErrors.parentPhone = "رقم ولي الأمر غير صحيح";
+    if (cleanPhone === cleanParentPhone)
       newErrors.parentPhone = "رقم ولي الأمر يجب أن يكون مختلفًا عن رقم الطالب";
-    if (!school.trim()) newErrors.school = "اسم المدرسة مطلوب";
+    if (!cleanSchool) newErrors.school = "اسم المدرسة مطلوب";
     if (!governorate) newErrors.governorate = "اختر المحافظة";
     if (!gender) newErrors.gender = "اختر النوع";
     if (!system) newErrors.system = "اختر النظام";
     if (grade !== "first" && grade !== "prep3" && !track) newErrors.track = "اختر التخصص";
     if (!grade) newErrors.grade = "اختر الصف";
-    if (!parentJob.trim()) newErrors.parentJob = "أدخل مهنة ولي الأمر";
+    if (!cleanParentJob) newErrors.parentJob = "أدخل مهنة ولي الأمر";
     if (!passwordRegex.test(password))
       newErrors.password = "كلمة المرور يجب أن تكون 8 خانات على الأقل.";
     if (password !== confirmPassword)
@@ -101,14 +121,16 @@ export default function RegisterForm() {
     setLoading(true);
     setSuccess("");
 
+    const { cleanEmail, cleanPhone, cleanParentPhone, cleanFullName, cleanSchool, cleanParentJob } = getCleanData();
+
     const result = await registerUser({
-      email,
+      email: cleanEmail,
       password,
-      fullName,
-      phone,
-      parentPhone,
-      parentJob,
-      school,
+      fullName: cleanFullName,
+      phone: cleanPhone,
+      parentPhone: cleanParentPhone,
+      parentJob: cleanParentJob,
+      school: cleanSchool,
       governorate,
       gender,
       educationSystem: system,
