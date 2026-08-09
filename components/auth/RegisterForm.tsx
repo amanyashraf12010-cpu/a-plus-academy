@@ -65,7 +65,10 @@ export default function RegisterForm() {
   const getCleanData = () => {
     const cleanEmail = email.trim().toLowerCase();
     const normalizePhone = (num: string) => {
-      let clean = num.trim().replace(/[\s-()]/g, "");
+      let clean = num.trim()
+        .replace(/[٠١٢٣٤٥٦٧٨٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d).toString())
+        .replace(/[۰۱۲۳۴۵۶۷۸۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString());
+      clean = clean.replace(/[\s-()]/g, "");
       if (clean.startsWith("+2")) clean = clean.substring(2);
       if (clean.startsWith("002")) clean = clean.substring(3);
       if (clean.startsWith("2") && clean.length === 12) clean = clean.substring(1);
