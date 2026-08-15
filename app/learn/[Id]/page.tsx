@@ -169,12 +169,13 @@ export default function LearnPage() {
     }
   }, [activeLesson]);
 
-  // Track YouTube and Vimeo player halfway mark
+  // Track YouTube, Vimeo, and Bunny player halfway mark
   useEffect(() => {
     if (!videoUrl || !activeLesson || hasIncrementedView) return;
 
     const isYouTube = videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be");
     const isVimeo = videoUrl.includes("vimeo.com");
+    const isBunny = videoUrl.includes("iframe.mediadelivery.net") || videoUrl.includes("bunny");
 
     let intervalId: any;
     let vimeoPlayer: any;
@@ -253,13 +254,51 @@ export default function LearnPage() {
       };
 
       setTimeout(loadVimeo, 1000);
+    } else if (isBunny) {
+      const loadBunny = () => {
+        const iframe = document.getElementById("bunny-player") as HTMLIFrameElement;
+        if (!iframe) return;
+
+        const setupBunnyPlayer = () => {
+          try {
+            const player = new (window as any).playerjs.Player(iframe);
+            player.on("ready", () => {
+              player.on("timeupdate", (data: any) => {
+                const currentTime = data.seconds || 0;
+                const duration = data.duration || 0;
+                if (duration > 0 && currentTime >= duration / 2) {
+                  triggerViewIncrement();
+                }
+              });
+            });
+          } catch (e) {
+            console.error("Error setting up Bunny player:", e);
+          }
+        };
+
+        if (!(window as any).playerjs) {
+          const script = document.createElement("script");
+          script.src = "https://assets.mediadelivery.net/playerjs/player-0.1.0.min.js";
+          script.onload = setupBunnyPlayer;
+          document.body.appendChild(script);
+        } else {
+          setupBunnyPlayer();
+        }
+      };
+
+      setTimeout(loadBunny, 1000);
     }
   }, [videoUrl, activeLesson, hasIncrementedView]);
 
-  // Helper to extract YouTube/Vimeo Embed links
+  // Helper to extract YouTube/Vimeo/Bunny Embed links
   function getEmbedUrl(url: string) {
     if (!url) return null;
     
+    // Bunny Stream embed link support
+    if (url.includes("iframe.mediadelivery.net") || url.includes("bunny")) {
+      return url;
+    }
+
     // YouTube RegExp
     const ytReg = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
     const ytMatch = url.match(ytReg);
@@ -372,9 +411,15 @@ export default function LearnPage() {
                   </div>
                 ) : videoUrl ? (
                   embedUrl ? (
-                    // Iframe player for YouTube or Vimeo
+                    // Iframe player for YouTube, Vimeo or Bunny Stream
                     <iframe
-                      id={videoUrl.includes("vimeo.com") ? "vimeo-player" : "yt-player"}
+                      id={
+                        videoUrl.includes("iframe.mediadelivery.net") || videoUrl.includes("bunny")
+                          ? "bunny-player"
+                          : videoUrl.includes("vimeo.com")
+                          ? "vimeo-player"
+                          : "yt-player"
+                      }
                       src={embedUrl}
                       className="w-full h-full"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
