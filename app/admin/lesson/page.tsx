@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getLessons, addLesson, updateLesson, deleteLesson } from "@/lib/admin";
 import { createClient } from "@/utils/supabase/client";
-import { Plus, Edit2, Trash2, ArrowRight, X, Play, MoveUp, MoveDown } from "lucide-react";
+import { Plus, Edit2, Trash2, ArrowRight, X, Play, MoveUp, MoveDown, Clock } from "lucide-react";
 import Link from "next/link";
 
 function LessonsContent() {
@@ -25,6 +25,18 @@ function LessonsContent() {
   const [order, setOrder] = useState("0");
   const [pdfUrl, setPdfUrl] = useState("");
   const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [publishAt, setPublishAt] = useState("");
+
+  const formatDateTimeLocal = (dateStr: string | null) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
 
   const supabase = createClient();
 
@@ -73,6 +85,7 @@ function LessonsContent() {
     setTitle("");
     setVideoUrl("");
     setPdfUrl("");
+    setPublishAt("");
     setOrder(String(lessons.length + 1));
     setShowModal(true);
   }
@@ -83,6 +96,7 @@ function LessonsContent() {
     setTitle(lesson.title);
     setVideoUrl(lesson.video_url);
     setPdfUrl(lesson.pdf_url || "");
+    setPublishAt(lesson.publish_at ? formatDateTimeLocal(lesson.publish_at) : "");
     setOrder(String(lesson.order));
     setShowModal(true);
   }
@@ -99,7 +113,8 @@ function LessonsContent() {
       title,
       video_url: videoUrl,
       order: parseInt(order) || 0,
-      pdf_url: pdfUrl.trim() || undefined
+      pdf_url: pdfUrl.trim() || undefined,
+      publish_at: publishAt ? new Date(publishAt).toISOString() : null
     };
 
     try {
@@ -118,7 +133,8 @@ function LessonsContent() {
           title,
           video_url: videoUrl,
           order: parseInt(order) || 0,
-          pdf_url: pdfUrl.trim() || undefined
+          pdf_url: pdfUrl.trim() || undefined,
+          publish_at: publishAt ? new Date(publishAt).toISOString() : null
         });
         alert("تم تحديث الدرس بنجاح.");
       }
@@ -194,7 +210,15 @@ function LessonsContent() {
                   {lesson.order || index + 1}
                 </div>
                 <div className="min-w-0">
-                  <h3 className="font-bold text-[#2D2B7A] text-lg truncate">{lesson.title}</h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-bold text-[#2D2B7A] text-lg truncate">{lesson.title}</h3>
+                    {lesson.publish_at && new Date(lesson.publish_at) > new Date() && (
+                      <span className="bg-amber-50 text-amber-600 text-[10px] px-2 py-0.5 rounded-lg border border-amber-200 font-bold flex items-center gap-1">
+                        <Clock size={10} />
+                        مجدولة: {new Date(lesson.publish_at).toLocaleString("ar-EG")}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-400 mt-1 dir-ltr text-right truncate">{lesson.video_url}</p>
                 </div>
               </div>
@@ -338,6 +362,20 @@ function LessonsContent() {
                   value={order}
                   onChange={(e) => setOrder(e.target.value)}
                 />
+              </div>
+
+              {/* Publish At (Scheduling) */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1.5">تاريخ ووقت النشر تلقائياً (اختياري)</label>
+                <input
+                  type="datetime-local"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium text-sm"
+                  value={publishAt}
+                  onChange={(e) => setPublishAt(e.target.value)}
+                />
+                <p className="text-[10px] text-gray-400 mt-1">
+                  اتركها فارغة لنشر المحاضرة فوراً. حدد تاريخاً ووختاً في المستقبل لجدولتها.
+                </p>
               </div>
 
               {/* Submit Buttons */}

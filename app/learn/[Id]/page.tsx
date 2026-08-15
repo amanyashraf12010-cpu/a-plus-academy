@@ -114,7 +114,10 @@ export default function LearnPage() {
 
         if (lessonsError) throw lessonsError;
 
-        const mappedLessons = (lessonsData || []).map((l: any) => ({ ...l, isLocked: false }));
+        const now = new Date();
+        const mappedLessons = (lessonsData || [])
+          .filter((l: any) => !l.publish_at || new Date(l.publish_at) <= now)
+          .map((l: any) => ({ ...l, isLocked: false }));
         setLessons(mappedLessons);
         if (mappedLessons.length > 0) {
           setActiveLesson(mappedLessons[0]);

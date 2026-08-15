@@ -228,13 +228,18 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
   const supabase = createClient();
 
   // 1. Fetch all lessons
-  const { data: lessons, error: lessonsError } = await supabase
+  const { data: rawLessons, error: lessonsError } = await supabase
     .from("lessons")
-    .select("id, title, order, pdf_url")
+    .select("id, title, order, pdf_url, publish_at")
     .eq("course_id", courseId)
     .order("order", { ascending: true });
 
   if (lessonsError) throw lessonsError;
+
+  const now = new Date();
+  const lessons = (rawLessons || []).filter(
+    (l: any) => !l.publish_at || new Date(l.publish_at) <= now
+  );
 
   if (!lessons || lessons.length === 0) {
     return { lessons: [], courseProgress: 0, finalExamUnlocked: false };

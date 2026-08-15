@@ -277,6 +277,7 @@ export async function addLesson(lesson: {
   video_url: string;
   order?: number;
   pdf_url?: string;
+  publish_at?: string | null;
 }) {
   const supabase = createClient();
 
@@ -294,6 +295,7 @@ export async function updateLesson(id: string, lesson: {
   video_url?: string;
   order?: number;
   pdf_url?: string;
+  publish_at?: string | null;
 }) {
   const supabase = createClient();
 
