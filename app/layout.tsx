@@ -3,6 +3,7 @@ import "./globals.css";
 import Navbar from "@/components/layout/navbar/Navbar";
 import WhatsAppFloat from "@/components/shared/WhatsAppFloat";
 import ProtectionWrapper from "@/components/shared/ProtectionWrapper";
+import AuthRedirectGuard from "@/components/shared/AuthRedirectGuard";
 
 export const metadata: Metadata = {
   title: "A Plus Academy",
@@ -38,6 +39,9 @@ export default function RootLayout({
 
     {/* Global copy/selection/shortcut protection */}
     <ProtectionWrapper />
+
+    {/* Auth redirection parser for expired OTP links */}
+    <AuthRedirectGuard />
 
   </body>
     </html>
