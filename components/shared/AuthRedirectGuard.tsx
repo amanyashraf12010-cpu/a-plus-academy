@@ -2,17 +2,26 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 
 export default function AuthRedirectGuard() {
   const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    // 1. Listen to Supabase Auth State Changes for PASSWORD_RECOVERY event
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
+      if (event === "PASSWORD_RECOVERY") {
+        router.push("/reset-password");
+      }
+    });
+
+    // 2. Fallback check for expired OTP links in hash/search
     const checkHashAndParams = () => {
       const hash = window.location.hash;
       const search = window.location.search;
-      const pathname = window.location.pathname;
       
       const hasOtpExpired = 
         hash.includes("otp_expired") || 
@@ -22,26 +31,18 @@ export default function AuthRedirectGuard() {
         hash.includes("Email+link+is+invalid");
 
       if (hasOtpExpired) {
-        // Redirect to forgot-password with expired error query
         router.push("/forgot-password?error=expired");
-        return;
-      }
-
-      // If this is a recovery redirect (reset password link clicked) but user is not on the reset page yet
-      const isRecovery = hash.includes("type=recovery") || search.includes("type=recovery");
-      if (isRecovery && pathname !== "/reset-password") {
-        router.replace(`/reset-password${search}${hash}`);
       }
     };
 
     checkHashAndParams();
 
-    // Check again if hash changes
     window.addEventListener("hashchange", checkHashAndParams);
     return () => {
+      subscription.unsubscribe();
       window.removeEventListener("hashchange", checkHashAndParams);
     };
-  }, [router]);
+  }, [router, supabase]);
 
   return null;
 }
