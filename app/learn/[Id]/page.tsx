@@ -294,21 +294,44 @@ export default function LearnPage() {
   function getEmbedUrl(url: string) {
     if (!url) return null;
     
-    // Bunny Stream embed link support
-    if (url.includes("iframe.mediadelivery.net") || url.includes("bunny")) {
-      return url;
+    let cleanUrl = url.trim();
+
+    // If they pasted the entire iframe HTML code, extract the src attribute
+    if (cleanUrl.startsWith("<iframe")) {
+      const srcMatch = cleanUrl.match(/src=["']([^"']+)["']/);
+      if (srcMatch && srcMatch[1]) {
+        cleanUrl = srcMatch[1];
+      }
+    }
+    
+    // Bunny Stream embed link support & normalization
+    if (
+      cleanUrl.includes("iframe.mediadelivery.net") || 
+      cleanUrl.includes("mediadelivery.net") || 
+      cleanUrl.includes("bunnycdn.com") || 
+      cleanUrl.includes("bunny.net")
+    ) {
+      // If it's a "play" link, convert to "embed"
+      if (cleanUrl.includes("/play/")) {
+        cleanUrl = cleanUrl.replace("/play/", "/embed/");
+      }
+      // Ensure it uses the correct iframe domain
+      if (cleanUrl.includes("video.bunnycdn.com")) {
+        cleanUrl = cleanUrl.replace("video.bunnycdn.com", "iframe.mediadelivery.net");
+      }
+      return cleanUrl;
     }
 
     // YouTube RegExp
     const ytReg = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-    const ytMatch = url.match(ytReg);
+    const ytMatch = cleanUrl.match(ytReg);
     if (ytMatch && ytMatch[1]) {
       return `https://www.youtube.com/embed/${ytMatch[1]}?rel=0&modestbranding=1&enablejsapi=1`;
     }
 
     // Vimeo RegExp
     const vimeoReg = /vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/([^\/]*)\/videos\/|album\/(\d+)\/video\/|video\/|)(\d+)(?:$|\/|\?)/;
-    const vimeoMatch = url.match(vimeoReg);
+    const vimeoMatch = cleanUrl.match(vimeoReg);
     if (vimeoMatch && vimeoMatch[3]) {
       return `https://player.vimeo.com/video/${vimeoMatch[3]}`;
     }
