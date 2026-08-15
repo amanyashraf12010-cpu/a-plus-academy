@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getCourses, deleteCourse } from "@/lib/admin";
-import { Plus, BookOpen, Trash2, Edit2, Play } from "lucide-react";
+import { getCourses, deleteCourse, toggleCourseVisibility } from "@/lib/admin";
+import { Plus, BookOpen, Trash2, Edit2, Play, Eye, EyeOff } from "lucide-react";
 
 export default function AdminCoursesPage() {
   const [courses, setCourses] = useState<any[]>([]);
@@ -33,6 +33,15 @@ export default function AdminCoursesPage() {
       loadCourses();
     } catch (error: any) {
       alert("فشل الحذف: " + error.message);
+    }
+  };
+
+  const handleToggleVisibility = async (id: string, currentVisible: boolean) => {
+    try {
+      await toggleCourseVisibility(id, !currentVisible);
+      loadCourses();
+    } catch (error: any) {
+      alert("فشل تغيير حالة الظهور: " + error.message);
     }
   };
 
@@ -78,6 +87,11 @@ export default function AdminCoursesPage() {
                   <div className="absolute top-2 left-2 bg-[#2D2B7A] text-white px-2 py-1 rounded-lg text-xs font-bold">
                     {course.price > 0 ? `${course.price} جنيه` : "مجاني"}
                   </div>
+                  <div className={`absolute top-2 right-2 px-2 py-1 rounded-lg text-xs font-bold text-white shadow-md ${
+                    course.is_visible !== false ? "bg-green-600" : "bg-red-600"
+                  }`}>
+                    {course.is_visible !== false ? "مرئي 👁️" : "مخفي 🙈"}
+                  </div>
                 </div>
 
                 <h2 className="text-xl font-bold text-[#2D2B7A] line-clamp-1">{course.title}</h2>
@@ -107,6 +121,18 @@ export default function AdminCoursesPage() {
                 >
                   🏆 الامتحان النهائي
                 </a>
+
+                <button
+                  onClick={() => handleToggleVisibility(course.id, course.is_visible !== false)}
+                  className={`p-2 transition rounded-xl flex items-center justify-center ${
+                    course.is_visible !== false
+                      ? "bg-green-50 text-green-600 hover:bg-green-100"
+                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                  }`}
+                  title={course.is_visible !== false ? "إخفاء الكورس عن الطلاب" : "إظهار الكورس للطلاب"}
+                >
+                  {course.is_visible !== false ? <Eye size={16} /> : <EyeOff size={16} />}
+                </button>
 
                 <a
                   href={`/admin/courses/edit?id=${course.id}`}

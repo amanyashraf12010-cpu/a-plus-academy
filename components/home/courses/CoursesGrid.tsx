@@ -35,12 +35,14 @@ export default function CoursesGrid({ activeTab }: Props) {
       setSubscribedIds(subSet);
 
       // 1. Fetch Course details
-      const { data, error } = await supabase
+      const { data: rawData, error } = await supabase
         .from("courses")
         .select("*, teachers(name)")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
+
+      const data = (rawData || []).filter((c: any) => c.is_visible !== false);
 
       // 2. Fetch Course student counts from course_stats view
       const { data: statsData } = await supabase

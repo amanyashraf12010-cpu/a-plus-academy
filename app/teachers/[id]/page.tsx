@@ -26,10 +26,12 @@ export default async function Page({ params }: any) {
   }
 
   // 2. Fetch Teacher's Courses and Stats
-  const { data: dbCourses } = await supabase
+  const { data: rawDbCourses } = await supabase
     .from("courses")
     .select("*, teachers(name)")
     .eq("teacher_id", teacher.id);
+
+  const dbCourses = (rawDbCourses || []).filter((c: any) => c.is_visible !== false);
 
   const { data: statsData } = await supabase
     .from("course_stats")

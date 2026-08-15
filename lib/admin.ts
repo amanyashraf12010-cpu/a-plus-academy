@@ -170,6 +170,17 @@ export async function getCourses() {
   return data;
 }
 
+export async function toggleCourseVisibility(id: string, isVisible: boolean) {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("courses")
+    .update({ is_visible: isVisible })
+    .eq("id", id);
+
+  if (error) throw error;
+}
+
 export async function getCourse(id: string) {
   const supabase = createClient();
 
