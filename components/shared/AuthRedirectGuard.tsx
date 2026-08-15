@@ -12,6 +12,7 @@ export default function AuthRedirectGuard() {
     const checkHashAndParams = () => {
       const hash = window.location.hash;
       const search = window.location.search;
+      const pathname = window.location.pathname;
       
       const hasOtpExpired = 
         hash.includes("otp_expired") || 
@@ -23,6 +24,13 @@ export default function AuthRedirectGuard() {
       if (hasOtpExpired) {
         // Redirect to forgot-password with expired error query
         router.push("/forgot-password?error=expired");
+        return;
+      }
+
+      // If this is a recovery redirect (reset password link clicked) but user is not on the reset page yet
+      const isRecovery = hash.includes("type=recovery") || search.includes("type=recovery");
+      if (isRecovery && pathname !== "/reset-password") {
+        router.replace(`/reset-password${search}${hash}`);
       }
     };
 
