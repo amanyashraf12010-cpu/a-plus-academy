@@ -202,6 +202,7 @@ export async function addCourse(course: {
   grade?: string;
   subject?: string;
   price?: number;
+  original_price?: number | null;
   video_count?: number;
   duration?: string;
   what_will_learn?: string;
@@ -226,6 +227,7 @@ export async function updateCourse(id: string, course: {
   grade?: string;
   subject?: string;
   price?: number;
+  original_price?: number | null;
   video_count?: number;
   duration?: string;
   what_will_learn?: string;

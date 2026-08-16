@@ -113,13 +113,22 @@ export default function EnrollCard({ course }: any) {
   return (
     <div className="bg-white rounded-3xl shadow-lg border p-6 sticky top-24">
       <div className="text-center">
-        <h2 className="text-4xl font-black text-[#2D2B7A] tracking-tight">
-          {Number(course.price) === 0 ? (
+        {Number(course.price) === 0 ? (
+          <h2 className="text-4xl font-black text-[#2D2B7A] tracking-tight">
             <span className="text-[#7D79F1] font-bold">كورس مجاني 🎉</span>
-          ) : (
-            `${course.price} جنيه`
-          )}
-        </h2>
+          </h2>
+        ) : (
+          <div className="space-y-1">
+            {course.original_price && Number(course.original_price) > Number(course.price) && (
+              <p className="text-base line-through text-gray-400 font-normal">
+                {course.original_price} جنيه
+              </p>
+            )}
+            <h2 className="text-4xl font-black text-[#2D2B7A] tracking-tight">
+              {course.price} <span className="text-xl font-normal text-gray-500">جنيه</span>
+            </h2>
+          </div>
+        )}
         {renderEnrollButton()}
       </div>
 

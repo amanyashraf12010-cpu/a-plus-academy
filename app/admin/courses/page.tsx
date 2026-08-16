@@ -84,8 +84,19 @@ export default function AdminCoursesPage() {
                     alt={course.title}
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute top-2 left-2 bg-[#2D2B7A] text-white px-2 py-1 rounded-lg text-xs font-bold">
-                    {course.price > 0 ? `${course.price} جنيه` : "مجاني"}
+                  <div className="absolute top-2 left-2 bg-[#2D2B7A] text-white px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow">
+                    {course.price > 0 ? (
+                      <>
+                        {course.original_price > 0 && Number(course.original_price) > Number(course.price) && (
+                          <span className="line-through text-gray-300 font-normal text-[10px]">
+                            {course.original_price}
+                          </span>
+                        )}
+                        <span>{course.price} جنيه</span>
+                      </>
+                    ) : (
+                      "مجاني"
+                    )}
                   </div>
                   <div className={`absolute top-2 right-2 px-2 py-1 rounded-lg text-xs font-bold text-white shadow-md ${
                     course.is_visible !== false ? "bg-green-600" : "bg-red-600"

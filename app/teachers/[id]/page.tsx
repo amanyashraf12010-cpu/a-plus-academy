@@ -54,6 +54,7 @@ export default async function Page({ params }: any) {
     teacher: course.teachers?.name || teacher.name,
     image: course.image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600",
     price: course.price,
+    original_price: course.original_price,
     badge: course.grade,
     grade: course.grade, // Pass grade field for filters
     rating: 4.9,

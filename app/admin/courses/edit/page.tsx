@@ -20,6 +20,7 @@ function EditCourseForm() {
   const [description, setDescription] = useState("");
   const [teacherId, setTeacherId] = useState("");
   const [price, setPrice] = useState("");
+  const [originalPrice, setOriginalPrice] = useState("");
   const [image, setImage] = useState("");
   const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
   const [subject, setSubject] = useState("");
@@ -54,6 +55,7 @@ function EditCourseForm() {
         setDescription(courseData.description || "");
         setTeacherId(courseData.teacher_id);
         setPrice(courseData.price.toString());
+        setOriginalPrice(courseData.original_price ? courseData.original_price.toString() : "");
         setImage(courseData.image || "");
         setSubject(courseData.subject || "");
         setDuration(courseData.duration || "");
@@ -103,6 +105,7 @@ function EditCourseForm() {
       description,
       teacher_id: teacherId,
       price: parseFloat(price) || 0,
+      original_price: originalPrice ? parseFloat(originalPrice) : null,
       image: image.trim() || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600",
       grade: selectedGrades.join(","),
       subject,
@@ -183,7 +186,7 @@ function EditCourseForm() {
           {/* Price */}
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1.5 flex items-center gap-1.5">
-              <DollarSign size={14} /> سعر الكورس (جنيه) *
+              <DollarSign size={14} /> سعر الكورس الحالي (جنيه) *
             </label>
             <input
               type="number"
@@ -191,6 +194,21 @@ function EditCourseForm() {
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               required
+              min="0"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium"
+            />
+          </div>
+
+          {/* Original Price */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 mb-1.5 flex items-center gap-1.5">
+              <DollarSign size={14} /> السعر القديم / قبل الخصم (جنيه) (اختياري)
+            </label>
+            <input
+              type="number"
+              placeholder="مثال: 200"
+              value={originalPrice}
+              onChange={(e) => setOriginalPrice(e.target.value)}
               min="0"
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium"
             />

@@ -49,6 +49,7 @@ export default async function Page({ params }: any) {
     description: dbCourse.description || "لا يوجد وصف حالياً لهذا الكورس.",
     image: dbCourse.image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600",
     price: dbCourse.price,
+    original_price: dbCourse.original_price,
     rating: 4.9,
     students: studentCount, // Real dynamic count
     lessons: dbCourse.video_count || 0,
@@ -99,6 +100,7 @@ export default async function Page({ params }: any) {
     teacher: c.teachers?.name || "مدرس الأكاديمية",
     image: c.image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600",
     price: c.price,
+    original_price: c.original_price,
     rating: 4.9,
     students: statsMap.get(c.id) || 0,
     lessons: c.video_count || 0,

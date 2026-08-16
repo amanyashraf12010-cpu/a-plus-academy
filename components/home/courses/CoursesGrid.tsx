@@ -61,6 +61,7 @@ export default function CoursesGrid({ activeTab }: Props) {
         rating: 4.9, // Default premium rating
         students: statsMap.get(course.id) || 0, // Real student count
         price: course.price,
+        original_price: course.original_price,
         badge: course.grade,
         created_at: course.created_at
       }));

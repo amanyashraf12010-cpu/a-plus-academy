@@ -11,6 +11,7 @@ interface CourseCardProps {
     rating: number;
     students: number;
     price: number;
+    original_price?: number;
     badge?: string;
   };
   isSubscribed?: boolean;
@@ -116,12 +117,19 @@ export default function CourseCard({ course, isSubscribed = false }: CourseCardP
                     مجاني 🎉
                   </h4>
                 ) : (
-                  <h4 className="text-3xl font-bold text-[#7D79F1]">
-                    {course.price}
-                    <span className="text-base mr-1">
-                      جنيه
-                    </span>
-                  </h4>
+                  <div className="flex flex-col">
+                    {course.original_price && Number(course.original_price) > Number(course.price) && (
+                      <span className="text-xs line-through text-gray-400 font-normal mb-0.5">
+                        {course.original_price} جنيه
+                      </span>
+                    )}
+                    <h4 className="text-3xl font-bold text-[#7D79F1] flex items-baseline">
+                      <span>{course.price}</span>
+                      <span className="text-xs mr-1 font-normal text-gray-500">
+                        جنيه
+                      </span>
+                    </h4>
+                  </div>
                 )}
 
               </div>
