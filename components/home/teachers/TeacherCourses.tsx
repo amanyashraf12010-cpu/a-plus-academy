@@ -8,7 +8,7 @@ export default function TeacherCourses({ teacher, courses }: any) {
 
   const grades = [
     { id: "الصف الأول الثانوي", label: "أولى ثانوي" },
-    { id: "الصف الثاني الثانوي", label: "تانية ثانوي (بكالوريا)" },
+    { id: "الصف الثاني الثانوي", label: "تانية ثانوي" },
     { id: "الصف الثالث الثانوي", label: "تالتة ثانوي" },
   ];
 

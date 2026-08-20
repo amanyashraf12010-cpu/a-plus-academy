@@ -116,6 +116,20 @@ export default async function Page({ params }: any) {
         </div>
       </div>
 
+      {/* ABOUT SECTION */}
+      {teacher.about && (
+        <div className="px-6 md:px-20 pt-12 pb-4">
+          <h2 className="text-2xl font-bold text-[#2D2B7A] mb-4">
+            عن المدرس 👨‍🏫
+          </h2>
+          <div className="bg-gray-50 border border-gray-150 rounded-3xl p-6 md:p-8">
+            <p className="text-gray-600 leading-relaxed text-base whitespace-pre-line font-medium">
+              {teacher.about}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* COURSES SECTION */}
       <div className="px-6 md:px-20 py-12">
 

@@ -21,6 +21,7 @@ export default function AdminTeachersPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
+  const [about, setAbout] = useState("");
   const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
   const [selectedSystems, setSelectedSystems] = useState<string[]>([]);
   const [selectedTracks, setSelectedTracks] = useState<string[]>([]);
@@ -50,6 +51,7 @@ export default function AdminTeachersPage() {
     setImageFile(null);
     setSubject("");
     setDescription("");
+    setAbout("");
     setSelectedSystems(["general"]);
     setSelectedGrades(["الصف الأول الثانوي"]);
     setSelectedTracks(["عام"]);
@@ -65,6 +67,7 @@ export default function AdminTeachersPage() {
     setImageFile(null);
     setSubject(teacher.subject || "");
     setDescription(teacher.description || "");
+    setAbout(teacher.about || "");
     setSelectedSystems(teacher.education_system ? teacher.education_system.split(",") : ["general"]);
     setSelectedGrades(teacher.grade ? teacher.grade.split(",") : ["الصف الأول الثانوي"]);
     setSelectedTracks(teacher.track ? teacher.track.split(",") : ["عام"]);
@@ -117,6 +120,7 @@ export default function AdminTeachersPage() {
         image: finalImageUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(name)}`,
         subject,
         description,
+        about,
         education_system: selectedSystems.join(","),
         grade: selectedGrades.join(","),
         track: selectedGrades.includes("الصف الأول الثانوي") && !selectedTracks.includes("عام")
@@ -429,7 +433,7 @@ export default function AdminTeachersPage() {
                         }}
                         className="w-4.5 h-4.5 text-[#7D79F1] focus:ring-[#7D79F1]/20 border-gray-300 rounded cursor-pointer"
                       />
-                      تانية ثانوي (بكالوريا)
+                      تانية ثانوي
                     </label>
                     <label className="flex items-center gap-2 text-sm text-[#2D2B7A] font-semibold cursor-pointer">
                       <input
@@ -458,7 +462,7 @@ export default function AdminTeachersPage() {
                       {/* Second Grade Tracks */}
                       {selectedGrades.includes("الصف الثاني الثانوي") && (
                         <div className="col-span-2 space-y-2 border-b border-gray-200 pb-3 mb-2">
-                          <p className="text-xs font-bold text-gray-400">تخصصات الصف الثاني الثانوي (بكالوريا):</p>
+                          <p className="text-xs font-bold text-gray-400">تخصصات الصف الثاني الثانوي:</p>
                           <div className="grid grid-cols-2 gap-2">
                             {[
                               "مسار الطب وعلوم الحياة",
@@ -559,6 +563,18 @@ export default function AdminTeachersPage() {
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+
+                {/* About */}
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5">الوصف التفصيلي للمدرس (عن المدرس / السيرة الذاتية)</label>
+                  <textarea
+                    rows={5}
+                    placeholder="اكتب وصفاً تفصيلياً عن المدرس، خبراته وإنجازاته، سيظهر للطلاب في صفحة المدرس الخاصة..."
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium"
+                    value={about}
+                    onChange={(e) => setAbout(e.target.value)}
                   />
                 </div>
               </div>

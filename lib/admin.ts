@@ -105,6 +105,7 @@ export async function addTeacher(teacher: {
   image?: string;
   subject?: string;
   description?: string;
+  about?: string;
   education_system?: string;
   grade?: string;
   track?: string;
@@ -126,6 +127,7 @@ export async function updateTeacher(id: string, teacher: {
   image?: string;
   subject?: string;
   description?: string;
+  about?: string;
   education_system?: string;
   grade?: string;
   track?: string;
