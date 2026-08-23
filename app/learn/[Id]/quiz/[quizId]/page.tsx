@@ -411,8 +411,8 @@ export default function StudentQuizPage() {
             </div>
           </div>
 
-          {/* Detailed Correction (Only if Lesson Quiz or after Final Exam Deadline) */}
-          {(!isFinalBeforeDeadline && quiz.questions?.length > 0) && (
+          {/* Detailed Correction (Only if Lesson Quiz or after Final Exam Deadline, and score >= 50%) */}
+          {(!isFinalBeforeDeadline && quiz.questions?.length > 0 && Number(finalScore) >= 50) && (
             <div className="space-y-6">
               <h2 className="text-xl font-extrabold text-[#2D2B7A] border-b pb-3">🔍 مراجعة وتصحيح الأسئلة</h2>
               {quiz.questions.map((q: any, idx: number) => {
@@ -479,6 +479,22 @@ export default function StudentQuizPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Fallback Banner if score < 50% */}
+          {(!isFinalBeforeDeadline && quiz.questions?.length > 0 && Number(finalScore) < 50) && (
+            <div className="bg-amber-50 text-amber-800 p-6 rounded-3xl border border-amber-250 text-center space-y-3">
+              <AlertTriangle className="text-amber-500 mx-auto animate-pulse" size={32} />
+              <h3 className="font-extrabold text-[#2D2B7A] text-lg">مراجعة وتصحيح الأسئلة محجوبة</h3>
+              <p className="text-sm text-gray-600 max-w-md mx-auto leading-relaxed">
+                يجب عليك الحصول على <strong>50%</strong> على الأقل في هذا الاختبار لتتمكن من مراجعة الإجابات الصحيحة وتصحيح الأخطاء.
+              </p>
+              {quiz.type === "quiz" && (
+                <p className="text-xs text-gray-500 font-bold">
+                  يمكنك الضغط على زر "إعادة المحاولة" أعلاه للمحاولة مجدداً وتحسين نتيجتك! 💪
+                </p>
+              )}
             </div>
           )}
 
