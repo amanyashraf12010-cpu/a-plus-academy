@@ -24,9 +24,97 @@ import {
   ChevronLeft, 
   Loader2,
   FileText,
-  Users
+  Users,
+  AlertTriangle
 } from "lucide-react";
 import Link from "next/link";
+interface ParsedQuestion {
+  id: string;
+  tempIndex: number;
+  questionText: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctOption: "A" | "B" | "C" | "D" | "";
+  hasWarning: boolean;
+  warningMessage: string;
+}
+
+function parseBulkQuestions(pastedText: string): ParsedQuestion[] {
+  if (!pastedText.trim()) return [];
+
+  const cleanText = pastedText.replace(/\r\n/g, "\n");
+  const blocks = cleanText.split(/\n(?=\s*\d+[\.\)\-\s]+)/);
+
+  const results: ParsedQuestion[] = [];
+  let tempIndex = 1;
+
+  for (const block of blocks) {
+    if (!block.trim()) continue;
+
+    const lines = block.split("\n");
+    const questionTextLines: string[] = [];
+    const parsedOptions: { letter: string; text: string }[] = [];
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+
+      const optionMatch = trimmedLine.match(/^([a-d])[\.\)\-\s]+([\s\S]*)/i);
+      if (optionMatch) {
+        const letter = optionMatch[1].toUpperCase();
+        const text = optionMatch[2].trim();
+        parsedOptions.push({ letter, text });
+      } else if (parsedOptions.length === 0) {
+        questionTextLines.push(line);
+      } else {
+        if (parsedOptions.length > 0) {
+          parsedOptions[parsedOptions.length - 1].text += " " + trimmedLine;
+        }
+      }
+    }
+
+    let rawQuestionText = questionTextLines.join("\n").trim();
+    const numMatch = rawQuestionText.match(/^\s*\d+[\.\)\-\s]+([\s\S]*)/);
+    if (numMatch) {
+      rawQuestionText = numMatch[1].trim();
+    }
+
+    const optA = parsedOptions.find(o => o.letter === "A")?.text || "";
+    const optB = parsedOptions.find(o => o.letter === "B")?.text || "";
+    const optC = parsedOptions.find(o => o.letter === "C")?.text || "";
+    const optD = parsedOptions.find(o => o.letter === "D")?.text || "";
+
+    const warnings: string[] = [];
+    if (!rawQuestionText) {
+      warnings.push("نص السؤال فارغ");
+    }
+    if (!optA || !optB || !optC || !optD) {
+      const missingOpts: string[] = [];
+      if (!optA) missingOpts.push("A");
+      if (!optB) missingOpts.push("B");
+      if (!optC) missingOpts.push("C");
+      if (!optD) missingOpts.push("D");
+      warnings.push(`خيارات ناقصة: (${missingOpts.join(", ")})`);
+    }
+
+    results.push({
+      id: `temp_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+      tempIndex: tempIndex++,
+      questionText: rawQuestionText,
+      optionA: optA,
+      optionB: optB,
+      optionC: optC,
+      optionD: optD,
+      correctOption: "",
+      hasWarning: warnings.length > 0,
+      warningMessage: warnings.join(" | ")
+    });
+  }
+
+  return results;
+}
 
 function ExamsPageContent() {
   const router = useRouter();
@@ -42,6 +130,13 @@ function ExamsPageContent() {
   const [quiz, setQuiz] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"questions" | "students">("questions");
+
+  // Bulk Import state
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkInputText, setBulkInputText] = useState("");
+  const [bulkQuestions, setBulkQuestions] = useState<ParsedQuestion[]>([]);
+  const [hasParsed, setHasParsed] = useState(false);
+  const [isSavingBulk, setIsSavingBulk] = useState(false);
 
   // Quiz Form states
   const [quizTitle, setQuizTitle] = useState("");
@@ -227,6 +322,96 @@ function ExamsPageContent() {
       alert("فشل حفظ إعدادات التقييم: " + error.message);
     } finally {
       setIsSavingQuiz(false);
+    }
+  }
+
+  // Bulk Import Handlers
+  function handleParseQuestions() {
+    const parsed = parseBulkQuestions(bulkInputText);
+    if (parsed.length === 0) {
+      alert("لم يتم العثور على أي أسئلة صالحة للتحليل. يرجى التأكد من التنسيق ولصق أسئلة صحيحة.");
+      return;
+    }
+    setBulkQuestions(parsed);
+    setHasParsed(true);
+  }
+
+  function updateBulkQuestion(id: string, updates: Partial<ParsedQuestion>) {
+    setBulkQuestions(prev => prev.map(q => {
+      if (q.id === id) {
+        const updated = { ...q, ...updates };
+        // Recalculate warnings
+        const warnings: string[] = [];
+        if (!updated.questionText.trim()) warnings.push("نص السؤال فارغ");
+        if (!updated.optionA.trim() || !updated.optionB.trim() || !updated.optionC.trim() || !updated.optionD.trim()) {
+          const missing: string[] = [];
+          if (!updated.optionA.trim()) missing.push("A");
+          if (!updated.optionB.trim()) missing.push("B");
+          if (!updated.optionC.trim()) missing.push("C");
+          if (!updated.optionD.trim()) missing.push("D");
+          warnings.push(`خيارات ناقصة: (${missing.join(", ")})`);
+        }
+        updated.hasWarning = warnings.length > 0;
+        updated.warningMessage = warnings.join(" | ");
+        return updated;
+      }
+      return q;
+    }));
+  }
+
+  function closeBulkModal() {
+    setShowBulkModal(false);
+    setBulkInputText("");
+    setBulkQuestions([]);
+    setHasParsed(false);
+  }
+
+  async function handleSaveAllBulkQuestions() {
+    if (!quiz) return;
+
+    // Validation
+    for (let i = 0; i < bulkQuestions.length; i++) {
+      const q = bulkQuestions[i];
+      if (!q.questionText.trim()) {
+        alert(`السؤال رقم ${i + 1} لا يحتوي على نص السؤال.`);
+        return;
+      }
+      if (!q.optionA.trim() || !q.optionB.trim() || !q.optionC.trim() || !q.optionD.trim()) {
+        alert(`السؤال رقم ${i + 1} لا يحتوي على الخيارات الأربعة كاملة.`);
+        return;
+      }
+      if (!q.correctOption) {
+        alert(`من فضلك حدد الإجابة الصحيحة للسؤال رقم ${i + 1}.`);
+        return;
+      }
+    }
+
+    try {
+      setIsSavingBulk(true);
+
+      for (const q of bulkQuestions) {
+        const qPayload = {
+          question_text: q.questionText.trim(),
+          correct_option: q.correctOption as "A" | "B" | "C" | "D"
+        };
+
+        const optsPayload = [
+          { option_letter: "A" as const, option_text: q.optionA.trim() },
+          { option_letter: "B" as const, option_text: q.optionB.trim() },
+          { option_letter: "C" as const, option_text: q.optionC.trim() },
+          { option_letter: "D" as const, option_text: q.optionD.trim() }
+        ];
+
+        await saveQuestion(quiz.id, qPayload, optsPayload);
+      }
+
+      alert(`🎉 تم إضافة عدد ${bulkQuestions.length} سؤال بنجاح للامتحان!`);
+      closeBulkModal();
+      loadData();
+    } catch (err: any) {
+      alert("حدث خطأ أثناء حفظ الأسئلة: " + err.message);
+    } finally {
+      setIsSavingBulk(false);
     }
   }
 
@@ -499,13 +684,22 @@ function ExamsPageContent() {
                 <>
                   <div className="flex justify-between items-center px-1">
                     <h3 className="font-extrabold text-[#2D2B7A] text-lg">الأسئلة الحالية</h3>
-                    <button
-                      onClick={openAddQModal}
-                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-                    >
-                      <Plus size={16} />
-                      إضافة سؤال جديد
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowBulkModal(true)}
+                        className="bg-[#7D79F1] hover:bg-[#655EF0] text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <Plus size={16} />
+                        Bulk Import Questions
+                      </button>
+                      <button
+                        onClick={openAddQModal}
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <Plus size={16} />
+                        إضافة سؤال جديد
+                      </button>
+                    </div>
                   </div>
 
                   {questions.length === 0 ? (
@@ -875,6 +1069,222 @@ function ExamsPageContent() {
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* BULK IMPORT QUESTIONS MODAL */}
+      {showBulkModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl max-h-[90vh] overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200 flex flex-col" dir="rtl">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
+              <h2 className="text-lg font-extrabold text-[#2D2B7A] flex items-center gap-2">
+                📥 Bulk Import Questions
+              </h2>
+              <button
+                onClick={() => {
+                  if (bulkQuestions.length > 0 && !confirm("هل أنت متأكد من الخروج؟ ستفقد الأسئلة التي قمت بلصقها وتعديلها.")) return;
+                  closeBulkModal();
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              
+              {!hasParsed ? (
+                // Step 1: Paste Textarea
+                <div className="space-y-4">
+                  <div className="bg-blue-50 text-blue-800 p-4 rounded-2xl border border-blue-100 text-xs leading-relaxed text-right">
+                    <strong>طريقة لصق الأسئلة:</strong> الصق الأسئلة والخيارات مرتبة تحت بعضها. يجب أن تكون الخيارات تبدأ بـ (a, b, c, d) أو (A, B, C, D) مثل:<br/>
+                    1. السؤال الأول هنا؟<br/>
+                    a. الخيار الأول<br/>
+                    b. الخيار الثاني<br/>
+                    c. الخيار الثالث<br/>
+                    d. الخيار الرابع
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-1.5">لصق الأسئلة (Paste questions here)</label>
+                    <textarea
+                      rows={12}
+                      className="w-full px-4 py-3 rounded-xl border outline-none text-[#2D2B7A] focus:border-[#7D79F1] text-sm font-medium font-mono"
+                      placeholder="لصق الأسئلة والخيارات هنا..."
+                      value={bulkInputText}
+                      onChange={(e) => setBulkInputText(e.target.value)}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleParseQuestions}
+                    disabled={!bulkInputText.trim()}
+                    className="w-full py-3.5 bg-[#7D79F1] hover:bg-[#655EF0] disabled:bg-gray-300 text-white rounded-xl font-bold transition text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    Parse Questions (تحليل وتحضير الأسئلة)
+                  </button>
+                </div>
+              ) : (
+                // Step 2: Review Table / Edit View
+                <div className="space-y-6">
+                  
+                  {/* Status Banner */}
+                  <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-gray-50 p-4 rounded-2xl border">
+                    <div className="flex gap-4 text-xs font-bold">
+                      <span className="text-green-600 bg-green-50 border border-green-200 px-3 py-1 rounded-full">
+                        {bulkQuestions.filter(q => !q.hasWarning).length} Questions Parsed Successfully
+                      </span>
+                      {bulkQuestions.some(q => q.hasWarning) && (
+                        <span className="text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
+                          {bulkQuestions.filter(q => q.hasWarning).length} Questions Need Review
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => setHasParsed(false)}
+                      className="text-xs text-[#7D79F1] hover:text-[#655EF0] font-extrabold flex items-center gap-1 cursor-pointer"
+                    >
+                      ← العودة للصق النص مجدداً
+                    </button>
+                  </div>
+
+                  {/* Table List of parsed questions */}
+                  <div className="space-y-4 divide-y">
+                    {bulkQuestions.map((q, qIdx) => (
+                      <div key={q.id} className="pt-4 first:pt-0 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="bg-purple-50 text-[#7D79F1] w-8 h-8 rounded-full flex items-center justify-center font-black text-sm">
+                              {qIdx + 1}
+                            </span>
+                            {q.hasWarning && (
+                              <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] px-2.5 py-0.5 rounded-full font-bold">
+                                ⚠️ {q.warningMessage}
+                              </span>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setBulkQuestions(bulkQuestions.filter(item => item.id !== q.id));
+                            }}
+                            className="text-red-500 hover:text-red-700 text-xs font-bold cursor-pointer"
+                          >
+                            حذف السؤال
+                          </button>
+                        </div>
+
+                        {/* Question Text Input */}
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-400 mb-1">صيغة السؤال</label>
+                          <input
+                            type="text"
+                            className="w-full px-3 py-2 text-sm rounded-xl border outline-none text-[#2D2B7A] focus:border-[#7D79F1] font-semibold"
+                            value={q.questionText}
+                            onChange={(e) => updateBulkQuestion(q.id, { questionText: e.target.value })}
+                          />
+                        </div>
+
+                        {/* Options A, B, C, D Inputs */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-bold text-gray-400 mb-1">A</label>
+                            <input
+                              type="text"
+                              className="w-full px-3 py-2 text-xs rounded-lg border outline-none text-[#2D2B7A] focus:border-[#7D79F1]"
+                              value={q.optionA}
+                              onChange={(e) => updateBulkQuestion(q.id, { optionA: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-gray-400 mb-1">B</label>
+                            <input
+                              type="text"
+                              className="w-full px-3 py-2 text-xs rounded-lg border outline-none text-[#2D2B7A] focus:border-[#7D79F1]"
+                              value={q.optionB}
+                              onChange={(e) => updateBulkQuestion(q.id, { optionB: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-gray-400 mb-1">C</label>
+                            <input
+                              type="text"
+                              className="w-full px-3 py-2 text-xs rounded-lg border outline-none text-[#2D2B7A] focus:border-[#7D79F1]"
+                              value={q.optionC}
+                              onChange={(e) => updateBulkQuestion(q.id, { optionC: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-gray-400 mb-1">D</label>
+                            <input
+                              type="text"
+                              className="w-full px-3 py-2 text-xs rounded-lg border outline-none text-[#2D2B7A] focus:border-[#7D79F1]"
+                              value={q.optionD}
+                              onChange={(e) => updateBulkQuestion(q.id, { optionD: e.target.value })}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Correct Answer Select */}
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-400 mb-1">الإجابة الصحيحة</label>
+                          <select
+                            className="w-full px-3 py-2 rounded-xl border outline-none text-[#2D2B7A] font-bold text-xs bg-white cursor-pointer"
+                            value={q.correctOption}
+                            onChange={(e) => updateBulkQuestion(q.id, { correctOption: e.target.value as any })}
+                          >
+                            <option value="">-- اختر الإجابة الصحيحة --</option>
+                            <option value="A">الاختيار A</option>
+                            <option value="B">الاختيار B</option>
+                            <option value="C">الاختيار C</option>
+                            <option value="D">الاختيار D</option>
+                          </select>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Actions Footer */}
+                  <div className="flex gap-3 pt-6 border-t">
+                    <button
+                      onClick={handleSaveAllBulkQuestions}
+                      disabled={isSavingBulk}
+                      className="flex-1 py-3.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white rounded-xl font-bold transition text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed shadow-md"
+                    >
+                      {isSavingBulk ? (
+                        <>
+                          <Loader2 className="animate-spin" size={16} />
+                          Adding questions... (جاري إضافة الأسئلة)
+                        </>
+                      ) : (
+                        <>
+                          <Check size={16} />
+                          Add All Questions (إضافة كل الأسئلة دفعة واحدة)
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm("هل أنت متأكد من إلغاء الاستيراد؟ ستفقد كل الأسئلة الحالية.")) {
+                          closeBulkModal();
+                        }
+                      }}
+                      className="py-3.5 px-6 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl font-bold transition text-xs border cursor-pointer"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+
+                </div>
+              )}
+
+            </div>
           </div>
         </div>
       )}
