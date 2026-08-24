@@ -27,18 +27,21 @@ export default function CheckoutButton({
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
-        // 2. إدخال الاشتراك في قاعدة البيانات كطلب معلق لكي يظهر للأدمن في لوحة التحكم
+        // 2. إدخال أو تحديث الاشتراك في قاعدة البيانات كطلب معلق لكي يظهر للأدمن في لوحة التحكم (للسماح بإعادة تقديم الطلب في حال الرفض)
         await supabase
           .from("subscriptions")
-          .insert([
-            {
-              user_id: user.id,
-              course_id: course.id,
-              payment_method: method === "vodafone" ? "vodafone_cash" : "instapay",
-              status: "pending",
-              receipt_url: null // سيتم إرساله يدوياً على واتساب
-            }
-          ])
+          .upsert(
+            [
+              {
+                user_id: user.id,
+                course_id: course.id,
+                payment_method: method === "vodafone" ? "vodafone_cash" : "instapay",
+                status: "pending",
+                receipt_url: null // سيتم إرساله يدوياً على واتساب
+              }
+            ],
+            { onConflict: "user_id,course_id" }
+          )
           .select();
       }
     } catch (error) {
