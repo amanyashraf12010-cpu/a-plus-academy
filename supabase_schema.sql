@@ -220,6 +220,11 @@ drop policy if exists "Subscriptions insert policy" on public.subscriptions;
 create policy "Subscriptions insert policy" on public.subscriptions
   for insert with check (auth.uid() = user_id);
 
+drop policy if exists "Subscriptions update policy" on public.subscriptions;
+create policy "Subscriptions update policy" on public.subscriptions
+  for update using (auth.uid() = user_id)
+  with check (auth.uid() = user_id and status = 'pending');
+
 drop policy if exists "Subscriptions admin policy" on public.subscriptions;
 create policy "Subscriptions admin policy" on public.subscriptions
   for all using (public.is_admin());
