@@ -74,48 +74,28 @@ create policy "Allow public read access to active quizzes" on public.quizzes
   for select using (is_active = true);
 
 create policy "Allow admin full access to quizzes" on public.quizzes
-  for all using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin'
-    )
-  );
+  for all using (public.is_admin());
 
 -- Policies for questions
 create policy "Allow authenticated users to read questions" on public.questions
   for select using (auth.uid() is not null);
 
 create policy "Allow admin full access to questions" on public.questions
-  for all using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin'
-    )
-  );
+  for all using (public.is_admin());
 
 -- Policies for options
 create policy "Allow authenticated users to read options" on public.options
   for select using (auth.uid() is not null);
 
 create policy "Allow admin full access to options" on public.options
-  for all using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin'
-    )
-  );
+  for all using (public.is_admin());
 
 -- Policies for student_quiz_attempts
 create policy "Allow users to manage their own attempts" on public.student_quiz_attempts
   for all using (auth.uid() = user_id);
 
 create policy "Allow admin full access to attempts" on public.student_quiz_attempts
-  for all using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin'
-    )
-  );
+  for all using (public.is_admin());
 
 -- Policies for student_answers
 create policy "Allow users to manage their own answers" on public.student_answers
@@ -127,9 +107,4 @@ create policy "Allow users to manage their own answers" on public.student_answer
   );
 
 create policy "Allow admin full access to answers" on public.student_answers
-  for all using (
-    exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'admin'
-    )
-  );
+  for all using (public.is_admin());
