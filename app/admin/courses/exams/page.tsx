@@ -43,6 +43,16 @@ function ExamsPageContent() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"questions" | "students">("questions");
 
+  // Import questions states
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importCourses, setImportCourses] = useState<any[]>([]);
+  const [selectedImportCourseId, setSelectedImportCourseId] = useState("");
+  const [importQuizzes, setImportQuizzes] = useState<any[]>([]);
+  const [selectedImportQuizId, setSelectedImportQuizId] = useState("");
+  const [importQuestions, setImportQuestions] = useState<any[]>([]);
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
+  const [isImporting, setIsImporting] = useState(false);
+
   // Quiz Form states
   const [quizTitle, setQuizTitle] = useState("");
   const [passingScore, setPassingScore] = useState(50);
@@ -231,6 +241,119 @@ function ExamsPageContent() {
   }
 
 
+
+  // Import Questions Handlers
+  async function openImportModal() {
+    try {
+      const { data: courses, error } = await supabase
+        .from("courses")
+        .select("id, title")
+        .order("title");
+      if (error) throw error;
+      setImportCourses(courses || []);
+      setShowImportModal(true);
+    } catch (err: any) {
+      alert("فشل تحميل قائمة الكورسات: " + err.message);
+    }
+  }
+
+  async function handleImportCourseChange(courseId: string) {
+    setSelectedImportCourseId(courseId);
+    setSelectedImportQuizId("");
+    setImportQuestions([]);
+    setSelectedQuestionIds([]);
+    if (!courseId) {
+      setImportQuizzes([]);
+      return;
+    }
+    try {
+      const { data: quizzes, error } = await supabase
+        .from("quizzes")
+        .select("id, title, type, lesson_id")
+        .eq("course_id", courseId)
+        .order("title");
+      if (error) throw error;
+      setImportQuizzes(quizzes || []);
+    } catch (err: any) {
+      alert("فشل تحميل قائمة امتحانات الكورس: " + err.message);
+    }
+  }
+
+  async function handleImportQuizChange(quizId: string) {
+    setSelectedImportQuizId(quizId);
+    setSelectedQuestionIds([]);
+    if (!quizId) {
+      setImportQuestions([]);
+      return;
+    }
+    try {
+      const { data: qData, error } = await supabase
+        .from("questions")
+        .select("*, options(*)")
+        .eq("quiz_id", quizId);
+      if (error) throw error;
+      setImportQuestions(qData || []);
+    } catch (err: any) {
+      alert("فشل تحميل أسئلة الامتحان المحدد: " + err.message);
+    }
+  }
+
+  async function handleExecuteImport() {
+    if (!quiz || selectedQuestionIds.length === 0) return;
+    try {
+      setIsImporting(true);
+      
+      for (const sourceQId of selectedQuestionIds) {
+        const sourceQ = importQuestions.find(q => q.id === sourceQId);
+        if (!sourceQ) continue;
+        
+        // 1. Insert Question
+        const { data: newQ, error: qError } = await supabase
+          .from("questions")
+          .insert([
+            {
+              quiz_id: quiz.id,
+              question_text: sourceQ.question_text || null,
+              question_image: sourceQ.question_image || null,
+              correct_option: sourceQ.correct_option
+            }
+          ])
+          .select()
+          .single();
+          
+        if (qError) throw qError;
+        
+        // 2. Insert Options
+        if (sourceQ.options && sourceQ.options.length > 0) {
+          const optionsPayload = sourceQ.options.map((opt: any) => ({
+            question_id: newQ.id,
+            option_letter: opt.option_letter,
+            option_text: opt.option_text || null,
+            option_image: opt.option_image || null
+          }));
+          
+          const { error: optError } = await supabase
+            .from("options")
+            .insert(optionsPayload);
+            
+          if (optError) throw optError;
+        }
+      }
+      
+      alert(`🎉 تم استيراد عدد ${selectedQuestionIds.length} سؤال بنجاح!`);
+      setShowImportModal(false);
+      setSelectedImportCourseId("");
+      setImportQuizzes([]);
+      setSelectedImportQuizId("");
+      setImportQuestions([]);
+      setSelectedQuestionIds([]);
+      loadData();
+    } catch (err: any) {
+      alert("حدث خطأ أثناء استيراد الأسئلة: " + err.message);
+    } finally {
+      setIsImporting(false);
+    }
+  }
 
   // Open Q Modal in Add mode
   function openAddQModal() {
@@ -501,13 +624,21 @@ function ExamsPageContent() {
                 <>
                   <div className="flex justify-between items-center px-1">
                     <h3 className="font-extrabold text-[#2D2B7A] text-lg">الأسئلة الحالية</h3>
-                    <button
-                      onClick={openAddQModal}
-                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-                    >
-                      <Plus size={16} />
-                      إضافة سؤال جديد
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={openImportModal}
+                        className="bg-[#7D79F1] hover:bg-[#655EF0] text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        📥 استيراد أسئلة
+                      </button>
+                      <button
+                        onClick={openAddQModal}
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <Plus size={16} />
+                        إضافة سؤال جديد
+                      </button>
+                    </div>
                   </div>
 
                   {questions.length === 0 ? (
@@ -877,6 +1008,165 @@ function ExamsPageContent() {
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* IMPORT QUESTIONS FROM OTHER QUIZ/EXAM MODAL */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200 flex flex-col" dir="rtl">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
+              <h2 className="text-lg font-extrabold text-[#2D2B7A] flex items-center gap-2">
+                📥 استيراد أسئلة من تقييم آخر
+              </h2>
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              
+              {/* Select Course */}
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-gray-500">اختر الكورس المصدر</label>
+                <select
+                  className="w-full px-4 py-2.5 rounded-xl border outline-none text-[#2D2B7A] font-bold text-sm bg-white cursor-pointer"
+                  value={selectedImportCourseId}
+                  onChange={(e) => handleImportCourseChange(e.target.value)}
+                >
+                  <option value="">-- اختر الكورس --</option>
+                  {importCourses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Select Exam/Quiz */}
+              {selectedImportCourseId && (
+                <div className="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <label className="block text-xs font-bold text-gray-500">اختر التقييم (امتحان أو واجب)</label>
+                  <select
+                    className="w-full px-4 py-2.5 rounded-xl border outline-none text-[#2D2B7A] font-bold text-sm bg-white cursor-pointer"
+                    value={selectedImportQuizId}
+                    onChange={(e) => handleImportQuizChange(e.target.value)}
+                  >
+                    <option value="">-- اختر الامتحان / الواجب --</option>
+                    {importQuizzes.map((q) => (
+                      <option key={q.id} value={q.id}>
+                        {q.title} ({q.type === "quiz" ? "واجب محاضرة" : "امتحان شامل"})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Questions Checkbox List */}
+              {selectedImportQuizId && (
+                <div className="space-y-3 pt-2 animate-in fade-in duration-200">
+                  <div className="flex justify-between items-center text-xs font-bold text-gray-500">
+                    <span>الأسئلة المتوفرة ({importQuestions.length})</span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedQuestionIds(importQuestions.map(q => q.id))}
+                        className="text-[#7D79F1] hover:underline"
+                      >
+                        تحديد الكل
+                      </button>
+                      <span>|</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedQuestionIds([])}
+                        className="text-gray-400 hover:underline"
+                      >
+                        إلغاء التحديد
+                      </button>
+                    </div>
+                  </div>
+
+                  {importQuestions.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400 text-xs border rounded-xl bg-gray-50/50">
+                      لا توجد أسئلة مضافة في هذا التقييم بعد.
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 max-h-60 overflow-y-auto border p-3 rounded-xl bg-gray-50/50">
+                      {importQuestions.map((q, qIdx) => {
+                        const isSelected = selectedQuestionIds.includes(q.id);
+                        return (
+                          <label
+                            key={q.id}
+                            className={`flex items-start gap-3 p-3 rounded-xl border bg-white transition cursor-pointer select-none text-xs ${
+                              isSelected ? "border-purple-300 bg-purple-50/10" : "border-gray-150"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedQuestionIds([...selectedQuestionIds, q.id]);
+                                } else {
+                                  setSelectedQuestionIds(selectedQuestionIds.filter(id => id !== q.id));
+                                }
+                              }}
+                              className="w-4 h-4 text-[#7D79F1] focus:ring-[#7D79F1]/20 border-gray-300 rounded cursor-pointer shrink-0 mt-0.5"
+                            />
+                            <div>
+                              <span className="font-bold text-[#2D2B7A] block mb-0.5">
+                                السؤال {qIdx + 1}
+                              </span>
+                              <span className="text-gray-700 font-medium leading-relaxed block">
+                                {q.question_text || "[سؤال يحتوي على صورة فقط]"}
+                              </span>
+                              <span className="text-[10px] text-green-600 font-bold mt-1 block">
+                                الإجابة الصحيحة: {q.correct_option}
+                              </span>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+            </div>
+
+            {/* Actions Footer */}
+            <div className="flex gap-3 p-6 border-t shrink-0">
+              <button
+                onClick={handleExecuteImport}
+                disabled={isImporting || selectedQuestionIds.length === 0}
+                className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white rounded-xl font-bold transition text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+              >
+                {isImporting ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+                استيراد الأسئلة المحددة ({selectedQuestionIds.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowImportModal(false);
+                  setSelectedImportCourseId("");
+                  setImportQuizzes([]);
+                  setSelectedImportQuizId("");
+                  setImportQuestions([]);
+                  setSelectedQuestionIds([]);
+                }}
+                className="flex-1 py-3 px-4 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl font-bold transition text-xs border cursor-pointer text-center"
+              >
+                إلغاء
+              </button>
+            </div>
+
           </div>
         </div>
       )}
