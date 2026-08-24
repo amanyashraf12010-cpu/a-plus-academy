@@ -1193,58 +1193,49 @@ function ExamsPageContent() {
 
                         {/* Options A, B, C, D Inputs */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-[10px] font-bold text-gray-400 mb-1">A</label>
-                            <input
-                              type="text"
-                              className="w-full px-3 py-2 text-xs rounded-lg border outline-none text-[#2D2B7A] focus:border-[#7D79F1]"
-                              value={q.optionA}
-                              onChange={(e) => updateBulkQuestion(q.id, { optionA: e.target.value })}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-bold text-gray-400 mb-1">B</label>
-                            <input
-                              type="text"
-                              className="w-full px-3 py-2 text-xs rounded-lg border outline-none text-[#2D2B7A] focus:border-[#7D79F1]"
-                              value={q.optionB}
-                              onChange={(e) => updateBulkQuestion(q.id, { optionB: e.target.value })}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-bold text-gray-400 mb-1">C</label>
-                            <input
-                              type="text"
-                              className="w-full px-3 py-2 text-xs rounded-lg border outline-none text-[#2D2B7A] focus:border-[#7D79F1]"
-                              value={q.optionC}
-                              onChange={(e) => updateBulkQuestion(q.id, { optionC: e.target.value })}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-bold text-gray-400 mb-1">D</label>
-                            <input
-                              type="text"
-                              className="w-full px-3 py-2 text-xs rounded-lg border outline-none text-[#2D2B7A] focus:border-[#7D79F1]"
-                              value={q.optionD}
-                              onChange={(e) => updateBulkQuestion(q.id, { optionD: e.target.value })}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Correct Answer Select */}
-                        <div>
-                          <label className="block text-[10px] font-bold text-gray-400 mb-1">الإجابة الصحيحة</label>
-                          <select
-                            className="w-full px-3 py-2 rounded-xl border outline-none text-[#2D2B7A] font-bold text-xs bg-white cursor-pointer"
-                            value={q.correctOption}
-                            onChange={(e) => updateBulkQuestion(q.id, { correctOption: e.target.value as any })}
-                          >
-                            <option value="">-- اختر الإجابة الصحيحة --</option>
-                            <option value="A">الاختيار A</option>
-                            <option value="B">الاختيار B</option>
-                            <option value="C">الاختيار C</option>
-                            <option value="D">الاختيار D</option>
-                          </select>
+                          {[
+                            { letter: "A", label: "اختيار A", text: q.optionA, setter: (val: string) => updateBulkQuestion(q.id, { optionA: val }) },
+                            { letter: "B", label: "اختيار B", text: q.optionB, setter: (val: string) => updateBulkQuestion(q.id, { optionB: val }) },
+                            { letter: "C", label: "اختيار C", text: q.optionC, setter: (val: string) => updateBulkQuestion(q.id, { optionC: val }) },
+                            { letter: "D", label: "اختيار D", text: q.optionD, setter: (val: string) => updateBulkQuestion(q.id, { optionD: val }) }
+                          ].map((opt) => {
+                            const isCorrect = q.correctOption === opt.letter;
+                            return (
+                              <div 
+                                key={opt.letter} 
+                                className={`p-4 border rounded-2xl transition duration-200 ${
+                                  isCorrect 
+                                    ? "border-green-500 bg-green-50/10 shadow-sm" 
+                                    : "border-gray-150 bg-gray-50/30"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className={`text-xs font-extrabold ${isCorrect ? "text-green-600" : "text-[#7D79F1]"}`}>
+                                    {opt.label}
+                                  </span>
+                                  
+                                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold select-none">
+                                    <input
+                                      type="radio"
+                                      name={`correct_${q.id}`}
+                                      checked={isCorrect}
+                                      onChange={() => updateBulkQuestion(q.id, { correctOption: opt.letter as any })}
+                                      className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500/20 cursor-pointer"
+                                    />
+                                    <span className={isCorrect ? "text-green-600 font-extrabold" : "text-gray-400 font-semibold hover:text-gray-600 transition"}>
+                                      إجابة صحيحة
+                                    </span>
+                                  </label>
+                                </div>
+                                <input
+                                  type="text"
+                                  className="w-full px-3 py-2 text-xs rounded-lg border outline-none text-[#2D2B7A] focus:border-[#7D79F1] bg-white font-medium"
+                                  value={opt.text}
+                                  onChange={(e) => opt.setter(e.target.value)}
+                                />
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
