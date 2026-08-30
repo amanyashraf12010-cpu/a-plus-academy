@@ -41,6 +41,7 @@ export default function LearnPage() {
   const [viewsCount, setViewsCount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState("description");
   const [hasIncrementedView, setHasIncrementedView] = useState(false);
+  const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 
   // Trigger view increment in database when reaching 50%
   async function triggerViewIncrement() {
@@ -62,6 +63,37 @@ export default function LearnPage() {
       console.log("Views incremented successfully. New count:", newCount);
     } catch (err: any) {
       console.error("Failed to increment views:", err.message);
+    }
+  }
+
+  // Secure and direct file download handler
+  async function handleDownloadPdf(url: string, suggestedName: string) {
+    if (!url) return;
+    try {
+      setDownloadingFile(url);
+      
+      // Try to fetch file as blob to force browser download dialog
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("CORS or network error");
+      
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.setAttribute("download", suggestedName || "attachment.pdf");
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.warn("Direct blob download failed, falling back to new tab download:", err);
+      // Fallback: open in new tab
+      window.open(url, "_blank");
+    } finally {
+      setDownloadingFile(null);
     }
   }
 
@@ -562,14 +594,20 @@ export default function LearnPage() {
                             <FileText className="text-red-500" size={20} />
                             <span className="text-sm font-bold text-[#2D2B7A]">ملخص ومذكرة الشرح.pdf</span>
                           </div>
-                          <a
-                            href={activeLesson.pdf_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-[#7D79F1] text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-[#655EF0] transition"
+                          <button
+                            onClick={() => handleDownloadPdf(activeLesson.pdf_url, `${activeLesson.title || "ملخص"}.pdf`)}
+                            disabled={downloadingFile === activeLesson.pdf_url}
+                            className="bg-[#7D79F1] text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-[#655EF0] transition disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-1.5"
                           >
-                            تحميل الملف
-                          </a>
+                            {downloadingFile === activeLesson.pdf_url ? (
+                              <>
+                                <Loader2 className="animate-spin" size={14} />
+                                جاري التحميل...
+                              </>
+                            ) : (
+                              "تحميل الملف"
+                            )}
+                          </button>
                         </div>
                       ) : (
                         <p className="text-gray-400 text-sm">لا توجد ملفات PDF مرفقة بهذا الدرس.</p>
