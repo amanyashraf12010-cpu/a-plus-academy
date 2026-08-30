@@ -327,9 +327,12 @@ function LessonsContent() {
                         try {
                           setUploadingPdf(true);
                           // Upload to teachers-images bucket
+                          const fileExt = file.name.split(".").pop()?.toLowerCase() || "pdf";
+                          const cleanFileName = `file_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                          
                           const { data, error } = await supabase.storage
                             .from("teachers-images")
-                            .upload(`lessons_attachments/${Date.now()}_${file.name}`, file);
+                            .upload(`lessons_attachments/${cleanFileName}`, file);
 
                           if (error) throw error;
                           
