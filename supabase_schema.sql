@@ -317,17 +317,17 @@ using (bucket_id = 'teachers-images');
 drop policy if exists "Allow admins to upload teachers-images" on storage.objects;
 create policy "Allow admins to upload teachers-images"
 on storage.objects for insert
-with check (bucket_id = 'teachers-images' and (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')));
+with check (bucket_id = 'teachers-images' and public.is_admin());
 
 drop policy if exists "Allow admins to update teachers-images" on storage.objects;
 create policy "Allow admins to update teachers-images"
 on storage.objects for update
-using (bucket_id = 'teachers-images' and (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')));
+using (bucket_id = 'teachers-images' and public.is_admin());
 
 drop policy if exists "Allow admins to delete teachers-images" on storage.objects;
 create policy "Allow admins to delete teachers-images"
 on storage.objects for delete
-using (bucket_id = 'teachers-images' and (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')));
+using (bucket_id = 'teachers-images' and public.is_admin());
 
 
 -- Policies for receipts (Private bucket for student transfer screenshots)
@@ -343,7 +343,7 @@ using (
   bucket_id = 'receipts' 
   and (
     (storage.foldername(name))[1] = auth.uid()::text 
-    or (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'))
+    or public.is_admin()
   )
 );
 
@@ -352,7 +352,7 @@ using (
 drop policy if exists "Allow admin full access to videos" on storage.objects;
 create policy "Allow admin full access to videos"
 on storage.objects for all
-using (bucket_id = 'videos' and (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')));
+using (bucket_id = 'videos' and public.is_admin());
 
 -- =========================================================================
 -- 7. Database Views (Safely bypass RLS to expose aggregate counts)
