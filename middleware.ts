@@ -50,6 +50,23 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // 2. Protect Assistant Routes (/assistant/*)
+  if (url.pathname.startsWith('/assistant')) {
+    if (!user) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile || (profile.role !== 'assistant' && profile.role !== 'admin')) {
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+  }
+
   // 2. Protect Student Routes (/my-courses/*)
   if (url.pathname.startsWith('/my-courses') || url.pathname.startsWith('/learn')) {
     if (!user) {

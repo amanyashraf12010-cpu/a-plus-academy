@@ -41,6 +41,8 @@ export default function LoginForm() {
     // بعد نجاح الدخول
     if (result.profile.role === "admin") {
       router.push("/admin");
+    } else if (result.profile.role === "assistant") {
+      router.push("/assistant");
     } else {
       router.push("/my-courses");
     }

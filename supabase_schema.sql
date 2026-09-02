@@ -12,7 +12,8 @@ create table if not exists public.profiles (
   id uuid references auth.users on delete cascade primary key,
   full_name text not null,
   email text, -- Store user email for easy access
-  role text default 'student' check(role in ('student', 'admin')),
+  role text default 'student' check(role in ('student', 'admin', 'assistant')),
+  teacher_id uuid references public.teachers(id) on delete set null,
   is_approved boolean default false,
   phone text not null,
   parent_phone text not null,

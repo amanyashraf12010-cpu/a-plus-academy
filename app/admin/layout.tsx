@@ -72,6 +72,11 @@ export default function AdminLayout({
             المدرسين
           </Link>
 
+          <Link href="/admin/assistants" className={getLinkClass("/admin/assistants")}>
+            <Users size={20} />
+            إدارة المساعدات
+          </Link>
+
           <Link href="/admin/students" className={getLinkClass("/admin/students")}>
             <Users size={20} />
             الطلاب
