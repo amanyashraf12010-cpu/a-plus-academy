@@ -145,8 +145,7 @@ function AssistantLessonsContent() {
         <div className="bg-white rounded-3xl border shadow-sm overflow-hidden divide-y">
           {lessons.map((lesson, idx) => {
             const hasVideo = Boolean(lesson.video_url && lesson.video_url.trim() !== "");
-            const hasQuiz = Boolean(lesson.quizzes && lesson.quizzes.length > 0);
-            const hasHomework = Boolean(lesson.pdf_url && lesson.pdf_url.trim() !== "");
+            const hasHomework = Boolean(lesson.hasHomework || lesson.hasQuiz || (lesson.quiz && lesson.quiz.id) || (lesson.pdf_url && lesson.pdf_url.trim() !== ""));
 
             return (
               <div
@@ -178,7 +177,7 @@ function AssistantLessonsContent() {
                         </span>
                       )}
 
-                      {hasQuiz || hasHomework ? (
+                      {hasHomework ? (
                         <span className="bg-purple-50 text-[#7D79F1] px-2.5 py-0.5 rounded-lg border border-purple-200 flex items-center gap-1">
                           <CheckCircle2 size={12} />
                           الواجب: مضاف
@@ -207,7 +206,7 @@ function AssistantLessonsContent() {
                     className="py-2.5 px-4 bg-[#7D79F1] hover:bg-[#655EF0] text-white rounded-xl font-bold text-xs transition flex items-center gap-1.5 shadow-sm"
                   >
                     <FileText size={14} />
-                    {hasQuiz ? "تعديل أسئلة الواجب" : "إضافة واجب للدرس"}
+                    {hasHomework ? "تعديل أسئلة الواجب" : "إضافة واجب للدرس"}
                   </Link>
 
                   <button
@@ -215,7 +214,7 @@ function AssistantLessonsContent() {
                     className="py-2 px-3 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-bold text-xs transition flex items-center gap-1.5 border border-gray-200 cursor-pointer"
                     title="إرفاق مذكرة أو ملف PDF للشرح"
                   >
-                    {hasHomework ? "تعديل المذكرة" : "إرفاق مذكرة"}
+                    {lesson.pdf_url ? "تعديل المذكرة" : "إرفاق مذكرة"}
                   </button>
                 </div>
 

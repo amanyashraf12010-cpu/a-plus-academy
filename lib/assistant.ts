@@ -115,8 +115,19 @@ export async function getAssistantDashboardStats() {
 
   if (quizzesErr) throw quizzesErr;
 
-  const lessonQuizzesCount = (quizzes || []).filter((q: any) => q.type === "quiz").length;
-  const addedHomeworks = lessonQuizzesCount;
+  const lessonQuizSet = new Set(
+    (quizzes || [])
+      .filter((q: any) => q.type === "quiz" && q.lesson_id)
+      .map((q: any) => q.lesson_id)
+  );
+
+  let addedHomeworks = 0;
+  (lessons || []).forEach((l: any) => {
+    if (lessonQuizSet.has(l.id) || (l.pdf_url && l.pdf_url.trim() !== "")) {
+      addedHomeworks++;
+    }
+  });
+
   const missingHomeworks = Math.max(0, totalLessons - addedHomeworks);
 
   return {
@@ -177,14 +188,42 @@ export async function getAssistantLessons(courseId: string) {
   // Validate course ownership first
   await getAssistantCourse(courseId);
 
-  const { data: lessons, error } = await supabase
+  // 1. Fetch lessons
+  const { data: lessons, error: lessonsErr } = await supabase
     .from("lessons")
-    .select("*, quizzes(id, title, is_active, passing_score, duration)")
+    .select("*")
     .eq("course_id", courseId)
     .order("order", { ascending: true });
 
-  if (error) throw error;
-  return lessons || [];
+  if (lessonsErr) throw lessonsErr;
+
+  // 2. Fetch quizzes for this course
+  const { data: quizzes, error: quizzesErr } = await supabase
+    .from("quizzes")
+    .select("id, lesson_id, title, is_active, passing_score, duration, type, questions(id)")
+    .eq("course_id", courseId);
+
+  if (quizzesErr) console.warn("تعذر جلب كويزات الكورس:", quizzesErr.message);
+
+  const quizMap = new Map<string, any>();
+  (quizzes || []).forEach((q: any) => {
+    if (q.lesson_id) {
+      quizMap.set(q.lesson_id, q);
+    }
+  });
+
+  return (lessons || []).map((l: any) => {
+    const quiz = quizMap.get(l.id) || null;
+    const hasQuiz = Boolean(quiz && (quiz.questions?.length > 0 || quiz.id));
+    const hasHomework = hasQuiz || Boolean(l.pdf_url && l.pdf_url.trim() !== "");
+
+    return {
+      ...l,
+      quiz,
+      hasQuiz,
+      hasHomework,
+    };
+  });
 }
 
 // =========================================================================
