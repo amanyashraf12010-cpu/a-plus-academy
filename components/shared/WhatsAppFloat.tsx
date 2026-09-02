@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 export default function WhatsAppFloat() {
   const pathname = usePathname();
 
-  // Hide on admin panel routes
-  if (pathname?.startsWith("/admin")) {
+  // Hide on admin and assistant panel routes
+  if (pathname?.startsWith("/admin") || pathname?.startsWith("/assistant")) {
     return null;
   }
 

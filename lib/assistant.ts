@@ -98,8 +98,6 @@ export async function getAssistantDashboardStats() {
   const totalLessons = lessons?.length || 0;
   let uploadedVideos = 0;
   let missingVideos = 0;
-  let addedHomeworks = 0;
-  let missingHomeworks = 0;
 
   (lessons || []).forEach((l: any) => {
     if (l.video_url && l.video_url.trim() !== "") {
@@ -107,15 +105,9 @@ export async function getAssistantDashboardStats() {
     } else {
       missingVideos++;
     }
-
-    if (l.pdf_url && l.pdf_url.trim() !== "") {
-      addedHomeworks++;
-    } else {
-      missingHomeworks++;
-    }
   });
 
-  // 4. Quizzes for these courses
+  // 4. Quizzes & Homeworks for these courses
   const { data: quizzes, error: quizzesErr } = await supabase
     .from("quizzes")
     .select("id, lesson_id, type")
@@ -124,16 +116,14 @@ export async function getAssistantDashboardStats() {
   if (quizzesErr) throw quizzesErr;
 
   const lessonQuizzesCount = (quizzes || []).filter((q: any) => q.type === "quiz").length;
-  const addedQuizzes = quizzes?.length || 0;
-  const missingQuizzes = Math.max(0, totalLessons - lessonQuizzesCount);
+  const addedHomeworks = lessonQuizzesCount;
+  const missingHomeworks = Math.max(0, totalLessons - addedHomeworks);
 
   return {
     coursesCount: courses?.length || 0,
     studentsCount,
     uploadedVideos,
     missingVideos,
-    addedQuizzes,
-    missingQuizzes,
     addedHomeworks,
     missingHomeworks,
   };
@@ -205,8 +195,6 @@ export type StudentFilterType =
   | "all"
   | "watched_video"
   | "not_watched_video"
-  | "completed_quiz"
-  | "not_completed_quiz"
   | "submitted_homework"
   | "not_submitted_homework";
 
@@ -267,7 +255,7 @@ export async function getAssistantStudentsReport(courseId?: string, filter: Stud
     vpMap.set(`${vp.user_id}_${vp.lesson_id}`, vp.views_count || 0);
   });
 
-  // 5. Fetch quizzes and attempts
+  // 5. Fetch quizzes and attempts (which represent homeworks)
   const { data: quizzes } = await supabase
     .from("quizzes")
     .select("id, course_id, lesson_id, type, passing_score")
@@ -319,25 +307,23 @@ export async function getAssistantStudentsReport(courseId?: string, filter: Stud
       }
     });
 
-    // Quiz solutions
-    let completedQuizzesCount = 0;
-    let passedQuizzesCount = 0;
-    const quizScores: Array<{ quizId: string; score: number; passed: boolean }> = [];
+    // Homework solutions
+    let completedHomeworkCount = 0;
+    let passedHomeworkCount = 0;
+    const homeworkScores: Array<{ quizId: string; score: number; passed: boolean }> = [];
 
     courseQuizzes.forEach((q: any) => {
       const atts = attemptsMap.get(`${student?.id}_${q.id}`) || [];
       if (atts.length > 0) {
-        completedQuizzesCount++;
+        completedHomeworkCount++;
         const bestScore = Math.max(...atts.map((a: any) => Number(a.score)));
         const passed = bestScore >= q.passing_score;
-        if (passed) passedQuizzesCount++;
-        quizScores.push({ quizId: q.id, score: bestScore, passed });
+        if (passed) passedHomeworkCount++;
+        homeworkScores.push({ quizId: q.id, score: bestScore, passed });
       }
     });
 
-    // Homeworks (represented by lesson PDF views/downloads)
-    const hasHomeworkLessons = courseLessons.filter((l: any) => l.pdf_url && l.pdf_url.trim() !== "");
-    const submittedHomework = hasHomeworkLessons.length > 0 && watchedLessonsCount > 0;
+    const hasSubmittedHomework = completedHomeworkCount > 0;
 
     // Completion Progress %
     const totalItems = Math.max(1, courseLessons.length);
@@ -357,12 +343,10 @@ export async function getAssistantStudentsReport(courseId?: string, filter: Stud
       unwatchedLessonsTitles,
       totalViewsCount,
       hasWatchedVideo: watchedLessonsCount > 0,
-      hasCompletedQuiz: completedQuizzesCount > 0,
-      hasPassedAllQuizzes: courseQuizzes.length > 0 && passedQuizzesCount === courseQuizzes.length,
-      completedQuizzesCount,
-      totalQuizzesCount: courseQuizzes.length,
-      quizScores,
-      submittedHomework,
+      hasSubmittedHomework,
+      completedHomeworkCount,
+      totalHomeworkCount: courseQuizzes.length,
+      homeworkScores,
     };
   });
 
@@ -370,10 +354,8 @@ export async function getAssistantStudentsReport(courseId?: string, filter: Stud
   return reportList.filter((item: any) => {
     if (filter === "watched_video") return item.hasWatchedVideo;
     if (filter === "not_watched_video") return !item.hasWatchedVideo;
-    if (filter === "completed_quiz") return item.hasCompletedQuiz;
-    if (filter === "not_completed_quiz") return !item.hasCompletedQuiz;
-    if (filter === "submitted_homework") return item.submittedHomework;
-    if (filter === "not_submitted_homework") return !item.submittedHomework;
+    if (filter === "submitted_homework") return item.hasSubmittedHomework;
+    if (filter === "not_submitted_homework") return !item.hasSubmittedHomework;
     return true; // 'all'
   });
 }
@@ -419,7 +401,7 @@ export async function getAssistantContentReview(courseId?: string) {
 
   if (lErr) throw lErr;
 
-  // Fetch quizzes for these lessons
+  // Fetch quizzes (which are homeworks) for these lessons
   const { data: quizzes } = await supabase
     .from("quizzes")
     .select("id, lesson_id, type, is_active, title, passing_score")
@@ -435,9 +417,8 @@ export async function getAssistantContentReview(courseId?: string) {
   return (lessons || []).map((l: any) => {
     const hasVideo = Boolean(l.video_url && l.video_url.trim() !== "");
     const quiz = quizLessonMap.get(l.id);
-    const hasQuiz = Boolean(quiz && quiz.is_active);
-    const hasHomework = Boolean(l.pdf_url && l.pdf_url.trim() !== "");
-    const isComplete = hasVideo && hasQuiz && hasHomework;
+    const hasHomework = Boolean(quiz && quiz.is_active) || Boolean(l.pdf_url && l.pdf_url.trim() !== "");
+    const isComplete = hasVideo && hasHomework;
 
     return {
       lessonId: l.id,
@@ -447,10 +428,9 @@ export async function getAssistantContentReview(courseId?: string) {
       courseTitle: l.courses?.title || "-",
       publishAt: l.publish_at,
       hasVideo,
-      hasQuiz,
       hasHomework,
-      quizDetails: quiz || null,
-      homeworkUrl: l.pdf_url || null,
+      homeworkDetails: quiz || null,
+      homeworkPdf: l.pdf_url || null,
       isComplete,
     };
   });

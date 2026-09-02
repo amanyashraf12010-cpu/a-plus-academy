@@ -178,27 +178,15 @@ function AssistantLessonsContent() {
                         </span>
                       )}
 
-                      {hasQuiz ? (
+                      {hasQuiz || hasHomework ? (
                         <span className="bg-purple-50 text-[#7D79F1] px-2.5 py-0.5 rounded-lg border border-purple-200 flex items-center gap-1">
                           <CheckCircle2 size={12} />
-                          الكويز: مضاف
+                          الواجب: مضاف
                         </span>
                       ) : (
                         <span className="bg-gray-100 text-gray-500 px-2.5 py-0.5 rounded-lg border border-gray-200 flex items-center gap-1">
                           <AlertCircle size={12} />
-                          الكويز: غير مضاف
-                        </span>
-                      )}
-
-                      {hasHomework ? (
-                        <span className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-lg border border-blue-200 flex items-center gap-1">
-                          <CheckCircle2 size={12} />
-                          الواجب: مرفوع
-                        </span>
-                      ) : (
-                        <span className="bg-gray-100 text-gray-500 px-2.5 py-0.5 rounded-lg border border-gray-200 flex items-center gap-1">
-                          <AlertCircle size={12} />
-                          الواجب: غير مرفوع
+                          الواجب: غير مضاف
                         </span>
                       )}
 
@@ -216,18 +204,18 @@ function AssistantLessonsContent() {
                 <div className="flex items-center gap-2.5 shrink-0 self-end md:self-center">
                   <Link
                     href={`/assistant/courses/exams?courseId=${courseId}&lessonId=${lesson.id}`}
-                    className="py-2 px-3 bg-purple-50 hover:bg-purple-100 text-[#7D79F1] rounded-xl font-bold text-xs transition flex items-center gap-1.5 border border-purple-100"
+                    className="py-2.5 px-4 bg-[#7D79F1] hover:bg-[#655EF0] text-white rounded-xl font-bold text-xs transition flex items-center gap-1.5 shadow-sm"
                   >
-                    <FileQuestion size={14} />
-                    {hasQuiz ? "تعديل الكويز" : "إضافة كويز"}
+                    <FileText size={14} />
+                    {hasQuiz ? "تعديل أسئلة الواجب" : "إضافة واجب للدرس"}
                   </Link>
 
                   <button
                     onClick={() => openHwModal(lesson)}
-                    className="py-2 px-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-bold text-xs transition flex items-center gap-1.5 border border-blue-100 cursor-pointer"
+                    className="py-2 px-3 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-bold text-xs transition flex items-center gap-1.5 border border-gray-200 cursor-pointer"
+                    title="إرفاق مذكرة أو ملف PDF للشرح"
                   >
-                    <FileText size={14} />
-                    {hasHomework ? "تعديل الواجب" : "إضافة واجب"}
+                    {hasHomework ? "تعديل المذكرة" : "إرفاق مذكرة"}
                   </button>
                 </div>
 

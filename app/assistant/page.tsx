@@ -93,39 +93,21 @@ export default function AssistantDashboardPage() {
       link: "/assistant/content-review",
     },
     {
-      title: "الكويزات المضافة",
-      count: stats?.addedQuizzes || 0,
-      icon: FileQuestion,
-      color: "from-violet-500 to-purple-600",
-      bgColor: "bg-violet-50",
-      textColor: "text-violet-600",
-      link: "/assistant/quizzes",
-    },
-    {
-      title: "الكويزات الناقصة",
-      count: stats?.missingQuizzes || 0,
-      icon: AlertCircle,
-      color: "from-rose-500 to-red-600",
-      bgColor: "bg-rose-50",
-      textColor: "text-rose-600",
-      link: "/assistant/content-review",
-    },
-    {
       title: "الواجبات المضافة",
       count: stats?.addedHomeworks || 0,
       icon: FileText,
-      color: "from-sky-500 to-blue-600",
-      bgColor: "bg-sky-50",
-      textColor: "text-sky-600",
+      color: "from-violet-500 to-purple-600",
+      bgColor: "bg-violet-50",
+      textColor: "text-violet-600",
       link: "/assistant/homeworks",
     },
     {
       title: "الواجبات الناقصة",
       count: stats?.missingHomeworks || 0,
       icon: AlertCircle,
-      color: "from-amber-500 to-yellow-600",
-      bgColor: "bg-amber-50",
-      textColor: "text-amber-600",
+      color: "from-rose-500 to-red-600",
+      bgColor: "bg-rose-50",
+      textColor: "text-rose-600",
       link: "/assistant/content-review",
     },
   ];
@@ -168,7 +150,7 @@ export default function AssistantDashboardPage() {
         <div className="absolute -left-10 -bottom-10 w-48 h-48 bg-white/5 rounded-full blur-2xl pointer-events-none" />
       </div>
 
-      {/* 8 Metric KPI Cards Grid */}
+      {/* 6 Metric KPI Cards Grid */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-extrabold text-[#2D2B7A]">
@@ -177,7 +159,7 @@ export default function AssistantDashboardPage() {
           <span className="text-xs text-gray-400 font-bold">محدث لحظياً</span>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {statCards.map((card, idx) => {
             const Icon = card.icon;
             return (

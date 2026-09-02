@@ -161,21 +161,12 @@ export default function AssistantLayout({
           </Link>
 
           <Link 
-            href="/assistant/quizzes" 
-            onClick={() => setMobileMenuOpen(false)}
-            className={getLinkClass("/assistant/quizzes")}
-          >
-            <FileQuestion size={18} />
-            الكويزات والامتحانات
-          </Link>
-
-          <Link 
             href="/assistant/homeworks" 
             onClick={() => setMobileMenuOpen(false)}
             className={getLinkClass("/assistant/homeworks")}
           >
             <FileText size={18} />
-            الواجبات والمرفقات
+            الواجبات والامتحانات
           </Link>
 
           <Link 

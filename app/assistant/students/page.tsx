@@ -60,10 +60,8 @@ function AssistantStudentsContent() {
     { key: "all", label: "كل الطلاب" },
     { key: "watched_video", label: "شاهد الفيديو" },
     { key: "not_watched_video", label: "لم يشاهد الفيديو" },
-    { key: "completed_quiz", label: "أكمل الكويز" },
-    { key: "not_completed_quiz", label: "لم يكمل الكويز" },
-    { key: "submitted_homework", label: "سلّم الواجب" },
-    { key: "not_submitted_homework", label: "لم يسلّم الواجب" },
+    { key: "submitted_homework", label: "حل الواجب" },
+    { key: "not_submitted_homework", label: "لم يحل الواجب" },
   ];
 
   // Client-side text search (by student name or phone)
@@ -89,7 +87,7 @@ function AssistantStudentsContent() {
             متابعة أداء الطلاب
           </h1>
           <p className="text-gray-500 mt-1 text-sm font-semibold">
-            متابعة تفصيلية لنسبة إكمال الكورس ومشاهدات الفيديو، نتائج الكويزات، وحالة تسليم الواجبات
+            متابعة تفصيلية لنسبة إكمال الكورس ومشاهدات الفيديو وحالة حل الواجبات
           </p>
         </div>
       </div>
@@ -132,7 +130,7 @@ function AssistantStudentsContent() {
 
         </div>
 
-        {/* 7 Arabic Filter Buttons */}
+        {/* 5 Arabic Filter Buttons */}
         <div className="border-t pt-4">
           <label className="block text-xs font-bold text-gray-500 mb-2">فلاتر الطلاب المعتمدة:</label>
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
@@ -183,8 +181,7 @@ function AssistantStudentsContent() {
                   <th className="p-4">الكورس</th>
                   <th className="p-4 text-center">نسبة الإكمال</th>
                   <th className="p-4 text-center">مشاهدات الفيديو</th>
-                  <th className="p-4 text-center">الكويز</th>
-                  <th className="p-4 text-center">الواجب</th>
+                  <th className="p-4 text-center">حل الواجب</th>
                   <th className="p-4 text-center">تفاصيل</th>
                 </tr>
               </thead>
@@ -232,29 +229,15 @@ function AssistantStudentsContent() {
                         </td>
 
                         <td className="p-4 text-center">
-                          {item.hasCompletedQuiz ? (
+                          {item.hasSubmittedHomework ? (
                             <span className="bg-green-50 text-green-700 px-2.5 py-1 rounded-full text-[11px] font-bold border border-green-200 inline-flex items-center gap-1">
                               <CheckCircle2 size={12} />
-                              حل الكويز ({item.completedQuizzesCount} من {item.totalQuizzesCount})
-                            </span>
-                          ) : (
-                            <span className="bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full text-[11px] font-bold border border-gray-200 inline-flex items-center gap-1">
-                              <XCircle size={12} />
-                              لم يحل الكويز
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="p-4 text-center">
-                          {item.submittedHomework ? (
-                            <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-[11px] font-bold border border-blue-200 inline-flex items-center gap-1">
-                              <CheckCircle2 size={12} />
-                              سلّم الواجب
+                              حل الواجب ({item.completedHomeworkCount} من {item.totalHomeworkCount})
                             </span>
                           ) : (
                             <span className="bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full text-[11px] font-bold border border-amber-200 inline-flex items-center gap-1">
                               <XCircle size={12} />
-                              لم يسلّم
+                              لم يحل الواجب
                             </span>
                           )}
                         </td>

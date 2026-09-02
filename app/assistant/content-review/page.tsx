@@ -164,7 +164,6 @@ function AssistantContentReviewContent() {
                 <tr>
                   <th className="p-4">المحاضرة والكورس</th>
                   <th className="p-4 text-center">الفيديو</th>
-                  <th className="p-4 text-center">الكويز</th>
                   <th className="p-4 text-center">الواجب</th>
                   <th className="p-4 text-center">حالة الاكتمال</th>
                   <th className="p-4 text-center">إجراء سريع</th>
@@ -192,21 +191,6 @@ function AssistantContentReviewContent() {
                         <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200">
                           <CheckCircle2 size={13} />
                           تم رفعه ✅
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 px-3 py-1 rounded-full text-xs font-bold border border-rose-200">
-                          <XCircle size={13} />
-                          غير موجود ❌
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Quiz Status */}
-                    <td className="p-4 text-center">
-                      {item.hasQuiz ? (
-                        <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200">
-                          <CheckCircle2 size={13} />
-                          تمت إضافته ✅
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 px-3 py-1 rounded-full text-xs font-bold border border-rose-200">
@@ -247,32 +231,21 @@ function AssistantContentReviewContent() {
                     {/* Action Shortcut */}
                     <td className="p-4 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        {!item.hasQuiz && (
+                        {!item.hasHomework ? (
                           <Link
                             href={`/assistant/courses/exams?courseId=${item.courseId}&lessonId=${item.lessonId}`}
-                            className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-[#7D79F1] rounded-xl text-xs font-bold transition flex items-center gap-1 border border-purple-100"
-                            title="إضافة كويز لهذه المحاضرة"
+                            className="px-4 py-1.5 bg-[#7D79F1] hover:bg-[#655EF0] text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm"
+                            title="إضافة واجب لهذه المحاضرة"
                           >
                             <Plus size={12} />
-                            كويز
+                            إضافة واجب
                           </Link>
-                        )}
-                        {!item.hasHomework && (
+                        ) : (
                           <Link
-                            href={`/assistant/lesson?courseId=${item.courseId}`}
-                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl text-xs font-bold transition flex items-center gap-1 border border-blue-100"
-                            title="إرفاق واجب لهذه المحاضرة"
+                            href={`/assistant/courses/exams?courseId=${item.courseId}&lessonId=${item.lessonId}`}
+                            className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-[#7D79F1] rounded-xl text-xs font-bold transition border border-purple-100"
                           >
-                            <Plus size={12} />
-                            واجب
-                          </Link>
-                        )}
-                        {item.isComplete && (
-                          <Link
-                            href={`/assistant/lesson?courseId=${item.courseId}`}
-                            className="px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-xl text-xs font-bold transition border"
-                          >
-                            معاينة
+                            تعديل الواجب
                           </Link>
                         )}
                       </div>

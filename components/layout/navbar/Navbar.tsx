@@ -31,8 +31,8 @@ export default function Navbar() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Hide navbar on admin routes
-  if (pathname?.startsWith("/admin")) {
+  // Hide navbar on admin and assistant routes
+  if (pathname?.startsWith("/admin") || pathname?.startsWith("/assistant")) {
     return null;
   }
 
