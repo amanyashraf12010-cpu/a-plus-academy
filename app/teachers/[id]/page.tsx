@@ -102,10 +102,6 @@ export default async function Page({ params }: any) {
               </span>
 
               <span className="bg-white/20 px-3 py-1 rounded-full text-sm">
-                ⭐ 4.9
-              </span>
-
-              <span className="bg-white/20 px-3 py-1 rounded-full text-sm">
                 📚 كورسات متنوعة
               </span>
 

@@ -49,11 +49,6 @@ export default function CourseSummary({ course }: any) {
             </div>
 
             <div className="flex justify-between">
-              <span>⭐ التقييم</span>
-              <span>{course.rating}</span>
-            </div>
-
-            <div className="flex justify-between">
               <span>👨‍🎓 الطلاب</span>
               <span>{course.students}</span>
             </div>

@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Star, Users } from "lucide-react";
 
 interface CourseCardProps {
   course: {
@@ -8,7 +7,7 @@ interface CourseCardProps {
     title: string;
     teacher: string;
     image: string;
-    rating: number;
+    rating?: number;
     students: number;
     price: number;
     original_price?: number;
@@ -68,27 +67,6 @@ export default function CourseCard({ course, isSubscribed = false }: CourseCardP
         <div className="p-6 flex-1 flex flex-col justify-between">
 
           <div>
-            {/* Rating */}
-            <div className="flex items-center justify-between mb-5">
-
-              <div className="flex items-center gap-2 text-[#F59E0B]">
-
-                <Star size={18} fill="currentColor" />
-
-                <span className="font-semibold text-gray-700">
-                  {course.rating}
-                </span>
-
-              </div>
-
-              <div className="flex items-center gap-2 text-gray-500">
-
-                <Users size={18} />
-
-              </div>
-
-            </div>
-
             {/* Title */}
             <h3 className="text-xl font-bold text-[#02343F] leading-relaxed group-hover:text-[#7D79F1] transition min-h-[3.75rem] line-clamp-2">
               {course.title}

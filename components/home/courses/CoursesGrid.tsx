@@ -81,9 +81,7 @@ export default function CoursesGrid({ activeTab }: Props) {
   const filteredCourses =
     activeTab === "all"
       ? courses
-      : activeTab === "new"
-      ? [...courses].slice(0, 3) // Show first 3 new courses
-      : [...courses].sort((a, b) => b.students - a.students).slice(0, 3); // Sort by popular (most students)
+      : [...courses].slice(0, 3); // Show latest 3 courses for "new" tab
 
   if (loading) {
     return <p className="text-center text-gray-500 py-12 font-bold">جاري تحميل الكورسات...</p>;

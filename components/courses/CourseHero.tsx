@@ -28,10 +28,6 @@ export default function CourseHero({ course }: any) {
             </div>
 
             <div className="bg-white/20 px-4 py-2 rounded-xl">
-              ⭐ 4.9
-            </div>
-
-            <div className="bg-white/20 px-4 py-2 rounded-xl">
               📚 {course.lessons} درس
             </div>
 

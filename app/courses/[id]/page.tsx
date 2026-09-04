@@ -3,7 +3,6 @@ import CourseHero from "@/components/courses/CourseHero";
 import CourseInfo from "@/components/courses/CourseInfo";
 import CourseFeatures from "@/components/courses/CourseFeatures";
 import EnrollCard from "@/components/courses/EnrollCard";
-import RelatedCourses from "@/components/courses/RelatedCourses";
 import Link from "next/link";
 
 export default async function Page({ params }: any) {
@@ -50,63 +49,12 @@ export default async function Page({ params }: any) {
     image: dbCourse.image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600",
     price: dbCourse.price,
     original_price: dbCourse.original_price,
-    rating: 4.9,
     students: studentCount, // Real dynamic count
     lessons: dbCourse.video_count || 0,
     duration: dbCourse.duration || "غير محدد",
     grade: dbCourse.grade || "غير محدد",
     features
   };
-
-  // 4. Fetch Related Courses
-  let relatedCourses: any[] = [];
-  if (dbCourse.related_courses) {
-    const ids = dbCourse.related_courses.split(",").map((i: string) => i.trim()).filter(Boolean);
-    if (ids.length > 0) {
-      const { data: relData } = await supabase
-        .from("courses")
-        .select("*, teachers(name)")
-        .in("id", ids);
-      relatedCourses = relData || [];
-    }
-  }
-
-  if (relatedCourses.length === 0) {
-    // Fallback: Fetch other courses in the academy
-    const { data: relData } = await supabase
-      .from("courses")
-      .select("*, teachers(name)")
-      .neq("id", id)
-      .limit(3);
-    relatedCourses = relData || [];
-  }
-
-  // Fetch dynamic student counts for the related courses
-  const relIds = relatedCourses.map((c: any) => c.id);
-  const statsMap = new Map<string, number>();
-  if (relIds.length > 0) {
-    const { data: relStats } = await supabase
-      .from("course_stats")
-      .select("*")
-      .in("course_id", relIds);
-    (relStats || []).forEach((s: any) => {
-      statsMap.set(s.course_id, Number(s.student_count) || 0);
-    });
-  }
-
-  const mappedRelatedCourses = relatedCourses.map((c: any) => ({
-    id: c.id,
-    title: c.title,
-    teacher: c.teachers?.name || "مدرس الأكاديمية",
-    image: c.image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600",
-    price: c.price,
-    original_price: c.original_price,
-    rating: 4.9,
-    students: statsMap.get(c.id) || 0,
-    lessons: c.video_count || 0,
-    duration: c.duration || "غير محدد",
-    grade: c.grade || "غير محدد"
-  }));
 
   return (
     <div className="bg-[#F8F9FD] min-h-screen" dir="rtl">
@@ -121,7 +69,6 @@ export default async function Page({ params }: any) {
         <div className="lg:col-span-2 space-y-8">
           <CourseInfo course={course} />
           <CourseFeatures course={course} />
-          <RelatedCourses courses={mappedRelatedCourses} />
         </div>
 
         {/* Right Side */}

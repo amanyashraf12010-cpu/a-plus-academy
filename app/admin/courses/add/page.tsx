@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { addCourse, getTeachers, getCourses } from "@/lib/admin";
+import { addCourse, getTeachers } from "@/lib/admin";
 import { ArrowRight, BookOpen, User, DollarSign, Image as ImageIcon, FileText, Clock, GraduationCap } from "lucide-react";
 import Link from "next/link";
 
@@ -25,9 +25,7 @@ export default function AddCoursePage() {
   const [duration, setDuration] = useState("");
 
   // Optional fields states
-  const [coursesList, setCoursesList] = useState<any[]>([]);
   const [whatWillLearn, setWhatWillLearn] = useState("");
-  const [selectedRelatedCourses, setSelectedRelatedCourses] = useState<string[]>([]);
 
   useEffect(() => {
     async function loadInitData() {
@@ -37,9 +35,6 @@ export default function AddCoursePage() {
         if (teachersData.length > 0) {
           setTeacherId(teachersData[0].id);
         }
-
-        const coursesData = await getCourses();
-        setCoursesList(coursesData || []);
       } catch (error) {
         console.error("فشل تحميل البيانات الأساسية:", error);
       } finally {
@@ -75,7 +70,6 @@ export default function AddCoursePage() {
       duration: duration || "غير محدد",
       video_count: 0,
       what_will_learn: whatWillLearn.trim() || undefined,
-      related_courses: selectedRelatedCourses.join(",") || undefined
     };
 
     try {
@@ -286,33 +280,7 @@ export default function AddCoursePage() {
               />
             </div>
 
-            {/* Related Courses */}
-            {coursesList.length > 0 && (
-              <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-gray-500 mb-1.5 flex items-center gap-1.5">
-                  <BookOpen size={14} /> كورسات قد تعجبك (ترشيحات اختيارية تظهر بصفحة الكورس)
-                </label>
-                <div className="max-h-48 overflow-y-auto p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-2.5">
-                  {coursesList.map((c) => (
-                    <label key={c.id} className="flex items-center gap-2 text-sm text-[#2D2B7A] font-semibold cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={selectedRelatedCourses.includes(c.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedRelatedCourses([...selectedRelatedCourses, c.id]);
-                          } else {
-                            setSelectedRelatedCourses(selectedRelatedCourses.filter((id) => id !== c.id));
-                          }
-                        }}
-                        className="w-4 h-4 text-[#7D79F1] focus:ring-[#7D79F1]/20 border-gray-300 rounded cursor-pointer"
-                      />
-                      {c.title}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
+
 
           </div>
 

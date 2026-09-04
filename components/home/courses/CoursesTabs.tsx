@@ -7,7 +7,6 @@ interface CoursesTabsProps {
 
 const tabs = [
   { id: "all", label: "كل الكورسات" },
-  { id: "popular", label: "الأكثر طلبًا" },
   { id: "new", label: "أحدث الكورسات" },
 ];
 
