@@ -4,8 +4,9 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getLessons, addLesson, updateLesson, deleteLesson } from "@/lib/admin";
 import { createClient } from "@/utils/supabase/client";
-import { Plus, Edit2, Trash2, ArrowRight, X, Play, MoveUp, MoveDown, Clock } from "lucide-react";
+import { Plus, Edit2, Trash2, ArrowRight, X, Play, MoveUp, MoveDown, Clock, CheckCircle2, AlertCircle, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import VideoPreviewField from "@/components/admin/VideoPreviewField";
 
 function LessonsContent() {
   const router = useRouter();
@@ -22,6 +23,7 @@ function LessonsContent() {
   // Form states
   const [title, setTitle] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
+  const [isVideoVerified, setIsVideoVerified] = useState(false);
   const [order, setOrder] = useState("0");
   const [pdfUrl, setPdfUrl] = useState("");
   const [uploadingPdf, setUploadingPdf] = useState(false);
@@ -84,6 +86,7 @@ function LessonsContent() {
     setSelectedLessonId(null);
     setTitle("");
     setVideoUrl("");
+    setIsVideoVerified(false);
     setPdfUrl("");
     setPublishAt("");
     setOrder(String(lessons.length + 1));
@@ -95,6 +98,7 @@ function LessonsContent() {
     setSelectedLessonId(lesson.id);
     setTitle(lesson.title);
     setVideoUrl(lesson.video_url);
+    setIsVideoVerified(Boolean(lesson.video_verified || (lesson.video_url && lesson.video_url.trim() !== "")));
     setPdfUrl(lesson.pdf_url || "");
     setPublishAt(lesson.publish_at ? formatDateTimeLocal(lesson.publish_at) : "");
     setOrder(String(lesson.order));
@@ -108,13 +112,20 @@ function LessonsContent() {
       return;
     }
 
+    // Video verification guard
+    if (!isVideoVerified) {
+      alert("⚠️ يرجى معاينة الفيديو والتأكد من أنه الفيديو الصحيح قبل الحفظ بالضغط على زر «✅ الفيديو صحيح — تأكيد».");
+      return;
+    }
+
     const payload = {
       course_id: courseId!,
       title,
       video_url: videoUrl,
       order: parseInt(order) || 0,
       pdf_url: pdfUrl.trim() || undefined,
-      publish_at: publishAt ? new Date(publishAt).toISOString() : null
+      publish_at: publishAt ? new Date(publishAt).toISOString() : null,
+      video_verified: isVideoVerified
     };
 
     try {
@@ -127,16 +138,17 @@ function LessonsContent() {
           .update({ video_count: lessons.length + 1 })
           .eq("id", courseId);
 
-        alert("تم إضافة الدرس بنجاح.");
+        alert("تم إضافة الدرس وتأكيد الفيديو بنجاح 🎉");
       } else if (modalMode === "edit" && selectedLessonId) {
         await updateLesson(selectedLessonId, {
           title,
           video_url: videoUrl,
           order: parseInt(order) || 0,
           pdf_url: pdfUrl.trim() || undefined,
-          publish_at: publishAt ? new Date(publishAt).toISOString() : null
+          publish_at: publishAt ? new Date(publishAt).toISOString() : null,
+          video_verified: isVideoVerified
         });
-        alert("تم تحديث الدرس بنجاح.");
+        alert("تم تحديث الدرس وتأكيد الفيديو بنجاح 🎉");
       }
       setShowModal(false);
       loadData();
@@ -167,7 +179,7 @@ function LessonsContent() {
     <div className="space-y-8" dir="rtl">
       
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Link
             href="/admin/courses"
@@ -176,26 +188,30 @@ function LessonsContent() {
             <ArrowRight size={20} />
           </Link>
           <div>
-            <h1 className="text-3xl font-extrabold text-[#2D2B7A]">📖 إدارة دروس الكورس</h1>
-            <p className="text-gray-500 mt-1">كورس: <span className="font-bold text-[#7D79F1]">{courseTitle}</span></p>
+            <h1 className="text-3xl font-extrabold text-[#2D2B7A]">
+              إدارة دروس: <span className="text-[#7D79F1]">{courseTitle}</span>
+            </h1>
+            <p className="text-gray-500 mt-1 text-sm">
+              إضافة وتعديل دروس الكورس وروابط الفيديوهات والمذكرات المرفقة
+            </p>
           </div>
         </div>
 
         <button
           onClick={openAddModal}
-          className="bg-[#7D79F1] hover:bg-[#655EF0] text-white px-5 py-3 rounded-xl transition flex items-center gap-2 font-bold shadow-md shadow-[#7D79F1]/20"
+          className="flex items-center gap-2 bg-[#7D79F1] hover:bg-[#655EF0] text-white px-5 py-3 rounded-xl font-bold transition shadow-sm w-fit"
         >
-          <Plus size={20} />
+          <Plus size={18} />
           إضافة درس جديد
         </button>
       </div>
 
-      {/* Lessons List */}
+      {/* List */}
       {loading ? (
         <div className="text-center py-12 text-gray-500 font-bold">جاري تحميل الدروس...</div>
       ) : lessons.length === 0 ? (
-        <div className="text-center py-12 text-gray-400 bg-white border rounded-2xl p-8">
-          لا توجد دروس مضافة لهذا الكورس حالياً. اضغط "إضافة درس جديد" للبدء.
+        <div className="bg-white border rounded-2xl p-12 text-center text-gray-400">
+          لم تتم إضافة أي دروس لهذا الكورس بعد.
         </div>
       ) : (
         <div className="bg-white border rounded-2xl shadow-sm overflow-hidden divide-y">
@@ -212,6 +228,20 @@ function LessonsContent() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-bold text-[#2D2B7A] text-lg truncate">{lesson.title}</h3>
+                    
+                    {/* Video Verification Badge */}
+                    {lesson.video_verified ? (
+                      <span className="bg-emerald-50 text-emerald-700 text-[10px] px-2 py-0.5 rounded-lg border border-emerald-200 font-bold flex items-center gap-1">
+                        <CheckCircle2 size={11} className="text-emerald-600" />
+                        فيديو مؤكد ✅
+                      </span>
+                    ) : (
+                      <span className="bg-amber-50 text-amber-700 text-[10px] px-2 py-0.5 rounded-lg border border-amber-200 font-bold flex items-center gap-1">
+                        <AlertCircle size={11} className="text-amber-600" />
+                        يحتاج مراجعة ⚠️
+                      </span>
+                    )}
+
                     {lesson.publish_at && new Date(lesson.publish_at) > new Date() && (
                       <span className="bg-amber-50 text-amber-600 text-[10px] px-2 py-0.5 rounded-lg border border-amber-200 font-bold flex items-center gap-1">
                         <Clock size={10} />
@@ -235,7 +265,7 @@ function LessonsContent() {
                 <button
                   onClick={() => openEditModal(lesson)}
                   className="p-2.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
-                  title="تعديل الدرس"
+                  title="تعديل الدرس ومعاينة الفيديو"
                 >
                   <Edit2 size={16} />
                 </button>
@@ -252,14 +282,15 @@ function LessonsContent() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modal with Video Preview and Confirmation */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]">
+            
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b">
-              <h2 className="text-xl font-extrabold text-[#2D2B7A]">
-                {modalMode === "add" ? "➕ إضافة درس جديد" : "📝 تعديل الدرس"}
+            <div className="flex items-center justify-between px-6 py-4 border-b shrink-0 bg-[#F8F9FD]">
+              <h2 className="text-lg font-extrabold text-[#2D2B7A] flex items-center gap-2">
+                {modalMode === "add" ? "➕ إضافة درس جديد ومعاينة الفيديو" : "📝 تعديل الدرس ومراجعة الفيديو"}
               </h2>
               <button
                 onClick={() => setShowModal(false)}
@@ -269,41 +300,36 @@ function LessonsContent() {
               </button>
             </div>
 
-            {/* Modal Form */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            {/* Modal Form Scrollable */}
+            <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
               
               {/* Title */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1.5">عنوان الدرس *</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">عنوان الدرس *</label>
                 <input
                   type="text"
                   required
                   placeholder="مثال: الدرس الأول - مقدمة عامة"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium text-sm"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
 
-              {/* Video URL */}
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1.5">رابط الفيديو أو مسار الملف *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="رابط يوتيوب/فيميو أو مسار في Supabase Storage"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium"
+              {/* Video URL with Integrated Preview & Confirmation */}
+              <div className="p-4 bg-gray-50/70 border border-gray-200/80 rounded-2xl">
+                <VideoPreviewField
                   value={videoUrl}
-                  onChange={(e) => setVideoUrl(e.target.value)}
+                  onChange={setVideoUrl}
+                  isVerified={isVideoVerified}
+                  onVerifiedChange={setIsVideoVerified}
+                  initialVerified={modalMode === "edit"}
                 />
-                <p className="text-[10px] text-gray-400 mt-1">
-                  اكتب رابط فيديو كامل (يبدأ بـ http) للاستضافة الخارجية، أو مسار الملف لـ Supabase Private bucket.
-                </p>
               </div>
 
               {/* PDF Attachment URL */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1.5 flex justify-between items-center">
+                <label className="block text-xs font-bold text-gray-700 mb-1.5 flex justify-between items-center">
                   <span>رابط ملف PDF أو المرفق (اختياري)</span>
                   {uploadingPdf && <span className="text-[10px] text-[#7D79F1] animate-pulse">جاري الرفع...</span>}
                 </label>
@@ -326,7 +352,6 @@ function LessonsContent() {
                         if (!file) return;
                         try {
                           setUploadingPdf(true);
-                          // Upload to teachers-images bucket
                           const fileExt = file.name.split(".").pop()?.toLowerCase() || "pdf";
                           const cleanFileName = `file_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
                           
@@ -336,7 +361,6 @@ function LessonsContent() {
 
                           if (error) throw error;
                           
-                          // Get public URL
                           const { data: { publicUrl } } = supabase.storage
                             .from("teachers-images")
                             .getPublicUrl(data.path);
@@ -356,12 +380,12 @@ function LessonsContent() {
 
               {/* Order */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1.5">ترتيب الدرس الكلي *</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">ترتيب الدرس الكلي *</label>
                 <input
                   type="number"
                   required
                   min="1"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium text-sm"
                   value={order}
                   onChange={(e) => setOrder(e.target.value)}
                 />
@@ -369,7 +393,7 @@ function LessonsContent() {
 
               {/* Publish At (Scheduling) */}
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1.5">تاريخ ووقت النشر تلقائياً (اختياري)</label>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">تاريخ ووقت النشر تلقائياً (اختياري)</label>
                 <input
                   type="datetime-local"
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium text-sm"
@@ -377,17 +401,22 @@ function LessonsContent() {
                   onChange={(e) => setPublishAt(e.target.value)}
                 />
                 <p className="text-[10px] text-gray-400 mt-1">
-                  اتركها فارغة لنشر المحاضرة فوراً. حدد تاريخاً ووختاً في المستقبل لجدولتها.
+                  اتركها فارغة لنشر المحاضرة فوراً. حدد تاريخاً ووقتاً في المستقبل لجدولتها.
                 </p>
               </div>
 
               {/* Submit Buttons */}
-              <div className="flex gap-3 pt-4 border-t">
+              <div className="flex gap-3 pt-4 border-t shrink-0">
                 <button
                   type="submit"
-                  className="flex-1 py-3 px-4 bg-[#7D79F1] hover:bg-[#655EF0] text-white rounded-xl font-bold transition text-sm shadow-md"
+                  className={`flex-1 py-3 px-4 rounded-xl font-bold transition text-sm shadow-md flex items-center justify-center gap-2 ${
+                    !isVideoVerified && videoUrl.trim() !== ""
+                      ? "bg-gray-200 text-gray-500 cursor-not-allowed border border-gray-300"
+                      : "bg-[#7D79F1] hover:bg-[#655EF0] text-white cursor-pointer"
+                  }`}
                 >
-                  حفظ الدرس
+                  <ShieldCheck size={16} />
+                  <span>{isVideoVerified ? "حفظ الدرس (مؤكد ✅)" : "حفظ الدرس"}</span>
                 </button>
                 <button
                   type="button"

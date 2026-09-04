@@ -63,8 +63,10 @@ create table if not exists public.lessons (
   id uuid default gen_random_uuid() primary key,
   course_id uuid references public.courses(id) on delete cascade,
   title text not null,
-  video_url text not null, -- Path inside the private storage bucket
+  video_url text not null, -- Path inside the private storage bucket or external embed URL
   "order" integer default 0,
+  publish_at timestamp with time zone,
+  video_verified boolean default false,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
