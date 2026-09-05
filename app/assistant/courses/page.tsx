@@ -5,14 +5,12 @@ import Link from "next/link";
 import { getAssistantCourses, getAssistantProfile } from "@/lib/assistant";
 import { 
   BookOpen, 
-  Video, 
-  FileQuestion, 
-  FileText, 
-  ArrowRight, 
   Layers, 
   GraduationCap, 
   Loader2,
-  CheckCircle2
+  ArrowRight,
+  Eye,
+  Video
 } from "lucide-react";
 
 export default function AssistantCoursesPage() {
@@ -40,18 +38,22 @@ export default function AssistantCoursesPage() {
   }, []);
 
   return (
-    <div className="space-y-8" dir="rtl">
+    <div className="space-y-8 max-w-6xl" dir="rtl">
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-[#2D2B7A] flex items-center gap-3">
             <BookOpen className="text-[#7D79F1]" size={32} />
-            كورسات الأستاذ {teacher?.name || ""}
+            الكورسات {teacher?.name ? `(الأستاذ: ${teacher.name})` : ""}
           </h1>
           <p className="text-gray-500 mt-1 text-sm font-semibold">
-            مشاهدة الكورسات والمحاضرات وإدارة الكويزات والواجبات المرتبطة بها
+            استعراض جميع كورسات المدرس المسؤول ومعاينة الفيديوهات والتأكد من تشغيلها
           </p>
+        </div>
+
+        <div className="bg-purple-50 text-[#7D79F1] px-4 py-2 rounded-2xl border border-purple-100 font-extrabold text-xs self-start sm:self-center">
+          إجمالي الكورسات: {courses.length}
         </div>
       </div>
 
@@ -68,14 +70,16 @@ export default function AssistantCoursesPage() {
           </div>
           <h3 className="text-xl font-bold text-[#2D2B7A]">لا توجد كورسات مضافة لهذا المدرس حالياً</h3>
           <p className="text-gray-400 text-sm max-w-md mx-auto">
-            عندما يقوم المدير بإضافة كورسات للأستاذ {teacher?.name || ""} ستظهر هنا تلقائياً لتتمكني من إدارة واجباتها وكويزاتها.
+            عندما يقوم المدير بإضافة كورسات للأستاذ {teacher?.name || ""} ستظهر هنا تلقائياً لتتمكني من معاينة المحاضرات والفيديوهات.
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course) => {
             const lessonsCount = course.lessons?.length || 0;
-            const quizzesCount = course.quizzes?.length || 0;
+            const uploadedVideosCount = (course.lessons || []).filter(
+              (l: any) => Boolean(l.video_url && l.video_url.trim() !== "")
+            ).length;
 
             return (
               <div
@@ -111,37 +115,21 @@ export default function AssistantCoursesPage() {
                       <Layers size={13} />
                       {lessonsCount} محاضرات
                     </span>
-                    <span className="bg-blue-50 text-blue-600 px-2.5 py-1 rounded-xl border border-blue-100 flex items-center gap-1">
-                      <FileQuestion size={13} />
-                      {quizzesCount} كويزات
+                    <span className="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-xl border border-emerald-100 flex items-center gap-1">
+                      <Video size={13} />
+                      {uploadedVideosCount} فيديو مرفوع
                     </span>
                   </div>
 
-                  {/* Actions Grid */}
-                  <div className="pt-4 border-t space-y-2">
+                  {/* Action Button */}
+                  <div className="pt-4 border-t">
                     <Link
-                      href={`/assistant/lesson?courseId=${course.id}`}
-                      className="w-full py-2.5 bg-[#7D79F1] hover:bg-[#655EF0] text-white rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
+                      href={`/assistant/courses/${course.id}`}
+                      className="w-full py-3 bg-[#7D79F1] hover:bg-[#655EF0] text-white rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 shadow-sm"
                     >
-                      <Layers size={14} />
-                      عرض المحاضرات ومحتواها
+                      <Eye size={15} />
+                      تفاصيل الكورس والمحاضرات
                     </Link>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <Link
-                        href={`/assistant/courses/exams?courseId=${course.id}`}
-                        className="py-2.5 bg-purple-50 hover:bg-purple-100 text-[#7D79F1] rounded-xl font-bold text-xs transition text-center flex items-center justify-center gap-1"
-                      >
-                        <FileQuestion size={13} />
-                        الامتحان الشامل
-                      </Link>
-                      <Link
-                        href={`/assistant/students?courseId=${course.id}`}
-                        className="py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-bold text-xs transition text-center flex items-center justify-center gap-1"
-                      >
-                        طلاب الكورس
-                      </Link>
-                    </div>
                   </div>
 
                 </div>

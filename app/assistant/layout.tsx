@@ -7,9 +7,6 @@ import {
   LayoutDashboard,
   BookOpen,
   Users,
-  FileQuestion,
-  FileText,
-  CheckSquare,
   LogOut,
   GraduationCap,
   Loader2,
@@ -143,39 +140,21 @@ export default function AssistantLayout({
           </Link>
 
           <Link 
+            href="/assistant/students" 
+            onClick={() => setMobileMenuOpen(false)}
+            className={getLinkClass("/assistant/students")}
+          >
+            <Users size={18} />
+            الطلاب
+          </Link>
+
+          <Link 
             href="/assistant/courses" 
             onClick={() => setMobileMenuOpen(false)}
             className={getLinkClass("/assistant/courses")}
           >
             <BookOpen size={18} />
             الكورسات
-          </Link>
-
-          <Link 
-            href="/assistant/students" 
-            onClick={() => setMobileMenuOpen(false)}
-            className={getLinkClass("/assistant/students")}
-          >
-            <Users size={18} />
-            متابعة الطلاب
-          </Link>
-
-          <Link 
-            href="/assistant/homeworks" 
-            onClick={() => setMobileMenuOpen(false)}
-            className={getLinkClass("/assistant/homeworks")}
-          >
-            <FileText size={18} />
-            الواجبات والامتحانات
-          </Link>
-
-          <Link 
-            href="/assistant/content-review" 
-            onClick={() => setMobileMenuOpen(false)}
-            className={getLinkClass("/assistant/content-review")}
-          >
-            <CheckSquare size={18} />
-            مراجعة المحتوى
           </Link>
 
         </nav>

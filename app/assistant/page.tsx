@@ -3,25 +3,21 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { 
-  getAssistantDashboardStats, 
+  getAssistantHomeStats, 
   getAssistantProfile 
 } from "@/lib/assistant";
 import { 
   BookOpen, 
   Users, 
-  Video, 
-  AlertCircle, 
-  FileQuestion, 
-  FileText, 
   ArrowRight,
-  CheckCircle2,
   GraduationCap,
   Sparkles,
-  Loader2
+  Loader2,
+  ShieldCheck
 } from "lucide-react";
 
 export default function AssistantDashboardPage() {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<{ coursesCount: number; studentsCount: number } | null>(null);
   const [assistantInfo, setAssistantInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -30,13 +26,13 @@ export default function AssistantDashboardPage() {
       try {
         setLoading(true);
         const [statsData, profileData] = await Promise.all([
-          getAssistantDashboardStats(),
+          getAssistantHomeStats(),
           getAssistantProfile(),
         ]);
         setStats(statsData);
         setAssistantInfo(profileData);
       } catch (err: any) {
-        console.error("فشل تحميل إحصائيات المساعدة:", err.message);
+        console.error("فشل تحميل بيانات المساعدة:", err.message);
       } finally {
         setLoading(false);
       }
@@ -53,74 +49,18 @@ export default function AssistantDashboardPage() {
   }
 
   const teacherName = assistantInfo?.teacher?.name || "المدرس المسؤول";
+  const teacherSubject = assistantInfo?.teacher?.subject || "";
   const assistantName = assistantInfo?.profile?.full_name || "المساعدة";
 
-  const statCards = [
-    {
-      title: "كورساتي",
-      count: stats?.coursesCount || 0,
-      icon: BookOpen,
-      color: "from-purple-500 to-indigo-600",
-      bgColor: "bg-purple-50",
-      textColor: "text-[#7D79F1]",
-      link: "/assistant/courses",
-    },
-    {
-      title: "عدد الطلاب",
-      count: stats?.studentsCount || 0,
-      icon: Users,
-      color: "from-blue-500 to-cyan-600",
-      bgColor: "bg-blue-50",
-      textColor: "text-blue-600",
-      link: "/assistant/students",
-    },
-    {
-      title: "الفيديوهات المرفوعة",
-      count: stats?.uploadedVideos || 0,
-      icon: Video,
-      color: "from-emerald-500 to-teal-600",
-      bgColor: "bg-emerald-50",
-      textColor: "text-emerald-600",
-      link: "/assistant/content-review",
-    },
-    {
-      title: "الفيديوهات الناقصة",
-      count: stats?.missingVideos || 0,
-      icon: AlertCircle,
-      color: "from-amber-500 to-orange-600",
-      bgColor: "bg-amber-50",
-      textColor: "text-amber-600",
-      link: "/assistant/content-review",
-    },
-    {
-      title: "الواجبات المضافة",
-      count: stats?.addedHomeworks || 0,
-      icon: FileText,
-      color: "from-violet-500 to-purple-600",
-      bgColor: "bg-violet-50",
-      textColor: "text-violet-600",
-      link: "/assistant/homeworks",
-    },
-    {
-      title: "الواجبات الناقصة",
-      count: stats?.missingHomeworks || 0,
-      icon: AlertCircle,
-      color: "from-rose-500 to-red-600",
-      bgColor: "bg-rose-50",
-      textColor: "text-rose-600",
-      link: "/assistant/content-review",
-    },
-  ];
-
   return (
-    <div className="space-y-8" dir="rtl">
+    <div className="space-y-8 max-w-6xl" dir="rtl">
       
       {/* Welcome Hero Banner */}
       <div className="bg-gradient-to-r from-[#2D2B7A] via-[#4A45A8] to-[#7D79F1] rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-[#7D79F1]/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
         <div className="space-y-2 relative z-10">
           <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold border border-white/20">
             <Sparkles size={14} className="text-yellow-300" />
-            <span>مرحباً بكِ في لوحة التحكم</span>
+            <span>لوحة تحكم مساعدة المدرس</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-black">
             أهلاً بكِ، {assistantName} 👋
@@ -128,21 +68,22 @@ export default function AssistantDashboardPage() {
           <p className="text-purple-100 text-sm font-medium flex items-center gap-1.5">
             <GraduationCap size={16} />
             أنتِ مساعدة معتمدة للأستاذ: <span className="font-extrabold text-white underline decoration-yellow-400">{teacherName}</span>
+            {teacherSubject && <span className="text-xs text-purple-200">({teacherSubject})</span>}
           </p>
         </div>
 
         <div className="flex flex-wrap gap-3 relative z-10">
           <Link
-            href="/assistant/content-review"
+            href="/assistant/students"
             className="px-5 py-3 bg-white text-[#2D2B7A] rounded-2xl font-bold text-xs hover:bg-gray-50 transition shadow"
           >
-            📋 مراجعة المحتوى الناقص
+            👥 عرض الطلاب
           </Link>
           <Link
-            href="/assistant/students"
+            href="/assistant/courses"
             className="px-5 py-3 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-bold text-xs border border-white/20 transition backdrop-blur-sm"
           >
-            👥 متابعة الطلاب
+            📚 استعراض الكورسات
           </Link>
         </div>
 
@@ -150,107 +91,100 @@ export default function AssistantDashboardPage() {
         <div className="absolute -left-10 -bottom-10 w-48 h-48 bg-white/5 rounded-full blur-2xl pointer-events-none" />
       </div>
 
-      {/* 6 Metric KPI Cards Grid */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-extrabold text-[#2D2B7A]">
-            📊 ملخص وإحصائيات العمل
-          </h2>
-          <span className="text-xs text-gray-400 font-bold">محدث لحظياً</span>
-        </div>
+      {/* Simple Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        
+        {/* Card 1: Courses Count */}
+        <Link
+          href="/assistant/courses"
+          className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md hover:border-[#7D79F1]/40 transition group flex items-center justify-between"
+        >
+          <div className="space-y-1">
+            <span className="text-xs md:text-sm font-bold text-gray-500">
+              الكورسات المتاحة للأستاذ {teacherName}
+            </span>
+            <h3 className="text-3xl md:text-4xl font-black text-[#2D2B7A]">
+              {stats?.coursesCount || 0}
+            </h3>
+            <span className="text-xs text-[#7D79F1] font-bold inline-flex items-center gap-1 mt-1 group-hover:underline">
+              استعراض المحاضرات والفيديوهات
+              <ArrowRight size={14} />
+            </span>
+          </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {statCards.map((card, idx) => {
-            const Icon = card.icon;
-            return (
-              <Link
-                key={idx}
-                href={card.link}
-                className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-[#7D79F1]/40 transition group flex flex-col justify-between"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs md:text-sm font-bold text-gray-600">
-                    {card.title}
-                  </span>
-                  <div className={`w-10 h-10 rounded-2xl ${card.bgColor} ${card.textColor} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
-                    <Icon size={20} />
-                  </div>
-                </div>
+          <div className="w-14 h-14 rounded-2xl bg-purple-50 text-[#7D79F1] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+            <BookOpen size={28} />
+          </div>
+        </Link>
 
-                <div>
-                  <h3 className="text-2xl md:text-3xl font-black text-[#2D2B7A]">
-                    {card.count}
-                  </h3>
-                  <span className="text-[11px] text-[#7D79F1] font-bold inline-flex items-center gap-1 mt-1 group-hover:underline">
-                    عرض التفاصيل
-                    <ArrowRight size={12} />
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+        {/* Card 2: Enrolled Students Count */}
+        <Link
+          href="/assistant/students"
+          className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm hover:shadow-md hover:border-[#7D79F1]/40 transition group flex items-center justify-between"
+        >
+          <div className="space-y-1">
+            <span className="text-xs md:text-sm font-bold text-gray-500">
+              الطلاب المشتركون في كورسات المدرس
+            </span>
+            <h3 className="text-3xl md:text-4xl font-black text-[#2D2B7A]">
+              {stats?.studentsCount || 0}
+            </h3>
+            <span className="text-xs text-[#7D79F1] font-bold inline-flex items-center gap-1 mt-1 group-hover:underline">
+              متابعة المشاهدات والواجبات والكويزات
+              <ArrowRight size={14} />
+            </span>
+          </div>
+
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+            <Users size={28} />
+          </div>
+        </Link>
+
       </div>
 
-      {/* Quick Shortcuts Section */}
-      <div className="grid md:grid-cols-3 gap-6">
+      {/* Main Direct Navigation Cards */}
+      <div className="grid md:grid-cols-2 gap-6">
         
-        {/* Card 1: Courses */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-purple-50 text-[#7D79F1] flex items-center justify-center">
-            <BookOpen size={24} />
-          </div>
-          <div>
-            <h3 className="text-lg font-extrabold text-[#2D2B7A]">إدارة الكورسات والدروس</h3>
-            <p className="text-gray-400 text-xs mt-1 leading-relaxed">
-              مشاهدة كورسات الأستاذ {teacherName} وإضافة وتعديل الواجبات والامتحانات لكل درس.
-            </p>
-          </div>
-          <Link
-            href="/assistant/courses"
-            className="w-full py-3 bg-[#F3F2FF] hover:bg-[#7D79F1] text-[#7D79F1] hover:text-white rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5"
-          >
-            الانتقال للكورسات
-            <ArrowRight size={14} />
-          </Link>
-        </div>
-
-        {/* Card 2: Students Monitoring */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
-            <Users size={24} />
-          </div>
-          <div>
-            <h3 className="text-lg font-extrabold text-[#2D2B7A]">متابعة أداء الطلاب</h3>
-            <p className="text-gray-400 text-xs mt-1 leading-relaxed">
-              فلاتر كاملة لمعرفة من شاهد الفيديو، من حل الكويز ودرجته، ومن سلّم الواجب.
-            </p>
+        {/* Navigation Card 1: Students */}
+        <div className="bg-white p-7 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Users size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-extrabold text-[#2D2B7A]">قائمة ومتابعة الطلاب</h3>
+              <p className="text-gray-400 text-xs mt-0.5">
+                أرقام هواتف الطلاب وأولياء الأمور، ومتابعة حل الواجبات والكويزات ومشاهدة الفيديوهات.
+              </p>
+            </div>
           </div>
           <Link
             href="/assistant/students"
-            className="w-full py-3 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5"
+            className="w-full py-3 bg-[#F3F2FF] hover:bg-[#7D79F1] text-[#7D79F1] hover:text-white rounded-2xl font-bold text-xs transition flex items-center justify-center gap-2"
           >
-            متابعة الطلاب والفلاتر
+            الانتقال لصفحة الطلاب
             <ArrowRight size={14} />
           </Link>
         </div>
 
-        {/* Card 3: Content Review Checklist */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-            <CheckCircle2 size={24} />
-          </div>
-          <div>
-            <h3 className="text-lg font-extrabold text-[#2D2B7A]">مراجعة وتدقيق المحتوى</h3>
-            <p className="text-gray-400 text-xs mt-1 leading-relaxed">
-              قائمة تفصيلية بكل محاضرة توضح وجود الفيديو، الكويز، والواجب المرفق بنظرة واحدة.
-            </p>
+        {/* Navigation Card 2: Courses */}
+        <div className="bg-white p-7 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-purple-50 text-[#7D79F1] flex items-center justify-center">
+              <BookOpen size={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-extrabold text-[#2D2B7A]">استعراض الكورسات والمحاضرات</h3>
+              <p className="text-gray-400 text-xs mt-0.5">
+                معاينة فيديوهات المحاضرات والتأكد من تشغيلها وصحتها بدون صلاحيات تعديل.
+              </p>
+            </div>
           </div>
           <Link
-            href="/assistant/content-review"
-            className="w-full py-3 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5"
+            href="/assistant/courses"
+            className="w-full py-3 bg-[#F3F2FF] hover:bg-[#7D79F1] text-[#7D79F1] hover:text-white rounded-2xl font-bold text-xs transition flex items-center justify-center gap-2"
           >
-            فحص المحاضرات
+            الانتقال لصفحة الكورسات
             <ArrowRight size={14} />
           </Link>
         </div>

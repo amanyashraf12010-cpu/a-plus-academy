@@ -106,7 +106,8 @@ CREATE POLICY "Assistants can view their teacher courses" ON public.courses
     public.is_assistant() AND teacher_id = public.get_assistant_teacher_id()
   );
 
--- Lessons Table: Assistant can view and update lessons for their teacher's courses
+-- Lessons Table: Assistant can view lessons for their teacher's courses (SELECT only)
+DROP POLICY IF EXISTS "Assistants can manage their teacher lessons" ON public.lessons;
 DROP POLICY IF EXISTS "Assistants can view their teacher lessons" ON public.lessons;
 CREATE POLICY "Assistants can view their teacher lessons" ON public.lessons
   FOR SELECT USING (
@@ -116,29 +117,22 @@ CREATE POLICY "Assistants can view their teacher lessons" ON public.lessons
     )
   );
 
-DROP POLICY IF EXISTS "Assistants can manage their teacher lessons" ON public.lessons;
-CREATE POLICY "Assistants can manage their teacher lessons" ON public.lessons
-  FOR ALL USING (
-    public.is_assistant() AND EXISTS (
-      SELECT 1 FROM public.courses c
-      WHERE c.id = lessons.course_id AND c.teacher_id = public.get_assistant_teacher_id()
-    )
-  );
-
--- Quizzes Table: Assistant can manage quizzes for their teacher's courses
+-- Quizzes Table: Assistant can view quizzes for their teacher's courses (SELECT only)
 DROP POLICY IF EXISTS "Assistants can manage their teacher quizzes" ON public.quizzes;
-CREATE POLICY "Assistants can manage their teacher quizzes" ON public.quizzes
-  FOR ALL USING (
+DROP POLICY IF EXISTS "Assistants can view their teacher quizzes" ON public.quizzes;
+CREATE POLICY "Assistants can view their teacher quizzes" ON public.quizzes
+  FOR SELECT USING (
     public.is_assistant() AND EXISTS (
       SELECT 1 FROM public.courses c
       WHERE c.id = quizzes.course_id AND c.teacher_id = public.get_assistant_teacher_id()
     )
   );
 
--- Questions Table: Assistant can manage questions for their quizzes
+-- Questions Table: Assistant can view questions for their teacher's quizzes (SELECT only)
 DROP POLICY IF EXISTS "Assistants can manage their teacher questions" ON public.questions;
-CREATE POLICY "Assistants can manage their teacher questions" ON public.questions
-  FOR ALL USING (
+DROP POLICY IF EXISTS "Assistants can view their teacher questions" ON public.questions;
+CREATE POLICY "Assistants can view their teacher questions" ON public.questions
+  FOR SELECT USING (
     public.is_assistant() AND EXISTS (
       SELECT 1 FROM public.quizzes q
       JOIN public.courses c ON c.id = q.course_id
@@ -146,10 +140,11 @@ CREATE POLICY "Assistants can manage their teacher questions" ON public.question
     )
   );
 
--- Options Table: Assistant can manage options for their questions
+-- Options Table: Assistant can view options for their teacher's questions (SELECT only)
 DROP POLICY IF EXISTS "Assistants can manage their teacher options" ON public.options;
-CREATE POLICY "Assistants can manage their teacher options" ON public.options
-  FOR ALL USING (
+DROP POLICY IF EXISTS "Assistants can view their teacher options" ON public.options;
+CREATE POLICY "Assistants can view their teacher options" ON public.options
+  FOR SELECT USING (
     public.is_assistant() AND EXISTS (
       SELECT 1 FROM public.questions qu
       JOIN public.quizzes q ON q.id = qu.quiz_id

@@ -31,29 +31,20 @@ export async function getAssistantProfile() {
 }
 
 // =========================================================================
-// 2. Assistant Dashboard Statistics
+// 2. Assistant Home Summary Stats (Clean & Simple)
 // =========================================================================
 
-export async function getAssistantDashboardStats() {
+export async function getAssistantHomeStats() {
   const supabase = createClient();
   const { profile } = await getAssistantProfile();
 
   const teacherId = profile.teacher_id;
   if (!teacherId && profile.role !== "admin") {
-    return {
-      coursesCount: 0,
-      studentsCount: 0,
-      uploadedVideos: 0,
-      missingVideos: 0,
-      addedQuizzes: 0,
-      missingQuizzes: 0,
-      addedHomeworks: 0,
-      missingHomeworks: 0,
-    };
+    return { coursesCount: 0, studentsCount: 0 };
   }
 
   // 1. Courses for this teacher
-  let coursesQuery = supabase.from("courses").select("id, title");
+  let coursesQuery = supabase.from("courses").select("id");
   if (teacherId) {
     coursesQuery = coursesQuery.eq("teacher_id", teacherId);
   }
@@ -61,18 +52,8 @@ export async function getAssistantDashboardStats() {
   if (coursesErr) throw coursesErr;
 
   const courseIds = (courses || []).map((c: any) => c.id);
-
   if (courseIds.length === 0) {
-    return {
-      coursesCount: 0,
-      studentsCount: 0,
-      uploadedVideos: 0,
-      missingVideos: 0,
-      addedQuizzes: 0,
-      missingQuizzes: 0,
-      addedHomeworks: 0,
-      missingHomeworks: 0,
-    };
+    return { coursesCount: 0, studentsCount: 0 };
   }
 
   // 2. Total Approved Students
@@ -85,63 +66,15 @@ export async function getAssistantDashboardStats() {
   if (subsErr) throw subsErr;
 
   const uniqueStudents = new Set((subscriptions || []).map((s: any) => s.user_id));
-  const studentsCount = uniqueStudents.size;
-
-  // 3. Lessons for these courses
-  const { data: lessons, error: lessonsErr } = await supabase
-    .from("lessons")
-    .select("id, course_id, title, video_url, pdf_url")
-    .in("course_id", courseIds);
-
-  if (lessonsErr) throw lessonsErr;
-
-  const totalLessons = lessons?.length || 0;
-  let uploadedVideos = 0;
-  let missingVideos = 0;
-
-  (lessons || []).forEach((l: any) => {
-    if (l.video_url && l.video_url.trim() !== "") {
-      uploadedVideos++;
-    } else {
-      missingVideos++;
-    }
-  });
-
-  // 4. Quizzes & Homeworks for these courses
-  const { data: quizzes, error: quizzesErr } = await supabase
-    .from("quizzes")
-    .select("id, lesson_id, type")
-    .in("course_id", courseIds);
-
-  if (quizzesErr) throw quizzesErr;
-
-  const lessonQuizSet = new Set(
-    (quizzes || [])
-      .filter((q: any) => q.type === "quiz" && q.lesson_id)
-      .map((q: any) => q.lesson_id)
-  );
-
-  let addedHomeworks = 0;
-  (lessons || []).forEach((l: any) => {
-    if (lessonQuizSet.has(l.id) || (l.pdf_url && l.pdf_url.trim() !== "")) {
-      addedHomeworks++;
-    }
-  });
-
-  const missingHomeworks = Math.max(0, totalLessons - addedHomeworks);
 
   return {
     coursesCount: courses?.length || 0,
-    studentsCount,
-    uploadedVideos,
-    missingVideos,
-    addedHomeworks,
-    missingHomeworks,
+    studentsCount: uniqueStudents.size,
   };
 }
 
 // =========================================================================
-// 3. Courses & Lessons for Assistant
+// 3. Courses for Assigned Teacher Only
 // =========================================================================
 
 export async function getAssistantCourses() {
@@ -151,7 +84,7 @@ export async function getAssistantCourses() {
   const teacherId = profile.teacher_id;
   let query = supabase
     .from("courses")
-    .select("*, teachers(name), lessons(id, title), quizzes(id, type)")
+    .select("*, teachers(name, subject), lessons(id, video_url)")
     .order("created_at", { ascending: false });
 
   if (teacherId) {
@@ -163,32 +96,26 @@ export async function getAssistantCourses() {
   return data || [];
 }
 
-export async function getAssistantCourse(courseId: string) {
+export async function getAssistantCourseDetails(courseId: string) {
   const supabase = createClient();
   const { profile } = await getAssistantProfile();
 
-  const { data: course, error } = await supabase
+  const { data: course, error: courseErr } = await supabase
     .from("courses")
-    .select("*, teachers(name)")
+    .select("*, teachers(name, subject)")
     .eq("id", courseId)
     .single();
 
-  if (error) throw error;
-
-  // Verify access
-  if (profile.teacher_id && course.teacher_id !== profile.teacher_id) {
-    throw new Error("غير مصرح لك بالوصول إلى هذا الكورس.");
+  if (courseErr || !course) {
+    throw new Error("لم يتم العثور على الكورس المطلوب.");
   }
 
-  return course;
-}
+  // Strict Teacher Isolation:
+  if (profile.role !== "admin" && profile.teacher_id && course.teacher_id !== profile.teacher_id) {
+    throw new Error("غير مصرح لك بالوصول إلى كورسات مدرس آخر.");
+  }
 
-export async function getAssistantLessons(courseId: string) {
-  const supabase = createClient();
-  // Validate course ownership first
-  await getAssistantCourse(courseId);
-
-  // 1. Fetch lessons
+  // Fetch lessons
   const { data: lessons, error: lessonsErr } = await supabase
     .from("lessons")
     .select("*")
@@ -197,47 +124,30 @@ export async function getAssistantLessons(courseId: string) {
 
   if (lessonsErr) throw lessonsErr;
 
-  // 2. Fetch quizzes for this course
-  const { data: quizzes, error: quizzesErr } = await supabase
-    .from("quizzes")
-    .select("id, lesson_id, title, is_active, passing_score, duration, type, questions(id)")
-    .eq("course_id", courseId);
+  const formattedLessons = (lessons || []).map((l: any) => ({
+    ...l,
+    hasVideo: Boolean(l.video_url && l.video_url.trim() !== ""),
+  }));
 
-  if (quizzesErr) console.warn("تعذر جلب كويزات الكورس:", quizzesErr.message);
-
-  const quizMap = new Map<string, any>();
-  (quizzes || []).forEach((q: any) => {
-    if (q.lesson_id) {
-      quizMap.set(q.lesson_id, q);
-    }
-  });
-
-  return (lessons || []).map((l: any) => {
-    const quiz = quizMap.get(l.id) || null;
-    const hasQuiz = Boolean(quiz && (quiz.questions?.length > 0 || quiz.id));
-    const hasHomework = hasQuiz || Boolean(l.pdf_url && l.pdf_url.trim() !== "");
-
-    return {
-      ...l,
-      quiz,
-      hasQuiz,
-      hasHomework,
-    };
-  });
+  return { course, lessons: formattedLessons };
 }
 
 // =========================================================================
-// 4. Student Tracking & Performance with Arabic Filters
+// 4. Students for Assigned Teacher Only
 // =========================================================================
 
-export type StudentFilterType =
-  | "all"
-  | "watched_video"
-  | "not_watched_video"
-  | "submitted_homework"
-  | "not_submitted_homework";
+export interface AssistantStudentItem {
+  id: string;
+  fullName: string;
+  phone: string;
+  parentPhone: string;
+  school?: string;
+  governorate?: string;
+  grade?: string;
+  enrolledCourses: Array<{ id: string; title: string }>;
+}
 
-export async function getAssistantStudentsReport(courseId?: string, filter: StudentFilterType = "all") {
+export async function getAssistantStudents(): Promise<AssistantStudentItem[]> {
   const supabase = createClient();
   const { profile } = await getAssistantProfile();
   const teacherId = profile.teacher_id;
@@ -247,16 +157,13 @@ export async function getAssistantStudentsReport(courseId?: string, filter: Stud
   if (teacherId) {
     coursesQuery = coursesQuery.eq("teacher_id", teacherId);
   }
-  if (courseId && courseId !== "all") {
-    coursesQuery = coursesQuery.eq("id", courseId);
-  }
   const { data: teacherCourses, error: cErr } = await coursesQuery;
   if (cErr) throw cErr;
 
   const courseIds = (teacherCourses || []).map((c: any) => c.id);
   if (courseIds.length === 0) return [];
 
-  // 2. Fetch approved subscriptions
+  // 2. Fetch approved subscriptions with profiles & courses
   const { data: subscriptions, error: sErr } = await supabase
     .from("subscriptions")
     .select(`
@@ -273,206 +180,310 @@ export async function getAssistantStudentsReport(courseId?: string, filter: Stud
   if (sErr) throw sErr;
   if (!subscriptions || subscriptions.length === 0) return [];
 
-  // 3. Fetch lessons for these courses
-  const { data: lessons } = await supabase
-    .from("lessons")
-    .select("id, course_id, title, pdf_url")
-    .in("course_id", courseIds);
+  // 3. Group by student
+  const studentMap = new Map<string, AssistantStudentItem>();
 
-  const lessonIds = (lessons || []).map((l: any) => l.id);
+  for (const sub of subscriptions as any[]) {
+    const student = sub.profiles;
+    if (!student || !student.id) continue;
 
-  // 4. Fetch video progress
-  const userIds = subscriptions.map((s: any) => s.user_id);
-  const { data: videoProgress } = await supabase
-    .from("video_progress")
-    .select("user_id, lesson_id, views_count")
-    .in("user_id", userIds)
-    .in("lesson_id", lessonIds);
+    if (!studentMap.has(student.id)) {
+      studentMap.set(student.id, {
+        id: student.id,
+        fullName: student.full_name || "طالب بدون اسم",
+        phone: student.phone || "غير مسجل",
+        parentPhone: student.parent_phone || "غير مسجل",
+        school: student.school || "",
+        governorate: student.governorate || "",
+        grade: student.grade || "",
+        enrolledCourses: [],
+      });
+    }
 
-  const vpMap = new Map<string, number>();
-  (videoProgress || []).forEach((vp: any) => {
-    vpMap.set(`${vp.user_id}_${vp.lesson_id}`, vp.views_count || 0);
-  });
-
-  // 5. Fetch quizzes and attempts (which represent homeworks)
-  const { data: quizzes } = await supabase
-    .from("quizzes")
-    .select("id, course_id, lesson_id, type, passing_score")
-    .in("course_id", courseIds)
-    .eq("is_active", true);
-
-  const quizIds = (quizzes || []).map((q: any) => q.id);
-
-  let attemptsData: any[] = [];
-  if (quizIds.length > 0) {
-    const { data: atts } = await supabase
-      .from("student_quiz_attempts")
-      .select("id, user_id, quiz_id, score, status, submitted_at, correct_count, total_questions")
-      .in("user_id", userIds)
-      .in("quiz_id", quizIds)
-      .eq("status", "submitted")
-      .order("submitted_at", { ascending: false });
-    attemptsData = atts || [];
+    const current = studentMap.get(student.id)!;
+    if (sub.courses && !current.enrolledCourses.some((c) => c.id === sub.courses.id)) {
+      current.enrolledCourses.push({
+        id: sub.courses.id,
+        title: sub.courses.title,
+      });
+    }
   }
 
-  const attemptsMap = new Map<string, any[]>();
-  attemptsData.forEach((att: any) => {
-    const key = `${att.user_id}_${att.quiz_id}`;
-    if (!attemptsMap.has(key)) attemptsMap.set(key, []);
-    attemptsMap.get(key)!.push(att);
-  });
-
-  // 6. Build Student Detailed Records
-  const reportList = subscriptions.map((sub: any) => {
-    const student = sub.profiles;
-    const course = sub.courses;
-    const courseLessons = (lessons || []).filter((l: any) => l.course_id === sub.course_id);
-    const courseQuizzes = (quizzes || []).filter((q: any) => q.course_id === sub.course_id);
-
-    // Watched lectures
-    let watchedLessonsCount = 0;
-    let totalViewsCount = 0;
-    const watchedLessonsTitles: string[] = [];
-    const unwatchedLessonsTitles: string[] = [];
-
-    courseLessons.forEach((l: any) => {
-      const views = vpMap.get(`${student?.id}_${l.id}`) || 0;
-      totalViewsCount += views;
-      if (views > 0) {
-        watchedLessonsCount++;
-        watchedLessonsTitles.push(l.title);
-      } else {
-        unwatchedLessonsTitles.push(l.title);
-      }
-    });
-
-    // Homework solutions
-    let completedHomeworkCount = 0;
-    let passedHomeworkCount = 0;
-    const homeworkScores: Array<{ quizId: string; score: number; passed: boolean }> = [];
-
-    courseQuizzes.forEach((q: any) => {
-      const atts = attemptsMap.get(`${student?.id}_${q.id}`) || [];
-      if (atts.length > 0) {
-        completedHomeworkCount++;
-        const bestScore = Math.max(...atts.map((a: any) => Number(a.score)));
-        const passed = bestScore >= q.passing_score;
-        if (passed) passedHomeworkCount++;
-        homeworkScores.push({ quizId: q.id, score: bestScore, passed });
-      }
-    });
-
-    const hasSubmittedHomework = completedHomeworkCount > 0;
-
-    // Completion Progress %
-    const totalItems = Math.max(1, courseLessons.length);
-    const progressPercent = Math.min(100, Math.round((watchedLessonsCount / totalItems) * 100));
-
-    return {
-      studentId: student?.id,
-      studentName: student?.full_name || "طالب بدون اسم",
-      phone: student?.phone || "-",
-      parentPhone: student?.parent_phone || "-",
-      courseId: course?.id,
-      courseTitle: course?.title || "-",
-      progress: progressPercent,
-      watchedLessonsCount,
-      totalLessonsCount: courseLessons.length,
-      watchedLessonsTitles,
-      unwatchedLessonsTitles,
-      totalViewsCount,
-      hasWatchedVideo: watchedLessonsCount > 0,
-      hasSubmittedHomework,
-      completedHomeworkCount,
-      totalHomeworkCount: courseQuizzes.length,
-      homeworkScores,
-    };
-  });
-
-  // 7. Apply Filters in Arabic context
-  return reportList.filter((item: any) => {
-    if (filter === "watched_video") return item.hasWatchedVideo;
-    if (filter === "not_watched_video") return !item.hasWatchedVideo;
-    if (filter === "submitted_homework") return item.hasSubmittedHomework;
-    if (filter === "not_submitted_homework") return !item.hasSubmittedHomework;
-    return true; // 'all'
-  });
+  return Array.from(studentMap.values());
 }
 
 // =========================================================================
-// 5. Content Review Audit Checklist
+// 5. Single Student Full Details & Progress (Videos, Homeworks, Quizzes)
 // =========================================================================
 
-export async function getAssistantContentReview(courseId?: string) {
+export async function getAssistantStudentDetails(studentId: string) {
   const supabase = createClient();
   const { profile } = await getAssistantProfile();
   const teacherId = profile.teacher_id;
 
-  let coursesQuery = supabase.from("courses").select("id, title");
-  if (teacherId) {
-    coursesQuery = coursesQuery.eq("teacher_id", teacherId);
+  // 1. Fetch student profile
+  const { data: student, error: studentErr } = await supabase
+    .from("profiles")
+    .select("id, full_name, phone, parent_phone, school, governorate, grade")
+    .eq("id", studentId)
+    .single();
+
+  if (studentErr || !student) {
+    throw new Error("لم يتم العثور على بيانات الطالب.");
   }
-  if (courseId && courseId !== "all") {
-    coursesQuery = coursesQuery.eq("id", courseId);
-  }
 
-  const { data: teacherCourses, error: cErr } = await coursesQuery;
-  if (cErr) throw cErr;
-
-  const courseIds = (teacherCourses || []).map((c: any) => c.id);
-  if (courseIds.length === 0) return [];
-
-  // Fetch all lessons for these courses
-  const { data: lessons, error: lErr } = await supabase
-    .from("lessons")
+  // 2. Fetch approved courses for this student that belong to this teacher
+  let coursesQuery = supabase
+    .from("subscriptions")
     .select(`
-      id,
       course_id,
-      title,
-      order,
-      video_url,
-      pdf_url,
-      publish_at,
-      courses:course_id (id, title)
+      courses:course_id (id, title, teacher_id, grade, subject)
     `)
-    .in("course_id", courseIds)
-    .order("order", { ascending: true });
+    .eq("user_id", studentId)
+    .eq("status", "approved");
 
-  if (lErr) throw lErr;
+  const { data: subs, error: subsErr } = await coursesQuery;
+  if (subsErr) throw subsErr;
 
-  // Fetch quizzes (which are homeworks) for these lessons
-  const { data: quizzes } = await supabase
-    .from("quizzes")
-    .select("id, lesson_id, type, is_active, title, passing_score")
-    .in("course_id", courseIds);
-
-  const quizLessonMap = new Map<string, any>();
-  (quizzes || []).forEach((q: any) => {
-    if (q.lesson_id) {
-      quizLessonMap.set(q.lesson_id, q);
+  let enrolledTeacherCourses: any[] = [];
+  (subs || []).forEach((s: any) => {
+    if (s.courses) {
+      if (profile.role === "admin" || !teacherId || s.courses.teacher_id === teacherId) {
+        enrolledTeacherCourses.push(s.courses);
+      }
     }
   });
 
-  return (lessons || []).map((l: any) => {
-    const hasVideo = Boolean(l.video_url && l.video_url.trim() !== "");
-    const quiz = quizLessonMap.get(l.id);
-    const hasHomework = Boolean(quiz && quiz.is_active) || Boolean(l.pdf_url && l.pdf_url.trim() !== "");
-    const isComplete = hasVideo && hasHomework;
+  if (profile.role !== "admin" && teacherId && enrolledTeacherCourses.length === 0) {
+    throw new Error("هذا الطالب غير مشترك في أي كورس من كورسات المدرس الخاص بك.");
+  }
 
+  return { student, courses: enrolledTeacherCourses };
+}
+
+export interface StudentCourseProgressData {
+  videos: Array<{
+    lessonId: string;
+    lessonTitle: string;
+    order: number;
+    hasVideo: boolean;
+    videoUrl?: string;
+    isWatched: boolean;
+    viewsCount: number;
+  }>;
+  homeworks: Array<{
+    lessonId: string;
+    lessonTitle: string;
+    order: number;
+    hasHomework: boolean;
+    quizId?: string;
+    isSubmitted: boolean;
+    score?: number;
+    scoreText: string;
+    correctCount?: number;
+    totalQuestions?: number;
+  }>;
+  quizzes: Array<{
+    quizId: string;
+    quizTitle: string;
+    type: "quiz" | "final";
+    lessonTitle?: string;
+    isSubmitted: boolean;
+    score?: number;
+    scoreText: string;
+    correctCount?: number;
+    totalQuestions?: number;
+    passingScore?: number;
+  }>;
+}
+
+export async function getAssistantStudentCourseProgress(
+  studentId: string,
+  courseId: string
+): Promise<StudentCourseProgressData> {
+  const supabase = createClient();
+  const { profile } = await getAssistantProfile();
+  const teacherId = profile.teacher_id;
+
+  // 1. Verify Course Ownership
+  const { data: course, error: cErr } = await supabase
+    .from("courses")
+    .select("id, teacher_id, title")
+    .eq("id", courseId)
+    .single();
+
+  if (cErr || !course) throw new Error("الكورس غير موجود.");
+
+  if (profile.role !== "admin" && teacherId && course.teacher_id !== teacherId) {
+    throw new Error("غير مصرح لك بالوصول لكورسات مدرس آخر.");
+  }
+
+  // 2. Fetch Lessons
+  const { data: lessons, error: lErr } = await supabase
+    .from("lessons")
+    .select("id, title, order, video_url, pdf_url")
+    .eq("course_id", courseId)
+    .order("order", { ascending: true });
+
+  if (lErr) throw lErr;
+  const lessonList: any[] = lessons || [];
+  const lessonIds = lessonList.map((l: any) => l.id);
+
+  // 3. Fetch Video Progress
+  let vpMap = new Map<string, number>();
+  if (lessonIds.length > 0) {
+    const { data: vpData } = await supabase
+      .from("video_progress")
+      .select("lesson_id, views_count")
+      .eq("user_id", studentId)
+      .in("lesson_id", lessonIds);
+
+    (vpData || []).forEach((vp: any) => {
+      vpMap.set(vp.lesson_id, vp.views_count || 0);
+    });
+  }
+
+  // 4. Fetch Quizzes (Lesson Homeworks + Final Exams)
+  const { data: quizzes, error: qErr } = await supabase
+    .from("quizzes")
+    .select("id, lesson_id, title, type, passing_score, is_active")
+    .eq("course_id", courseId);
+
+  if (qErr) throw qErr;
+  const quizList: any[] = quizzes || [];
+  const quizIds = quizList.map((q: any) => q.id);
+
+  // 5. Fetch Student Attempts
+  let attemptsMap = new Map<string, any>();
+  if (quizIds.length > 0) {
+    const { data: attempts, error: aErr } = await supabase
+      .from("student_quiz_attempts")
+      .select("*")
+      .eq("user_id", studentId)
+      .in("quiz_id", quizIds)
+      .eq("status", "submitted")
+      .order("submitted_at", { ascending: false });
+
+    if (aErr) throw aErr;
+
+    // Pick best/latest attempt for each quiz
+    (attempts || []).forEach((att: any) => {
+      if (!attemptsMap.has(att.quiz_id)) {
+        attemptsMap.set(att.quiz_id, att);
+      } else {
+        const existing = attemptsMap.get(att.quiz_id);
+        if (Number(att.score) > Number(existing.score)) {
+          attemptsMap.set(att.quiz_id, att);
+        }
+      }
+    });
+  }
+
+  // 6. Build Videos Table Data
+  const videos = lessonList.map((lesson: any, idx: number) => {
+    const views = vpMap.get(lesson.id) || 0;
+    const hasVideo = Boolean(lesson.video_url && lesson.video_url.trim() !== "");
     return {
-      lessonId: l.id,
-      lessonTitle: l.title,
-      order: l.order,
-      courseId: l.courses?.id || l.course_id,
-      courseTitle: l.courses?.title || "-",
-      publishAt: l.publish_at,
+      lessonId: lesson.id,
+      lessonTitle: lesson.title,
+      order: lesson.order || idx + 1,
       hasVideo,
-      hasHomework,
-      homeworkDetails: quiz || null,
-      homeworkPdf: l.pdf_url || null,
-      isComplete,
+      videoUrl: lesson.video_url || undefined,
+      isWatched: views > 0,
+      viewsCount: views,
     };
   });
+
+  // 7. Build Homeworks Table Data (Lesson Quizzes or Lesson Attachments)
+  const lessonQuizMap = new Map<string, any>();
+  quizList.forEach((q: any) => {
+    if (q.lesson_id) {
+      lessonQuizMap.set(q.lesson_id, q);
+    }
+  });
+
+  const homeworks = lessonList.map((lesson: any, idx: number) => {
+    const quiz = lessonQuizMap.get(lesson.id);
+    const hasPdf = Boolean(lesson.pdf_url && lesson.pdf_url.trim() !== "");
+    const hasHomework = Boolean(quiz || hasPdf);
+
+    let isSubmitted = false;
+    let scoreText = "—";
+    let score: number | undefined = undefined;
+    let correctCount: number | undefined = undefined;
+    let totalQuestions: number | undefined = undefined;
+
+    if (quiz) {
+      const att = attemptsMap.get(quiz.id);
+      if (att) {
+        isSubmitted = true;
+        score = Number(att.score);
+        correctCount = att.correct_count;
+        totalQuestions = att.total_questions;
+        if (totalQuestions !== undefined && totalQuestions > 0) {
+          scoreText = `${correctCount} / ${totalQuestions} (${score}%)`;
+        } else {
+          scoreText = `${score}%`;
+        }
+      }
+    }
+
+    return {
+      lessonId: lesson.id,
+      lessonTitle: lesson.title,
+      order: lesson.order || idx + 1,
+      hasHomework,
+      quizId: quiz?.id,
+      isSubmitted,
+      score,
+      scoreText,
+      correctCount,
+      totalQuestions,
+    };
+  });
+
+  // 8. Build Quizzes & Exams Table Data
+  const lessonTitleMap = new Map<string, string>();
+  lessonList.forEach((l: any) => lessonTitleMap.set(l.id, l.title));
+
+  const quizzesData = quizList.map((quiz: any) => {
+    const att = attemptsMap.get(quiz.id);
+    const isSubmitted = Boolean(att);
+    let scoreText = "—";
+    let score: number | undefined = undefined;
+    let correctCount: number | undefined = undefined;
+    let totalQuestions: number | undefined = undefined;
+
+    if (att) {
+      score = Number(att.score);
+      correctCount = att.correct_count;
+      totalQuestions = att.total_questions;
+      if (totalQuestions !== undefined && totalQuestions > 0) {
+        scoreText = `${correctCount} / ${totalQuestions} (${score}%)`;
+      } else {
+        scoreText = `${score}%`;
+      }
+    }
+
+    return {
+      quizId: quiz.id,
+      quizTitle: quiz.title,
+      type: (quiz.type || "quiz") as "quiz" | "final",
+      lessonTitle: quiz.lesson_id ? lessonTitleMap.get(quiz.lesson_id) : "امتحان شامل للكورس",
+      isSubmitted,
+      score,
+      scoreText,
+      correctCount,
+      totalQuestions,
+      passingScore: quiz.passing_score,
+    };
+  });
+
+  return {
+    videos,
+    homeworks,
+    quizzes: quizzesData,
+  };
 }
 
 // =========================================================================
@@ -502,7 +513,7 @@ export async function createAssistantAccount(formData: {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  // Create isolated in-memory client without touching active admin session
+  // Create isolated client to prevent interfering with active admin session
   const isolatedSupabase = createIsolatedClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: false,
