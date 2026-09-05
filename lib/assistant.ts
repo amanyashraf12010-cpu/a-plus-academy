@@ -283,18 +283,6 @@ export interface StudentCourseProgressData {
     correctCount?: number;
     totalQuestions?: number;
   }>;
-  quizzes: Array<{
-    quizId: string;
-    quizTitle: string;
-    type: "quiz" | "final";
-    lessonTitle?: string;
-    isSubmitted: boolean;
-    score?: number;
-    scoreText: string;
-    correctCount?: number;
-    totalQuestions?: number;
-    passingScore?: number;
-  }>;
 }
 
 export async function getAssistantStudentCourseProgress(
@@ -343,7 +331,7 @@ export async function getAssistantStudentCourseProgress(
     });
   }
 
-  // 4. Fetch Quizzes (Lesson Homeworks + Final Exams)
+  // 4. Fetch Quizzes (Lesson Homeworks)
   const { data: quizzes, error: qErr } = await supabase
     .from("quizzes")
     .select("id, lesson_id, title, type, passing_score, is_active")
@@ -379,22 +367,7 @@ export async function getAssistantStudentCourseProgress(
     });
   }
 
-  // 6. Build Videos Table Data
-  const videos = lessonList.map((lesson: any, idx: number) => {
-    const views = vpMap.get(lesson.id) || 0;
-    const hasVideo = Boolean(lesson.video_url && lesson.video_url.trim() !== "");
-    return {
-      lessonId: lesson.id,
-      lessonTitle: lesson.title,
-      order: lesson.order || idx + 1,
-      hasVideo,
-      videoUrl: lesson.video_url || undefined,
-      isWatched: views > 0,
-      viewsCount: views,
-    };
-  });
-
-  // 7. Build Homeworks Table Data (Lesson Quizzes or Lesson Attachments)
+  // 6. Map Quizzes to Lessons
   const lessonQuizMap = new Map<string, any>();
   quizList.forEach((q: any) => {
     if (q.lesson_id) {
@@ -402,6 +375,29 @@ export async function getAssistantStudentCourseProgress(
     }
   });
 
+  // 7. Build Videos Table Data (Considering Homework completion as proof of watching)
+  const videos = lessonList.map((lesson: any, idx: number) => {
+    const rawViews = vpMap.get(lesson.id) || 0;
+    const quiz = lessonQuizMap.get(lesson.id);
+    const hasSubmittedHomework = quiz ? attemptsMap.has(quiz.id) : false;
+
+    // Watched if views > 0 OR if homework was solved
+    const isWatched = rawViews > 0 || hasSubmittedHomework;
+    const viewsCount = rawViews > 0 ? rawViews : (hasSubmittedHomework ? 1 : 0);
+    const hasVideo = Boolean(lesson.video_url && lesson.video_url.trim() !== "");
+
+    return {
+      lessonId: lesson.id,
+      lessonTitle: lesson.title,
+      order: lesson.order || idx + 1,
+      hasVideo,
+      videoUrl: lesson.video_url || undefined,
+      isWatched,
+      viewsCount,
+    };
+  });
+
+  // 8. Build Homeworks Table Data
   const homeworks = lessonList.map((lesson: any, idx: number) => {
     const quiz = lessonQuizMap.get(lesson.id);
     const hasPdf = Boolean(lesson.pdf_url && lesson.pdf_url.trim() !== "");
@@ -442,47 +438,9 @@ export async function getAssistantStudentCourseProgress(
     };
   });
 
-  // 8. Build Quizzes & Exams Table Data
-  const lessonTitleMap = new Map<string, string>();
-  lessonList.forEach((l: any) => lessonTitleMap.set(l.id, l.title));
-
-  const quizzesData = quizList.map((quiz: any) => {
-    const att = attemptsMap.get(quiz.id);
-    const isSubmitted = Boolean(att);
-    let scoreText = "—";
-    let score: number | undefined = undefined;
-    let correctCount: number | undefined = undefined;
-    let totalQuestions: number | undefined = undefined;
-
-    if (att) {
-      score = Number(att.score);
-      correctCount = att.correct_count;
-      totalQuestions = att.total_questions;
-      if (totalQuestions !== undefined && totalQuestions > 0) {
-        scoreText = `${correctCount} / ${totalQuestions} (${score}%)`;
-      } else {
-        scoreText = `${score}%`;
-      }
-    }
-
-    return {
-      quizId: quiz.id,
-      quizTitle: quiz.title,
-      type: (quiz.type || "quiz") as "quiz" | "final",
-      lessonTitle: quiz.lesson_id ? lessonTitleMap.get(quiz.lesson_id) : "امتحان شامل للكورس",
-      isSubmitted,
-      score,
-      scoreText,
-      correctCount,
-      totalQuestions,
-      passingScore: quiz.passing_score,
-    };
-  });
-
   return {
     videos,
     homeworks,
-    quizzes: quizzesData,
   };
 }
 

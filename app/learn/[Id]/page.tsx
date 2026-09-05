@@ -204,7 +204,24 @@ export default function LearnPage() {
     }
   }, [activeLesson]);
 
-  // Track YouTube, Vimeo, and Bunny player halfway mark
+  // Helper to check if watch threshold reached (20 minutes or 50% for shorter videos)
+  function checkWatchThreshold(currentTime: number, duration: number) {
+    if (currentTime >= 1200) return true; // 20 minutes
+    if (duration > 0 && duration <= 1200 && currentTime >= duration / 2) return true;
+    return false;
+  }
+
+  // Active page session timer for 20 minutes (1200 seconds)
+  useEffect(() => {
+    if (!videoUrl || !activeLesson || hasIncrementedView) return;
+    const sessionTimer = setTimeout(() => {
+      triggerViewIncrement();
+    }, 1200 * 1000); // 20 minutes
+
+    return () => clearTimeout(sessionTimer);
+  }, [videoUrl, activeLesson, hasIncrementedView]);
+
+  // Track YouTube, Vimeo, and Bunny player watch progress
   useEffect(() => {
     if (!videoUrl || !activeLesson || hasIncrementedView) return;
 
@@ -236,7 +253,7 @@ export default function LearnPage() {
                     if (ytPlayer && typeof ytPlayer.getCurrentTime === "function") {
                       const currentTime = ytPlayer.getCurrentTime();
                       const duration = ytPlayer.getDuration();
-                      if (duration > 0 && currentTime >= duration / 2) {
+                      if (checkWatchThreshold(currentTime, duration)) {
                         triggerViewIncrement();
                         clearInterval(intervalId);
                       }
@@ -272,7 +289,9 @@ export default function LearnPage() {
         const setupVimeoPlayer = () => {
           vimeoPlayer = new (window as any).Vimeo.Player(iframe);
           vimeoPlayer.on("timeupdate", (data: any) => {
-            if (data.percent >= 0.5) {
+            const currentTime = data.seconds || 0;
+            const duration = data.duration || 0;
+            if (checkWatchThreshold(currentTime, duration)) {
               triggerViewIncrement();
             }
           });
@@ -301,7 +320,7 @@ export default function LearnPage() {
               player.on("timeupdate", (data: any) => {
                 const currentTime = data.seconds || 0;
                 const duration = data.duration || 0;
-                if (duration > 0 && currentTime >= duration / 2) {
+                if (checkWatchThreshold(currentTime, duration)) {
                   triggerViewIncrement();
                 }
               });
@@ -493,7 +512,7 @@ export default function LearnPage() {
                       className="w-full h-full object-contain"
                       onTimeUpdate={(e) => {
                         const video = e.currentTarget;
-                        if (video.duration && video.currentTime >= video.duration / 2) {
+                        if (checkWatchThreshold(video.currentTime, video.duration)) {
                           triggerViewIncrement();
                         }
                       }}

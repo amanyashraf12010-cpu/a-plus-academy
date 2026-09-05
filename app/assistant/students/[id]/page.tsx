@@ -15,13 +15,11 @@ import {
   BookOpen, 
   Video, 
   FileText, 
-  FileQuestion, 
   CheckCircle2, 
   XCircle, 
   Loader2,
   GraduationCap,
-  Eye,
-  Award
+  Eye
 } from "lucide-react";
 
 function StudentDetailsContent() {
@@ -123,7 +121,7 @@ function StudentDetailsContent() {
               تفاصيل الطالب
             </h1>
             <p className="text-gray-500 mt-0.5 text-xs md:text-sm font-semibold">
-              متابعة مشاهدات الفيديو، حل الواجبات، ودرجات الكويزات للطالب
+              متابعة مشاهدات الفيديو وحل الواجبات للطالب
             </p>
           </div>
         </div>
@@ -274,7 +272,7 @@ function StudentDetailsContent() {
                           {vid.isWatched ? (
                             <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200">
                               <CheckCircle2 size={13} />
-                              شاهد
+                              تمت المشاهدة
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 px-3 py-1 rounded-full text-xs font-bold border border-rose-200">
@@ -354,90 +352,6 @@ function StudentDetailsContent() {
                           {hw.isSubmitted ? (
                             <span className="bg-purple-50 text-[#7D79F1] px-3 py-1 rounded-xl border border-purple-100 font-black">
                               {hw.scoreText}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400 font-mono">—</span>
-                          )}
-                        </td>
-
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* 3. Quizzes & Exams Section */}
-          <div className="bg-white rounded-3xl border shadow-sm overflow-hidden space-y-4 p-6">
-            <div className="flex items-center justify-between pb-3 border-b">
-              <h3 className="text-lg font-black text-[#2D2B7A] flex items-center gap-2">
-                <FileQuestion className="text-[#7D79F1]" size={20} />
-                الكويزات والامتحانات
-              </h3>
-              <span className="text-xs text-gray-400 font-bold">
-                نتائج كويزات الكورس والامتحانات الشاملة
-              </span>
-            </div>
-
-            {progressData.quizzes.length === 0 ? (
-              <p className="text-center py-8 text-gray-400 text-xs font-semibold">
-                لا توجد كويزات مسجلة في هذا الكورس.
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-right border-collapse text-sm">
-                  <thead className="bg-[#F5F7FB] border-b text-[#2D2B7A] font-bold text-xs">
-                    <tr>
-                      <th className="p-3.5">الدرس / التقييم</th>
-                      <th className="p-3.5 text-center">نوع التقييم</th>
-                      <th className="p-3.5 text-center">الحالة</th>
-                      <th className="p-3.5 text-center">الدرجة</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y text-gray-700">
-                    {progressData.quizzes.map((quiz) => (
-                      <tr key={quiz.quizId} className="hover:bg-[#F3F2FF]/20 transition">
-                        
-                        <td className="p-3.5">
-                          <span className="font-bold text-[#2D2B7A] block text-xs">
-                            {quiz.quizTitle}
-                          </span>
-                          {quiz.lessonTitle && (
-                            <span className="text-[11px] text-gray-400 block mt-0.5">
-                              {quiz.lessonTitle}
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="p-3.5 text-center">
-                          <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-lg border ${
-                            quiz.type === "final"
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : "bg-blue-50 text-blue-700 border-blue-200"
-                          }`}>
-                            {quiz.type === "final" ? "امتحان شامل" : "كويز محاضرة"}
-                          </span>
-                        </td>
-
-                        <td className="p-3.5 text-center">
-                          {quiz.isSubmitted ? (
-                            <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200">
-                              <CheckCircle2 size={13} />
-                              تم الحل
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-xs font-bold border border-amber-200">
-                              <XCircle size={13} />
-                              لم يتم الحل
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="p-3.5 text-center font-bold text-xs">
-                          {quiz.isSubmitted ? (
-                            <span className="bg-purple-50 text-[#7D79F1] px-3 py-1 rounded-xl border border-purple-100 font-black">
-                              {quiz.scoreText}
                             </span>
                           ) : (
                             <span className="text-gray-400 font-mono">—</span>

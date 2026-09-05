@@ -130,7 +130,7 @@ export default function AssistantDashboardPage() {
               {stats?.studentsCount || 0}
             </h3>
             <span className="text-xs text-[#7D79F1] font-bold inline-flex items-center gap-1 mt-1 group-hover:underline">
-              متابعة المشاهدات والواجبات والكويزات
+              متابعة المشاهدات وحل الواجبات
               <ArrowRight size={14} />
             </span>
           </div>
@@ -154,7 +154,7 @@ export default function AssistantDashboardPage() {
             <div>
               <h3 className="text-lg font-extrabold text-[#2D2B7A]">قائمة ومتابعة الطلاب</h3>
               <p className="text-gray-400 text-xs mt-0.5">
-                أرقام هواتف الطلاب وأولياء الأمور، ومتابعة حل الواجبات والكويزات ومشاهدة الفيديوهات.
+                أرقام هواتف الطلاب وأولياء الأمور، ومتابعة حل الواجبات ومشاهدة الفيديوهات.
               </p>
             </div>
           </div>
