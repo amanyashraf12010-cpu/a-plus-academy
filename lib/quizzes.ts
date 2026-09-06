@@ -368,13 +368,11 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
 
   // 5. Calculate course progress (%)
   // Progress = (number of lessons completed / total lessons) * 100
-  // A lesson is completed if: it has no quiz, OR its quiz is passed.
+  // A lesson is completed if: it has been watched (views_count > 0) OR its quiz is passed.
   const completedLessons = lessonsWithLockState.filter((l: any) => {
-    if (l.quizId) {
-      return l.quizStatus === "passed";
-    } else {
-      return watchedLessonIds.has(l.id);
-    }
+    const isWatched = watchedLessonIds.has(l.id);
+    const isQuizPassed = l.quizStatus === "passed";
+    return isWatched || isQuizPassed;
   }).length;
   const courseProgress = lessons.length > 0 ? Math.round((completedLessons / lessons.length) * 100) : 0;
 

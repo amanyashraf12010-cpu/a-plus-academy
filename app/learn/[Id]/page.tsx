@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { getLessonVideoUrl, getVideoProgress } from "@/lib/student";
+import { getLessonVideoUrl, getVideoProgress, recordLessonVideoWatch } from "@/lib/student";
 import { 
   Play, 
   BookOpen, 
@@ -41,28 +41,30 @@ export default function LearnPage() {
   const [viewsCount, setViewsCount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState("description");
   const [hasIncrementedView, setHasIncrementedView] = useState(false);
+  const [watchedSeconds, setWatchedSeconds] = useState<number>(0);
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 
-  // Trigger view increment in database when reaching 50%
+  // Trigger view increment in database when reaching 20 minutes / threshold
   async function triggerViewIncrement() {
     if (hasIncrementedView || !activeLesson) return;
     try {
-      const { data: newCount, error } = await supabase
-        .rpc("increment_video_views", { p_lesson_id: activeLesson.id });
-
-      if (error) {
-        if (error.message.includes("تجاوزت الحد الأقصى")) {
-          alert("⚠️ لقد تجاوزت الحد الأقصى للمشاهدات المسموح بها لهذا الفيديو (4 مرات).");
-          setVideoUrl(null);
-          setVideoError("⚠️ لقد تجاوزت الحد الأقصى للمشاهدات المسموح بها لهذا الفيديو (4 مرات).");
-        }
-        throw error;
-      }
       setHasIncrementedView(true);
+      const newCount = await recordLessonVideoWatch(activeLesson.id);
       setViewsCount(newCount);
       console.log("Views incremented successfully. New count:", newCount);
+
+      // Refresh course progress info so progress bar increases live!
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && courseId) {
+        const progressData = await getCourseProgressAndLocks(session.user.id, courseId);
+        setProgressInfo(progressData);
+      }
     } catch (err: any) {
       console.error("Failed to increment views:", err.message);
+      if (err.message && err.message.includes("تجاوزت الحد الأقصى")) {
+        setVideoUrl(null);
+        setVideoError("⚠️ لقد تجاوزت الحد الأقصى للمشاهدات المسموح بها لهذا الفيديو (4 مرات).");
+      }
     }
   }
 
@@ -182,6 +184,7 @@ export default function LearnPage() {
       setVideoError(null);
       setVideoUrl(null);
       setHasIncrementedView(false); // Reset tracking flag for this video load
+      setWatchedSeconds(0); // Reset active watch counter
 
       // 1. Fetch secure video link
       const url = await getLessonVideoUrl(lesson.id);
@@ -205,20 +208,38 @@ export default function LearnPage() {
   }, [activeLesson]);
 
   // Helper to check if watch threshold reached (20 minutes or 50% for shorter videos)
-  function checkWatchThreshold(currentTime: number, duration: number) {
-    if (currentTime >= 1200) return true; // 20 minutes
-    if (duration > 0 && duration <= 1200 && currentTime >= duration / 2) return true;
+  function checkWatchThreshold(currentTime: number, duration: number, activeSeconds: number = 0) {
+    // Prevent false triggers on load or within first 30 seconds
+    if (currentTime < 30 && activeSeconds < 30) return false;
+
+    // 1. Reached 20 minutes (1200 seconds) in playback time OR active watch seconds
+    if (currentTime >= 1200 || activeSeconds >= 1200) return true;
+
+    // 2. If video total duration is valid and shorter than 20 minutes (between 60s and 1200s), require at least 50%
+    if (typeof duration === "number" && !isNaN(duration) && duration >= 60 && duration < 1200) {
+      if (currentTime >= duration * 0.5 || activeSeconds >= duration * 0.5) {
+        return true;
+      }
+    }
+
     return false;
   }
 
-  // Active page session timer for 20 minutes (1200 seconds)
+  // Active page session watch timer: increments watch time every second while on page with video loaded
   useEffect(() => {
     if (!videoUrl || !activeLesson || hasIncrementedView) return;
-    const sessionTimer = setTimeout(() => {
-      triggerViewIncrement();
-    }, 1200 * 1000); // 20 minutes
 
-    return () => clearTimeout(sessionTimer);
+    const interval = setInterval(() => {
+      setWatchedSeconds((prev) => {
+        const next = prev + 1;
+        if (next >= 1200) {
+          triggerViewIncrement();
+        }
+        return next;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, [videoUrl, activeLesson, hasIncrementedView]);
 
   // Track YouTube, Vimeo, and Bunny player watch progress
@@ -253,7 +274,7 @@ export default function LearnPage() {
                     if (ytPlayer && typeof ytPlayer.getCurrentTime === "function") {
                       const currentTime = ytPlayer.getCurrentTime();
                       const duration = ytPlayer.getDuration();
-                      if (checkWatchThreshold(currentTime, duration)) {
+                      if (checkWatchThreshold(currentTime, duration, watchedSeconds)) {
                         triggerViewIncrement();
                         clearInterval(intervalId);
                       }
@@ -291,7 +312,7 @@ export default function LearnPage() {
           vimeoPlayer.on("timeupdate", (data: any) => {
             const currentTime = data.seconds || 0;
             const duration = data.duration || 0;
-            if (checkWatchThreshold(currentTime, duration)) {
+            if (checkWatchThreshold(currentTime, duration, watchedSeconds)) {
               triggerViewIncrement();
             }
           });
@@ -320,7 +341,7 @@ export default function LearnPage() {
               player.on("timeupdate", (data: any) => {
                 const currentTime = data.seconds || 0;
                 const duration = data.duration || 0;
-                if (checkWatchThreshold(currentTime, duration)) {
+                if (checkWatchThreshold(currentTime, duration, watchedSeconds)) {
                   triggerViewIncrement();
                 }
               });
@@ -342,7 +363,7 @@ export default function LearnPage() {
 
       setTimeout(loadBunny, 1000);
     }
-  }, [videoUrl, activeLesson, hasIncrementedView]);
+  }, [videoUrl, activeLesson, hasIncrementedView, watchedSeconds]);
 
   // Helper to extract YouTube/Vimeo/Bunny Embed links
   function getEmbedUrl(url: string) {
@@ -512,7 +533,7 @@ export default function LearnPage() {
                       className="w-full h-full object-contain"
                       onTimeUpdate={(e) => {
                         const video = e.currentTarget;
-                        if (checkWatchThreshold(video.currentTime, video.duration)) {
+                        if (checkWatchThreshold(video.currentTime, video.duration, watchedSeconds)) {
                           triggerViewIncrement();
                         }
                       }}

@@ -199,3 +199,46 @@ export async function getVideoProgress(lessonId: string) {
   if (error) throw error;
   return data ? data.views_count : 0;
 }
+
+export async function recordLessonVideoWatch(lessonId: string) {
+  const supabase = createClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) throw new Error("يجب تسجيل الدخول.");
+
+  try {
+    // 1. Try RPC function
+    const { data: newCount, error: rpcError } = await supabase
+      .rpc("increment_video_views", { p_lesson_id: lessonId });
+
+    if (!rpcError && typeof newCount === "number") {
+      return newCount;
+    }
+  } catch (rpcErr) {
+    console.warn("RPC increment_video_views failed, falling back to direct DB update:", rpcErr);
+  }
+
+  // 2. Fallback: Direct select & upsert in video_progress
+  const { data: existing } = await supabase
+    .from("video_progress")
+    .select("views_count")
+    .eq("user_id", user.id)
+    .eq("lesson_id", lessonId)
+    .maybeSingle();
+
+  const currentViews = existing?.views_count || 0;
+  if (currentViews >= 4) {
+    throw new Error("⚠️ لقد تجاوزت الحد الأقصى للمشاهدات المسموح بها لهذا الفيديو (4 مرات).");
+  }
+
+  const nextViews = currentViews + 1;
+  const { error: upsertErr } = await supabase
+    .from("video_progress")
+    .upsert({
+      user_id: user.id,
+      lesson_id: lessonId,
+      views_count: nextViews,
+    }, { onConflict: "user_id,lesson_id" });
+
+  if (upsertErr) throw upsertErr;
+  return nextViews;
+}
