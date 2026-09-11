@@ -8,10 +8,11 @@ import {
   saveQuiz, 
   saveQuestion, 
   deleteQuestion, 
-  uploadQuizImage,
+  uploadQuizImage, 
   getCourseStudentPerformance,
   savePassageGroup,
-  deletePassageGroup
+  deletePassageGroup,
+  bulkImportQuestions
 } from "@/lib/admin-quizzes";
 import { 
   Plus, 
@@ -57,6 +58,7 @@ function ExamsPageContent() {
   const [importQuestions, setImportQuestions] = useState<any[]>([]);
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
   const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number }>({ current: 0, total: 0 });
 
   // Quiz Form states
   const [quizTitle, setQuizTitle] = useState("");
@@ -353,54 +355,39 @@ function ExamsPageContent() {
     if (!quiz || selectedQuestionIds.length === 0) return;
     try {
       setIsImporting(true);
+      setImportProgress({ current: 0, total: selectedQuestionIds.length });
       
-      for (const sourceQId of selectedQuestionIds) {
-        const sourceQ = importQuestions.find(q => q.id === sourceQId);
-        if (!sourceQ) continue;
-        
-        // 1. Insert Question
-        const { data: newQ, error: qError } = await supabase
-          .from("questions")
-          .insert([
-            {
-              quiz_id: quiz.id,
-              question_text: sourceQ.question_text || null,
-              question_image: sourceQ.question_image || null,
-              correct_option: sourceQ.correct_option
-            }
-          ])
-          .select()
-          .single();
-          
-        if (qError) throw qError;
-        
-        // 2. Insert Options
-        if (sourceQ.options && sourceQ.options.length > 0) {
-          const optionsPayload = sourceQ.options.map((opt: any) => ({
-            question_id: newQ.id,
-            option_letter: opt.option_letter,
-            option_text: opt.option_text || null,
-            option_image: opt.option_image || null
-          }));
-          
-          const { error: optError } = await supabase
-            .from("options")
-            .insert(optionsPayload);
-            
-          if (optError) throw optError;
-        }
+      const sourceQuestionsToImport = selectedQuestionIds
+        .map((id) => importQuestions.find((q) => q.id === id))
+        .filter(Boolean);
+
+      if (sourceQuestionsToImport.length === 0) {
+        alert("لم يتم العثور على الأسئلة المحددة للاستيراد.");
+        setIsImporting(false);
+        return;
       }
+
+      const result = await bulkImportQuestions(
+        quiz.id,
+        sourceQuestionsToImport,
+        (current, total) => {
+          setImportProgress({ current, total });
+        }
+      );
       
-      alert(`🎉 تم استيراد عدد ${selectedQuestionIds.length} سؤال بنجاح!`);
+      alert(`🎉 تم استيراد عدد ${result.count} سؤال بنجاح بدون أي أخطاء!`);
       setShowImportModal(false);
       setSelectedImportCourseId("");
       setImportQuizzes([]);
       setSelectedImportQuizId("");
       setImportQuestions([]);
       setSelectedQuestionIds([]);
+      setImportProgress({ current: 0, total: 0 });
       loadData();
     } catch (err: any) {
-      alert("حدث خطأ أثناء استيراد الأسئلة: " + err.message);
+      console.error("خطأ استيراد الأسئلة:", err);
+      const errMsg = err?.message || err?.error_description || (typeof err === "object" ? JSON.stringify(err) : String(err));
+      alert("حدث خطأ أثناء استيراد الأسئلة: " + errMsg);
     } finally {
       setIsImporting(false);
     }
@@ -1806,11 +1793,33 @@ function ExamsPageContent() {
             {/* Content Body */}
             <div className="p-6 overflow-y-auto flex-1 space-y-4">
               
+              {/* Progress Bar (Visible during bulk import) */}
+              {isImporting && (
+                <div className="space-y-2 bg-purple-50 p-4 rounded-2xl border border-purple-150 animate-in fade-in duration-200">
+                  <div className="flex justify-between text-xs font-bold text-[#7D79F1]">
+                    <span className="flex items-center gap-1.5">
+                      <Loader2 className="animate-spin text-[#7D79F1]" size={14} />
+                      جاري استيراد الأسئلة بأمان وبدون انقطاع...
+                    </span>
+                    <span>
+                      {importProgress.current} / {importProgress.total} ({Math.round((importProgress.current / (importProgress.total || 1)) * 100)}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-purple-200/60 h-2.5 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-gradient-to-r from-[#7D79F1] to-[#655EF0] h-full rounded-full transition-all duration-300"
+                      style={{ width: `${Math.round((importProgress.current / (importProgress.total || 1)) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Select Course */}
               <div className="space-y-1">
                 <label className="block text-xs font-bold text-gray-500">اختر الكورس المصدر</label>
                 <select
-                  className="w-full px-4 py-2.5 rounded-xl border outline-none text-[#2D2B7A] font-bold text-sm bg-white cursor-pointer"
+                  disabled={isImporting}
+                  className="w-full px-4 py-2.5 rounded-xl border outline-none text-[#2D2B7A] font-bold text-sm bg-white cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                   value={selectedImportCourseId}
                   onChange={(e) => handleImportCourseChange(e.target.value)}
                 >
@@ -1828,7 +1837,8 @@ function ExamsPageContent() {
                 <div className="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
                   <label className="block text-xs font-bold text-gray-500">اختر التقييم (امتحان أو واجب)</label>
                   <select
-                    className="w-full px-4 py-2.5 rounded-xl border outline-none text-[#2D2B7A] font-bold text-sm bg-white cursor-pointer"
+                    disabled={isImporting}
+                    className="w-full px-4 py-2.5 rounded-xl border outline-none text-[#2D2B7A] font-bold text-sm bg-white cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                     value={selectedImportQuizId}
                     onChange={(e) => handleImportQuizChange(e.target.value)}
                   >
@@ -1847,23 +1857,25 @@ function ExamsPageContent() {
                 <div className="space-y-3 pt-2 animate-in fade-in duration-200">
                   <div className="flex justify-between items-center text-xs font-bold text-gray-500">
                     <span>الأسئلة المتوفرة ({importQuestions.length})</span>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedQuestionIds(importQuestions.map(q => q.id))}
-                        className="text-[#7D79F1] hover:underline"
-                      >
-                        تحديد الكل
-                      </button>
-                      <span>|</span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedQuestionIds([])}
-                        className="text-gray-400 hover:underline"
-                      >
-                        إلغاء التحديد
-                      </button>
-                    </div>
+                    {!isImporting && (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedQuestionIds(importQuestions.map(q => q.id))}
+                          className="text-[#7D79F1] hover:underline"
+                        >
+                          تحديد الكل ({importQuestions.length})
+                        </button>
+                        <span>|</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedQuestionIds([])}
+                          className="text-gray-400 hover:underline"
+                        >
+                          إلغاء التحديد
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {importQuestions.length === 0 ? (
@@ -1871,7 +1883,7 @@ function ExamsPageContent() {
                       لا توجد أسئلة مضافة في هذا التقييم بعد.
                     </div>
                   ) : (
-                    <div className="space-y-2.5 max-h-60 overflow-y-auto border p-3 rounded-xl bg-gray-50/50">
+                    <div className="space-y-2.5 max-h-64 overflow-y-auto border p-3 rounded-xl bg-gray-50/50">
                       {importQuestions.map((q, qIdx) => {
                         const isSelected = selectedQuestionIds.includes(q.id);
                         return (
@@ -1879,10 +1891,11 @@ function ExamsPageContent() {
                             key={q.id}
                             className={`flex items-start gap-3 p-3 rounded-xl border bg-white transition cursor-pointer select-none text-xs ${
                               isSelected ? "border-purple-300 bg-purple-50/10" : "border-gray-150"
-                            }`}
+                            } ${isImporting ? "opacity-60 pointer-events-none" : ""}`}
                           >
                             <input
                               type="checkbox"
+                              disabled={isImporting}
                               checked={isSelected}
                               onChange={(e) => {
                                 if (e.target.checked) {
@@ -1893,16 +1906,28 @@ function ExamsPageContent() {
                               }}
                               className="w-4 h-4 text-[#7D79F1] focus:ring-[#7D79F1]/20 border-gray-300 rounded cursor-pointer shrink-0 mt-0.5"
                             />
-                            <div>
-                              <span className="font-bold text-[#2D2B7A] block mb-0.5">
-                                السؤال {qIdx + 1}
-                              </span>
-                              <span className="text-gray-700 font-medium leading-relaxed block">
+                            <div className="flex-1 space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-[#2D2B7A]">
+                                  السؤال {qIdx + 1}
+                                </span>
+                                {q.passage_text && (
+                                  <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 border border-blue-150">
+                                    <BookOpen size={10} />
+                                    {q.passage_title || "قطعة قراءة"}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-gray-700 font-medium leading-relaxed block line-clamp-2">
                                 {q.question_text || "[سؤال يحتوي على صورة فقط]"}
                               </span>
-                              <span className="text-[10px] text-green-600 font-bold mt-1 block">
-                                الإجابة الصحيحة: {q.correct_option}
-                              </span>
+                              <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                                <span className="text-green-600 font-bold">
+                                  الإجابة: {q.correct_option}
+                                </span>
+                                <span>•</span>
+                                <span>عدد الاختيارات: {q.options?.length || 4}</span>
+                              </div>
                             </div>
                           </label>
                         );
@@ -1919,13 +1944,16 @@ function ExamsPageContent() {
               <button
                 onClick={handleExecuteImport}
                 disabled={isImporting || selectedQuestionIds.length === 0}
-                className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white rounded-xl font-bold transition text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+                className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white rounded-xl font-bold transition text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed shadow-md"
               >
                 {isImporting ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
-                استيراد الأسئلة المحددة ({selectedQuestionIds.length})
+                {isImporting
+                  ? `جاري استيراد (${importProgress.current}/${importProgress.total})...`
+                  : `استيراد الأسئلة المحددة (${selectedQuestionIds.length})`}
               </button>
               <button
                 type="button"
+                disabled={isImporting}
                 onClick={() => {
                   setShowImportModal(false);
                   setSelectedImportCourseId("");
@@ -1934,7 +1962,7 @@ function ExamsPageContent() {
                   setImportQuestions([]);
                   setSelectedQuestionIds([]);
                 }}
-                className="flex-1 py-3 px-4 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-xl font-bold transition text-xs border cursor-pointer text-center"
+                className="flex-1 py-3 px-4 bg-gray-50 hover:bg-gray-100 disabled:opacity-50 text-gray-500 rounded-xl font-bold transition text-xs border cursor-pointer text-center"
               >
                 إلغاء
               </button>

@@ -263,7 +263,144 @@ export async function deletePassageGroup(passageId: string) {
 }
 
 // =========================================================================
-// 3. Student Performance Reporting for Admins
+// 3. Bulk Import Questions (High Performance & Error Resilient)
+// =========================================================================
+
+export async function bulkImportQuestions(
+  targetQuizId: string,
+  sourceQuestions: any[],
+  onProgress?: (completed: number, total: number) => void
+): Promise<{ success: boolean; count: number }> {
+  const supabase = createClient();
+  const total = sourceQuestions.length;
+  if (total === 0) return { success: true, count: 0 };
+
+  // Map each unique passage_id to a new unique group ID so questions stay grouped in the target quiz
+  const passageIdMap = new Map<string, string>();
+  sourceQuestions.forEach((q) => {
+    if (q.passage_id && !passageIdMap.has(q.passage_id)) {
+      passageIdMap.set(
+        q.passage_id,
+        `passage_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+      );
+    }
+  });
+
+  // Determine starting order_num so imported questions follow existing ones
+  let baseOrder = 0;
+  try {
+    const { data: existingQ } = await supabase
+      .from("questions")
+      .select("order_num")
+      .eq("quiz_id", targetQuizId)
+      .order("order_num", { ascending: false })
+      .limit(1);
+    if (existingQ && existingQ.length > 0 && typeof existingQ[0].order_num === "number") {
+      baseOrder = existingQ[0].order_num + 1;
+    }
+  } catch (e) {
+    // If order_num column is not present or query fails, order from 0
+    baseOrder = 0;
+  }
+
+  const CHUNK_SIZE = 25; // 25 questions per batch chunk is lightning fast & robust against network drops
+  let importedCount = 0;
+
+  for (let i = 0; i < total; i += CHUNK_SIZE) {
+    const chunk = sourceQuestions.slice(i, i + CHUNK_SIZE);
+
+    // 1. Prepare Question Payloads
+    const extendedQuestionsPayload = chunk.map((q, idx) => ({
+      quiz_id: targetQuizId,
+      question_text: q.question_text || null,
+      question_image: q.question_image || null,
+      correct_option: q.correct_option || "A",
+      passage_id: q.passage_id ? passageIdMap.get(q.passage_id) || null : null,
+      passage_title: q.passage_title || null,
+      passage_text: q.passage_text || null,
+      order_num: baseOrder + i + idx,
+    }));
+
+    const baseQuestionsPayload = chunk.map((q) => ({
+      quiz_id: targetQuizId,
+      question_text: q.question_text || null,
+      question_image: q.question_image || null,
+      correct_option: q.correct_option || "A",
+    }));
+
+    let insertedQuestions: any[] = [];
+
+    // Try inserting with extended columns first
+    const { data: extData, error: extError } = await supabase
+      .from("questions")
+      .insert(extendedQuestionsPayload)
+      .select();
+
+    if (extError) {
+      // Fallback to base columns if extended columns (passage/order_num) don't exist yet
+      console.warn("Extended insert failed, falling back to base columns:", extError.message);
+      const { data: baseData, error: baseError } = await supabase
+        .from("questions")
+        .insert(baseQuestionsPayload)
+        .select();
+
+      if (baseError) {
+        const errorMsg = baseError.message || baseError.details || JSON.stringify(baseError);
+        throw new Error(`خطأ في إدخال دفعة الأسئلة (${i + 1}-${i + chunk.length}): ${errorMsg}`);
+      }
+      insertedQuestions = baseData || [];
+    } else {
+      insertedQuestions = extData || [];
+    }
+
+    if (!insertedQuestions || insertedQuestions.length === 0) {
+      throw new Error(`تعذر حفظ دفعة الأسئلة (${i + 1}-${i + chunk.length}) في قاعدة البيانات.`);
+    }
+
+    // 2. Prepare and Batch Insert Options for this chunk
+    const allOptionsPayload: any[] = [];
+    insertedQuestions.forEach((insertedQ, qIdx) => {
+      const sourceQ = chunk[qIdx];
+      if (sourceQ && sourceQ.options && Array.isArray(sourceQ.options)) {
+        sourceQ.options.forEach((opt: any) => {
+          allOptionsPayload.push({
+            question_id: insertedQ.id,
+            option_letter: opt.option_letter,
+            option_text: opt.option_text || null,
+            option_image: opt.option_image || null,
+          });
+        });
+      }
+    });
+
+    if (allOptionsPayload.length > 0) {
+      const { error: optError } = await supabase
+        .from("options")
+        .upsert(allOptionsPayload, { onConflict: "question_id,option_letter" });
+
+      if (optError) {
+        console.warn("Options upsert warning, retrying with insert:", optError.message);
+        const { error: insertOptErr } = await supabase
+          .from("options")
+          .insert(allOptionsPayload);
+        if (insertOptErr) {
+          const optErrMsg = insertOptErr.message || insertOptErr.details || JSON.stringify(insertOptErr);
+          throw new Error(`خطأ في إدخال اختيارات الأسئلة: ${optErrMsg}`);
+        }
+      }
+    }
+
+    importedCount += chunk.length;
+    if (onProgress) {
+      onProgress(importedCount, total);
+    }
+  }
+
+  return { success: true, count: importedCount };
+}
+
+// =========================================================================
+// 4. Student Performance Reporting for Admins
 // =========================================================================
 
 export async function getCourseStudentPerformance(courseId: string) {
