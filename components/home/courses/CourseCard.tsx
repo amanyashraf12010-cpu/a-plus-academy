@@ -45,9 +45,6 @@ export default function CourseCard({ course, isSubscribed = false }: CourseCardP
             src={course.image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600"}
             alt={course.title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-            onError={(e: any) => {
-              e.currentTarget.src = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600";
-            }}
           />
 
           {/* Badge */}

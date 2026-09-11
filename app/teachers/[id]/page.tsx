@@ -79,9 +79,6 @@ export default async function Page({ params }: any) {
               src={mappedTeacher.image}
               alt={mappedTeacher.name}
               className="w-full h-full object-cover"
-              onError={(e: any) => {
-                e.currentTarget.src = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(mappedTeacher.name)}`;
-              }}
             />
           </div>
 
