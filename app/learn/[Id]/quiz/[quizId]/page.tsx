@@ -22,7 +22,9 @@ import {
   ChevronLeft, 
   ChevronRight,
   RefreshCw,
-  Award
+  Award,
+  BookOpen,
+  X
 } from "lucide-react";
 import Link from "next/link";
 
@@ -36,6 +38,15 @@ function shuffleArray(array: any[]) {
   return arr;
 }
 
+// Order questions respecting teacher/admin sequence
+function orderExamQuestions(rawQuestions: any[]) {
+  return [...rawQuestions].sort((a, b) => {
+    const orderA = a.order_num ?? (a.created_at ? new Date(a.created_at).getTime() : 0);
+    const orderB = b.order_num ?? (b.created_at ? new Date(b.created_at).getTime() : 0);
+    return orderA - orderB;
+  });
+}
+
 export default function StudentQuizPage() {
   const params = useParams<any>();
   const courseId = params?.id || params?.Id;
@@ -46,7 +57,7 @@ export default function StudentQuizPage() {
   const [loading, setLoading] = useState(true);
   const [quiz, setQuiz] = useState<any>(null);
   const [attempt, setAttempt] = useState<any>(null);
-  const [questions, setQuestions] = useState<any[]>([]); // Shuffled questions list
+  const [questions, setQuestions] = useState<any[]>([]); // Ordered questions list
   const [shuffledOptionsMap, setShuffledOptionsMap] = useState<Record<string, any[]>>({}); // questionId -> Shuffled options
   
   // Quiz Player States
@@ -57,6 +68,7 @@ export default function StudentQuizPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedResult, setSubmittedResult] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showMobilePassageModal, setShowMobilePassageModal] = useState(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -130,10 +142,10 @@ export default function StudentQuizPage() {
           setSelectedAnswers(restoredAnswers);
         }
 
-        // Shuffle questions and choices
+        // Order questions sequence
         const rawQuestions = quizData.questions || [];
-        const shuffledQ = shuffleArray(rawQuestions);
-        setQuestions(shuffledQ);
+        const orderedQ = orderExamQuestions(rawQuestions);
+        setQuestions(orderedQ);
 
         const optionsMap: Record<string, any[]> = {};
         rawQuestions.forEach((q: any) => {
@@ -183,10 +195,10 @@ export default function StudentQuizPage() {
       });
       setSelectedAnswers(restoredAnswers);
 
-      // 5. Shuffle questions and choices
+      // 5. Order questions sequence
       const rawQuestions = quizData.questions || [];
-      const shuffledQ = shuffleArray(rawQuestions);
-      setQuestions(shuffledQ);
+      const orderedQ = orderExamQuestions(rawQuestions);
+      setQuestions(orderedQ);
 
       const optionsMap: Record<string, any[]> = {};
       rawQuestions.forEach((q: any) => {
@@ -422,7 +434,15 @@ export default function StudentQuizPage() {
                 return (
                   <div key={q.id} className="bg-white p-6 rounded-3xl border shadow-sm space-y-4">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="bg-purple-50 text-[#7D79F1] px-3 py-1 rounded-full text-xs font-bold">السؤال {idx + 1}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="bg-purple-50 text-[#7D79F1] px-3 py-1 rounded-full text-xs font-bold">السؤال {idx + 1}</span>
+                        {q.passage_title && (
+                          <span className="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1">
+                            <BookOpen size={12} />
+                            {q.passage_title}
+                          </span>
+                        )}
+                      </div>
                       <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${
                         isCorrect ? "bg-green-50 text-green-600 border border-green-200" : "bg-red-50 text-red-500 border border-red-200"
                       }`}>
@@ -430,6 +450,19 @@ export default function StudentQuizPage() {
                         {isCorrect ? "إجابة صحيحة" : "إجابة خاطئة"}
                       </span>
                     </div>
+
+                    {/* Passage box if belongs to a reading passage */}
+                    {q.passage_text && (
+                      <div className="bg-purple-50/40 border border-purple-150 rounded-2xl p-4 text-left font-sans space-y-2" dir="ltr">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-[#7D79F1]" dir="rtl">
+                          <BookOpen size={14} />
+                          <span>قطعة القراءة: {q.passage_title || "Reading Passage"}</span>
+                        </div>
+                        <div className="text-gray-700 text-xs md:text-sm whitespace-pre-wrap leading-relaxed max-h-52 overflow-y-auto p-3 bg-white/80 rounded-xl border border-purple-100">
+                          {q.passage_text}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="space-y-3">
                       {q.question_text && <p className="text-[#2D2B7A] font-extrabold text-base leading-relaxed">{q.question_text}</p>}
@@ -508,13 +541,14 @@ export default function StudentQuizPage() {
   const totalQuestions = questions.length;
   const isFirst = currentQIndex === 0;
   const isLast = currentQIndex === totalQuestions - 1;
+  const isPassageQuestion = Boolean(currentQuestion?.passage_text);
 
   return (
-    <div className="min-h-screen bg-[#F8F9FD] py-12 px-6" dir="rtl">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <div className="min-h-screen bg-[#F8F9FD] py-8 md:py-12 px-4 md:px-6" dir="rtl">
+      <div className={`${isPassageQuestion ? "max-w-6xl" : "max-w-3xl"} mx-auto space-y-6`}>
         
         {/* Header Bar */}
-        <div className="bg-white rounded-3xl border shadow-sm p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="bg-white rounded-3xl border shadow-sm p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
@@ -551,6 +585,20 @@ export default function StudentQuizPage() {
           </div>
         </div>
 
+        {/* Mobile Passage Button if this is a reading passage question */}
+        {isPassageQuestion && (
+          <div className="lg:hidden">
+            <button
+              type="button"
+              onClick={() => setShowMobilePassageModal(true)}
+              className="w-full py-3 px-4 bg-gradient-to-r from-[#7D79F1] to-[#655EF0] text-white rounded-2xl font-bold text-sm shadow-sm flex items-center justify-center gap-2 hover:opacity-95 transition cursor-pointer"
+            >
+              <BookOpen size={18} />
+              <span>📖 عرض قطعة القراءة (Reading Passage)</span>
+            </button>
+          </div>
+        )}
+
         {/* Progress Tracker */}
         <div className="flex justify-between items-center text-xs font-bold text-gray-500 px-2">
           <span>السؤال {currentQIndex + 1} من أصل {totalQuestions}</span>
@@ -564,94 +612,180 @@ export default function StudentQuizPage() {
           />
         </div>
 
-        {/* Question Panel */}
+        {/* Question + Passage Layout */}
         {currentQuestion && (
-          <div className="bg-white rounded-3xl border shadow-sm p-8 space-y-6 min-h-[350px] flex flex-col justify-between">
-            <div className="space-y-4">
-              
-              {/* Question contents */}
-              <div className="space-y-3">
-                {currentQuestion.question_text && (
-                  <p className="text-[#2D2B7A] font-extrabold text-lg leading-relaxed">{currentQuestion.question_text}</p>
-                )}
-                {currentQuestion.question_image && (
-                  <div className="rounded-2xl overflow-hidden border max-w-lg">
-                    <img src={currentQuestion.question_image} alt="Question Illustration" className="w-full object-contain max-h-64" />
+          <div className={isPassageQuestion ? "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start" : ""}>
+            
+            {/* Desktop Passage Column */}
+            {isPassageQuestion && (
+              <div className="hidden lg:flex lg:col-span-5 bg-white rounded-3xl border shadow-sm p-6 flex-col max-h-[calc(100vh-180px)] sticky top-6">
+                <div className="flex items-center gap-2 pb-3 border-b mb-3">
+                  <div className="p-2 bg-purple-50 text-[#7D79F1] rounded-xl">
+                    <BookOpen size={18} />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-[#2D2B7A] text-sm">
+                      {currentQuestion.passage_title || "قطعة القراءة (Reading Passage)"}
+                    </h3>
+                    <p className="text-[11px] text-gray-400">اقرأ النص للإجابة على الأسئلة التابعة له</p>
+                  </div>
+                </div>
+
+                <div 
+                  dir="ltr"
+                  className="overflow-y-auto pr-3 text-left font-sans text-gray-800 text-sm leading-relaxed whitespace-pre-wrap selection:bg-purple-100 flex-1 p-3 bg-gray-50/70 rounded-2xl border border-gray-100"
+                >
+                  {currentQuestion.passage_text}
+                </div>
+              </div>
+            )}
+
+            {/* Question Card */}
+            <div className={`${isPassageQuestion ? "lg:col-span-7" : ""} bg-white rounded-3xl border shadow-sm p-6 md:p-8 space-y-6 min-h-[350px] flex flex-col justify-between`}>
+              <div className="space-y-4">
+                
+                {/* Passage indicator badge if passage question */}
+                {isPassageQuestion && (
+                  <div className="inline-flex items-center gap-1.5 bg-purple-50 text-[#7D79F1] px-3 py-1 rounded-full text-xs font-bold border border-purple-100">
+                    <BookOpen size={13} />
+                    <span>سؤال تابع لقطعة القراءة</span>
                   </div>
                 )}
-              </div>
 
-              {/* Shuffled Options list */}
-              <div className="grid md:grid-cols-2 gap-4 pt-4">
-                {(shuffledOptionsMap[currentQuestion.id] || []).map((opt: any) => {
-                  const isSelected = selectedAnswers[currentQuestion.id] === opt.option_letter;
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => handleOptionSelect(currentQuestion.id, opt.option_letter)}
-                      className={`w-full text-right p-5 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col gap-2 ${
-                        isSelected
-                          ? "border-[#7D79F1] bg-[#F3F2FF] shadow-sm scale-[0.99] font-bold text-[#2D2B7A]"
-                          : "border-gray-100 hover:border-gray-200 bg-white text-gray-700 hover:bg-gray-50/50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-xs font-bold border transition ${
+                {/* Question contents */}
+                <div className="space-y-3">
+                  {currentQuestion.question_text && (
+                    <p className="text-[#2D2B7A] font-extrabold text-base md:text-lg leading-relaxed">{currentQuestion.question_text}</p>
+                  )}
+                  {currentQuestion.question_image && (
+                    <div className="rounded-2xl overflow-hidden border max-w-lg">
+                      <img src={currentQuestion.question_image} alt="Question Illustration" className="w-full object-contain max-h-64" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Shuffled Options list */}
+                <div className="grid md:grid-cols-2 gap-3 md:gap-4 pt-2">
+                  {(shuffledOptionsMap[currentQuestion.id] || []).map((opt: any) => {
+                    const isSelected = selectedAnswers[currentQuestion.id] === opt.option_letter;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => handleOptionSelect(currentQuestion.id, opt.option_letter)}
+                        className={`w-full text-right p-4 md:p-5 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col gap-2 ${
                           isSelected
-                            ? "bg-[#7D79F1] text-white border-[#7D79F1]"
-                            : "bg-gray-50 text-gray-400 border-gray-100"
-                        }`}>
-                          {isSelected ? <Check size={14} /> : opt.option_letter}
-                        </span>
-                        {opt.option_text && <span className="text-sm font-medium">{opt.option_text}</span>}
-                      </div>
-
-                      {opt.option_image && (
-                        <div className="rounded-xl overflow-hidden border max-w-xs mt-2 self-start mr-10">
-                          <img src={opt.option_image} alt="Option Illustration" className="w-full object-contain max-h-36" />
+                            ? "border-[#7D79F1] bg-[#F3F2FF] shadow-sm scale-[0.99] font-bold text-[#2D2B7A]"
+                            : "border-gray-100 hover:border-gray-200 bg-white text-gray-700 hover:bg-gray-50/50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-xs font-bold border transition ${
+                            isSelected
+                              ? "bg-[#7D79F1] text-white border-[#7D79F1]"
+                              : "bg-gray-50 text-gray-400 border-gray-100"
+                          }`}>
+                            {isSelected ? <Check size={14} /> : opt.option_letter}
+                          </span>
+                          {opt.option_text && <span className="text-sm font-medium">{opt.option_text}</span>}
                         </div>
-                      )}
-                    </button>
-                  );
-                })}
+
+                        {opt.option_image && (
+                          <div className="rounded-xl overflow-hidden border max-w-xs mt-2 self-start mr-10">
+                            <img src={opt.option_image} alt="Option Illustration" className="w-full object-contain max-h-36" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+              </div>
+
+              {/* Navigation buttons */}
+              <div className="flex items-center justify-between pt-6 border-t mt-8 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCurrentQIndex(currentQIndex - 1)}
+                  disabled={isFirst}
+                  className="py-3 px-5 border rounded-xl font-bold text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer"
+                >
+                  <ChevronRight size={18} />
+                  السابق
+                </button>
+
+                {!isLast ? (
+                  <button
+                    type="button"
+                    onClick={() => setCurrentQIndex(currentQIndex + 1)}
+                    className="py-3 px-6 bg-[#7D79F1] hover:bg-[#655EF0] text-white rounded-xl font-bold text-sm transition flex items-center gap-1 cursor-pointer"
+                  >
+                    التالي
+                    <ChevronLeft size={18} />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleSubmit()}
+                    disabled={isSubmitting}
+                    className="py-3 px-8 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white rounded-xl font-bold text-sm transition flex items-center gap-1 cursor-pointer"
+                  >
+                    {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : null}
+                    إنهاء وتسليم الإجابات
+                  </button>
+                )}
               </div>
 
             </div>
 
-            {/* Navigation buttons */}
-            <div className="flex items-center justify-between pt-6 border-t mt-8 gap-3">
-              <button
-                type="button"
-                onClick={() => setCurrentQIndex(currentQIndex - 1)}
-                disabled={isFirst}
-                className="py-3 px-5 border rounded-xl font-bold text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1"
+          </div>
+        )}
+
+        {/* Mobile Passage Modal Drawer */}
+        {showMobilePassageModal && isPassageQuestion && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-200">
+              {/* Modal Header */}
+              <div className="p-5 border-b flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-purple-50 text-[#7D79F1] rounded-xl">
+                    <BookOpen size={18} />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-[#2D2B7A] text-base">
+                      {currentQuestion.passage_title || "قطعة القراءة (Reading Passage)"}
+                    </h3>
+                    <p className="text-xs text-gray-400">اقرأ القطعة بتركيز ثم أجب عن الأسئلة</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowMobilePassageModal(false)}
+                  className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div 
+                dir="ltr"
+                className="p-6 overflow-y-auto text-left font-sans text-gray-800 text-sm md:text-base leading-relaxed whitespace-pre-wrap flex-1 bg-gray-50/50"
               >
-                <ChevronRight size={18} />
-                السابق
-              </button>
+                {currentQuestion.passage_text}
+              </div>
 
-              {!isLast ? (
+              {/* Modal Footer */}
+              <div className="p-4 border-t bg-white rounded-b-3xl">
                 <button
                   type="button"
-                  onClick={() => setCurrentQIndex(currentQIndex + 1)}
-                  className="py-3 px-6 bg-[#7D79F1] hover:bg-[#655EF0] text-white rounded-xl font-bold text-sm transition flex items-center gap-1 cursor-pointer"
+                  onClick={() => setShowMobilePassageModal(false)}
+                  className="w-full py-3 bg-[#7D79F1] hover:bg-[#655EF0] text-white rounded-xl font-bold text-sm transition cursor-pointer"
                 >
-                  التالي
-                  <ChevronLeft size={18} />
+                  العودة للأسئلة
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleSubmit()}
-                  disabled={isSubmitting}
-                  className="py-3 px-8 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white rounded-xl font-bold text-sm transition flex items-center gap-1 cursor-pointer"
-                >
-                  {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : null}
-                  إنهاء وتسليم الإجابات
-                </button>
-              )}
+              </div>
             </div>
-
           </div>
         )}
 

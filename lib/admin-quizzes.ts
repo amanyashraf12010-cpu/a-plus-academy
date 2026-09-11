@@ -114,6 +114,10 @@ export async function saveQuestion(
     question_text?: string;
     question_image?: string;
     correct_option: "A" | "B" | "C" | "D";
+    passage_id?: string | null;
+    passage_title?: string | null;
+    passage_text?: string | null;
+    order_num?: number;
   },
   options: Array<{
     option_letter: "A" | "B" | "C" | "D";
@@ -125,34 +129,58 @@ export async function saveQuestion(
 
   let questionId = question.id;
 
+  const basePayload: any = {
+    question_text: question.question_text || null,
+    question_image: question.question_image || null,
+    correct_option: question.correct_option,
+  };
+
+  const extendedPayload: any = {
+    ...basePayload,
+    passage_id: question.passage_id || null,
+    passage_title: question.passage_title || null,
+    passage_text: question.passage_text || null,
+    order_num: question.order_num ?? 0,
+  };
+
   if (questionId) {
-    // 1. Update Question
-    const { error: qError } = await supabase
+    // 1. Update Question (try extended first, fallback to base if columns missing)
+    let qError = null;
+    const { error: extError } = await supabase
       .from("questions")
-      .update({
-        question_text: question.question_text || null,
-        question_image: question.question_image || null,
-        correct_option: question.correct_option,
-      })
+      .update(extendedPayload)
       .eq("id", questionId);
+
+    if (extError) {
+      const { error: fallbackError } = await supabase
+        .from("questions")
+        .update(basePayload)
+        .eq("id", questionId);
+      qError = fallbackError;
+    }
 
     if (qError) throw qError;
   } else {
-    // 1. Insert Question
-    const { data: newQ, error: qError } = await supabase
+    // 1. Insert Question (try extended first, fallback to base if columns missing)
+    let newQ = null;
+    const { data: extData, error: extError } = await supabase
       .from("questions")
-      .insert([
-        {
-          quiz_id: quizId,
-          question_text: question.question_text || null,
-          question_image: question.question_image || null,
-          correct_option: question.correct_option,
-        }
-      ])
+      .insert([{ quiz_id: quizId, ...extendedPayload }])
       .select()
       .single();
 
-    if (qError) throw qError;
+    if (extError) {
+      const { data: baseData, error: fallbackError } = await supabase
+        .from("questions")
+        .insert([{ quiz_id: quizId, ...basePayload }])
+        .select()
+        .single();
+      if (fallbackError) throw fallbackError;
+      newQ = baseData;
+    } else {
+      newQ = extData;
+    }
+
     questionId = newQ.id;
   }
 
@@ -176,6 +204,61 @@ export async function saveQuestion(
 export async function deleteQuestion(questionId: string) {
   const supabase = createClient();
   const { error } = await supabase.from("questions").delete().eq("id", questionId);
+  if (error) throw error;
+}
+
+export async function savePassageGroup(
+  quizId: string,
+  passage: {
+    id: string; // generated unique group ID or existing passage_id
+    title?: string;
+    text: string;
+    order_num?: number;
+  },
+  questionsList: Array<{
+    id?: string;
+    question_text: string;
+    question_image?: string;
+    correct_option: "A" | "B" | "C" | "D";
+    order_num?: number;
+    options: Array<{
+      option_letter: "A" | "B" | "C" | "D";
+      option_text?: string;
+      option_image?: string;
+    }>;
+  }>,
+  deletedQuestionIds?: string[]
+) {
+  const supabase = createClient();
+
+  // 1. If any question IDs were deleted in this passage group, remove them
+  if (deletedQuestionIds && deletedQuestionIds.length > 0) {
+    await supabase.from("questions").delete().in("id", deletedQuestionIds);
+  }
+
+  // 2. Save each question in the passage group
+  for (let i = 0; i < questionsList.length; i++) {
+    const q = questionsList[i];
+    await saveQuestion(
+      quizId,
+      {
+        id: q.id,
+        question_text: q.question_text,
+        question_image: q.question_image,
+        correct_option: q.correct_option,
+        passage_id: passage.id,
+        passage_title: passage.title || null,
+        passage_text: passage.text,
+        order_num: q.order_num ?? (passage.order_num ? passage.order_num * 100 + i : i + 1),
+      },
+      q.options
+    );
+  }
+}
+
+export async function deletePassageGroup(passageId: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from("questions").delete().eq("passage_id", passageId);
   if (error) throw error;
 }
 
