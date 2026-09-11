@@ -376,8 +376,8 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
   }).length;
   const courseProgress = lessons.length > 0 ? Math.round((completedLessons / lessons.length) * 100) : 0;
 
-  // 6. Check if final exam is unlocked (all lessons completed/passed)
-  const finalExamUnlocked = completedLessons === lessons.length;
+  // 6. Check if final exam is unlocked (governed strictly by scheduled timeline, independent of lecture/quiz completion)
+  const finalExamUnlocked = true;
 
   // Fetch final exam status
   let finalExamStatus = "not_started";
