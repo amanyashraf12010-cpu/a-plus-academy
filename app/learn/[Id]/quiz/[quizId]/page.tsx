@@ -71,6 +71,13 @@ export default function StudentQuizPage() {
   const [showMobilePassageModal, setShowMobilePassageModal] = useState(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isSubmittingRef = useRef(false);
+  const submittedResultRef = useRef(submittedResult);
+  submittedResultRef.current = submittedResult;
+  const attemptRef = useRef(attempt);
+  attemptRef.current = attempt;
+  const quizRef = useRef(quiz);
+  quizRef.current = quiz;
 
   // Load Quiz data and attempts
   async function loadQuizAndAttempt() {
@@ -168,7 +175,8 @@ export default function StudentQuizPage() {
         return;
       }
 
-      // If there is an active in-progress attempt, restore it. Otherwise start a new one (unless it's final exam and deadline passed)
+      // If there is an active in-progress attempt:
+      // For final exam: if they already had an active attempt from before, leaving the page means it auto-closes!
       let currentAttempt = activeAttempt;
       if (!currentAttempt) {
         if (quizData.type === "final" && quizData.end_time && new Date(quizData.end_time) < new Date()) {
@@ -177,6 +185,17 @@ export default function StudentQuizPage() {
           return;
         }
         currentAttempt = await startQuizAttempt(quizData.id);
+      } else if (quizData.type === "final") {
+        try {
+          const result = await submitQuizAttempt(currentAttempt.id);
+          setSubmittedResult(result.attempt);
+          setAttempt(result.attempt);
+          setLoading(false);
+          alert("⚠️ تنبيه: لقد قمت بمغادرة صفحة الامتحان الشامل أثناء سريان الوقت سابقاً. تم إغلاق الامتحان وتسجيل إجاباتك تلقائياً.");
+          return;
+        } catch (e) {
+          console.error("Failed to auto-submit exited attempt:", e);
+        }
       }
 
       setAttempt(currentAttempt);
@@ -245,6 +264,61 @@ export default function StudentQuizPage() {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [timeLeft, submittedResult]);
+
+  // Anti-cheat & Auto-close on tab switch, minimize, or page exit for final exams
+  useEffect(() => {
+    if (quiz?.type !== "final" || !attempt || attempt.status !== "in_progress" || submittedResult) {
+      return;
+    }
+
+    const triggerAutoCloseOnExit = async () => {
+      if (isSubmittingRef.current || submittedResultRef.current) return;
+      isSubmittingRef.current = true;
+      setIsSubmitting(true);
+
+      try {
+        console.warn("تم رصد مغادرة صفحة الامتحان الشامل، جاري الإغلاق والتسليم الفوري...");
+        const result = await submitQuizAttempt(attempt.id);
+        setSubmittedResult(result.attempt);
+        if (timerRef.current) clearTimeout(timerRef.current);
+        setTimeLeft(null);
+        alert("⚠️ تنبيه أمان: لقد قمت بمغادرة صفحة الامتحان الشامل أو تبديل التبويب أثناء سريان الوقت! تم إغلاق الامتحان وتسليمه تلقائياً.");
+      } catch (err) {
+        console.error("خطأ أثناء الإغلاق التلقائي للامتحان:", err);
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        triggerAutoCloseOnExit();
+      }
+    };
+
+    const handlePageHide = () => {
+      triggerAutoCloseOnExit();
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!submittedResultRef.current && !isSubmittingRef.current) {
+        triggerAutoCloseOnExit();
+        e.preventDefault();
+        e.returnValue = "تحذير: مغادرة الصفحة ستؤدي إلى إغلاق الامتحان الشامل وتسليمه فوراً.";
+        return e.returnValue;
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", handlePageHide);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", handlePageHide);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [quiz?.type, attempt?.id, attempt?.status, submittedResult]);
 
   useEffect(() => {
     if (quizId) {
@@ -572,13 +646,27 @@ export default function StudentQuizPage() {
         <div className="bg-white rounded-3xl border shadow-sm p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                if (confirm("هل تريد بالفعل التراجع والخروج لصفحة المحاضرات؟ سيتم حفظ إجاباتك الحالية تلقائياً.")) {
-                  router.push(`/learn/${courseId}`);
+              onClick={async () => {
+                if (quiz.type === "final") {
+                  if (confirm("⚠️ تحذير أمان: هذا امتحان شامل مراقب بوقت! الخروج من صفحة الامتحان الآن سيؤدي إلى إنهاء وتسليم محاولتك فوراً ولن تتمكن من العودة إليه. هل أنت متأكد من الخروج وتسليم الامتحان؟")) {
+                    setIsSubmitting(true);
+                    try {
+                      const result = await submitQuizAttempt(attempt.id);
+                      setSubmittedResult(result.attempt);
+                      router.push(`/learn/${courseId}`);
+                    } catch (err) {
+                      console.error(err);
+                      router.push(`/learn/${courseId}`);
+                    }
+                  }
+                } else {
+                  if (confirm("هل تريد بالفعل التراجع والخروج لصفحة المحاضرات؟ سيتم حفظ إجاباتك الحالية تلقائياً.")) {
+                    router.push(`/learn/${courseId}`);
+                  }
                 }
               }}
               className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-150 transition cursor-pointer"
-              title="خروج وحفظ"
+              title="خروج"
             >
               <ArrowRight size={20} />
             </button>
@@ -605,6 +693,18 @@ export default function StudentQuizPage() {
             )}
           </div>
         </div>
+
+        {/* Security Warning Banner for Final Exam */}
+        {quiz.type === "final" && !submittedResult && (
+          <div className="bg-gradient-to-r from-red-50 to-amber-50 border border-red-200 text-red-900 p-4 rounded-2xl flex items-center gap-3 text-xs sm:text-sm font-bold shadow-xs">
+            <div className="p-2 bg-red-100 text-red-600 rounded-xl shrink-0">
+              <AlertTriangle size={18} className="animate-pulse" />
+            </div>
+            <div className="leading-relaxed">
+              <span className="text-red-700 font-black">🔒 نظام مراقبة الامتحان الشامل نشط:</span> يمنع مغادرة الصفحة، تصغير المتصفح، أو الانتقال لتبويب آخر. أي خروج سيؤدي إلى قفل الامتحان وتسليمه تلقائياً فوراً.
+            </div>
+          </div>
+        )}
 
         {/* Mobile Passage Button if this is a reading passage question */}
         {isPassageQuestion && (
