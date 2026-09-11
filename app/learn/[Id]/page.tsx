@@ -176,7 +176,12 @@ export default function LearnPage() {
   async function loadVideo(lesson: any) {
     if (!lesson) return;
     if (lesson.isLocked) {
-      setVideoError("⚠️ هذه المحاضرة مغلقة حالياً. يجب اجتياز واجب المحاضرة السابقة أولاً بنسبة نجاح 50% أو أكثر لتتمكن من مشاهدة الفيديو.");
+      if (lesson.lockReason === "not_purchased") {
+        setVideoError("not_purchased");
+      } else {
+        setVideoError("⚠️ هذه المحاضرة مغلقة حالياً. يجب اجتياز واجب المحاضرة السابقة أولاً بنسبة نجاح 50% أو أكثر لتتمكن من مشاهدة الفيديو.");
+      }
+      setLoadingVideo(false);
       return;
     }
     try {
@@ -495,6 +500,31 @@ export default function LearnPage() {
                     <Loader2 className="animate-spin text-[#7D79F1] mx-auto" size={48} />
                     <p className="text-sm font-semibold">جاري تحضير عرض الفيديو الآمن...</p>
                   </div>
+                ) : videoError === "not_purchased" ? (
+                  <div className="p-8 text-center text-white max-w-md space-y-4">
+                    <div className="w-16 h-16 bg-purple-500/20 text-[#7D79F1] rounded-2xl flex items-center justify-center mx-auto border border-[#7D79F1]/40 shadow-inner">
+                      <Lock size={30} />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-white">هذه الحصة غير مفعلة في حسابك</h3>
+                      <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
+                        أنت غير مشترك في هذه الحصة. للاطلاع على الفيديو والمذكرات والواجب الإلكتروني، يمكنك الاشتراك بها الآن.
+                      </p>
+                    </div>
+                    {activeLesson?.price && Number(activeLesson.price) > 0 && (
+                      <div className="text-base font-black text-[#7D79F1] bg-white/5 py-2 px-4 rounded-xl inline-block border border-white/10">
+                        سعر الحصة: {activeLesson.price} جنيه
+                      </div>
+                    )}
+                    <div>
+                      <Link
+                        href={`/courses/${courseId}/checkout?lessonId=${activeLesson?.id}`}
+                        className="inline-flex items-center gap-2 bg-[#7D79F1] hover:bg-[#655EF0] text-white px-6 py-3 rounded-xl font-bold text-xs transition shadow-lg hover:shadow-xl"
+                      >
+                        <span>🚀 اشترك في هذه الحصة الآن</span>
+                      </Link>
+                    </div>
+                  </div>
                 ) : videoError ? (
                   <div className="p-6 text-center text-white max-w-md space-y-3">
                     <AlertTriangle className="text-red-500 mx-auto" size={48} />
@@ -628,7 +658,18 @@ export default function LearnPage() {
                   {activeTab === "files" && (
                     <div className="space-y-3">
                       <h3 className="font-bold text-lg text-[#2D2B7A]">ملفات الدرس المرفقة</h3>
-                      {activeLesson?.pdf_url ? (
+                      {activeLesson?.isLocked && activeLesson?.lockReason === "not_purchased" ? (
+                        <div className="p-6 bg-gray-50 border border-gray-200 rounded-2xl text-center space-y-2">
+                          <Lock className="mx-auto text-gray-400" size={24} />
+                          <p className="text-xs font-bold text-gray-700">المذكرات والمرفقات متاحة للمشتركين في هذه الحصة فقط.</p>
+                          <Link
+                            href={`/courses/${courseId}/checkout?lessonId=${activeLesson?.id}`}
+                            className="inline-block mt-1 text-xs text-[#7D79F1] font-bold hover:underline"
+                          >
+                            اشترك في الحصة الآن لفتح المرفقات 🚀
+                          </Link>
+                        </div>
+                      ) : activeLesson?.pdf_url ? (
                         <div className="border border-gray-100 bg-gray-50 rounded-2xl p-4 flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <FileText className="text-red-500" size={20} />
@@ -658,7 +699,18 @@ export default function LearnPage() {
                   {activeTab === "quiz" && (
                     <div className="space-y-4">
                       <h3 className="font-bold text-lg text-[#2D2B7A]">واجب الدرس: {activeLesson?.title}</h3>
-                      {activeLesson?.quizId ? (
+                      {activeLesson?.isLocked && activeLesson?.lockReason === "not_purchased" ? (
+                        <div className="p-6 bg-gray-50 border border-gray-200 rounded-2xl text-center space-y-2">
+                          <Lock className="mx-auto text-gray-400" size={24} />
+                          <p className="text-xs font-bold text-gray-700">الواجب الإلكتروني متاح للمشتركين في هذه الحصة فقط.</p>
+                          <Link
+                            href={`/courses/${courseId}/checkout?lessonId=${activeLesson?.id}`}
+                            className="inline-block mt-1 text-xs text-[#7D79F1] font-bold hover:underline"
+                          >
+                            اشترك في الحصة الآن لبدء حل الواجب 🚀
+                          </Link>
+                        </div>
+                      ) : activeLesson?.quizId ? (
                         <div className="border border-gray-100 bg-gray-50 rounded-2xl p-5 space-y-4">
                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-200">
                             <div>
@@ -747,11 +799,17 @@ export default function LearnPage() {
                   {lessons.map((lesson, idx) => {
                     const isActive = lesson.id === activeLesson?.id;
                     const isLocked = lesson.isLocked;
+                    const isNotPurchased = isLocked && lesson.lockReason === "not_purchased";
+
                     return (
                       <button
                         key={lesson.id}
                         onClick={() => {
                           if (isLocked) {
+                            if (isNotPurchased) {
+                              setActiveLesson(lesson);
+                              return;
+                            }
                             alert("⚠️ عذراً، هذه المحاضرة مغلقة! يرجى اجتياز واجب المحاضرة السابقة أولاً بنسبة نجاح 50% أو أكثر لتفتح لك هذه المحاضرة.");
                             return;
                           }
@@ -761,17 +819,21 @@ export default function LearnPage() {
                           isActive
                             ? "border-[#7D79F1] bg-[#F3F2FF] font-bold text-[#7D79F1]"
                             : isLocked
-                            ? "border-gray-100 bg-gray-50/50 text-gray-400 cursor-not-allowed"
+                            ? "border-gray-100 bg-gray-50/50 text-gray-400 hover:border-gray-200"
                             : "border-gray-100 hover:border-gray-200 text-gray-700 bg-white"
                         }`}
                       >
                         <div className="flex-1">
-                          <h4 className={`font-bold ${isLocked ? "text-gray-400" : "text-[#2D2B7A]"}`}>
+                          <h4 className={`font-bold ${isLocked && !isActive ? "text-gray-400" : "text-[#2D2B7A]"}`}>
                             {idx + 1}. {lesson.title}
                           </h4>
-                          <p className="text-gray-400 text-xs mt-1 flex items-center gap-1.5">
+                          <p className="text-gray-400 text-xs mt-1 flex items-center gap-1.5 flex-wrap">
                             <span>{lesson.duration || "غير محدد المدة"}</span>
-                            {lesson.quizId && (
+                            {isNotPurchased ? (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-[#7D79F1] border border-purple-200">
+                                غير مشترك 🔒
+                              </span>
+                            ) : lesson.quizId && (
                               <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
                                 lesson.quizStatus === "passed"
                                   ? "bg-green-50 text-green-600 border-green-150"
@@ -785,7 +847,7 @@ export default function LearnPage() {
                           </p>
                         </div>
                         {isLocked ? (
-                          <Lock size={16} className="text-gray-300" />
+                          <Lock size={16} className={isActive ? "text-[#7D79F1]" : "text-gray-300"} />
                         ) : (
                           <Play size={16} className={isActive ? "text-[#7D79F1]" : "text-gray-300"} />
                         )}

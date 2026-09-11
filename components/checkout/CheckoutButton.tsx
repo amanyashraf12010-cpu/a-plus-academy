@@ -5,11 +5,19 @@ import { createClient } from "@/utils/supabase/client";
 
 export default function CheckoutButton({
   course,
+  lesson,
   name,
   phone,
   method,
   validate,
-}: any) {
+}: {
+  course: any;
+  lesson?: any;
+  name: string;
+  phone: string;
+  method: string;
+  validate: () => boolean;
+}) {
   const [loading, setLoading] = useState(false);
   
   // رقم الواتساب بدون علامة الـ + لتجنب المشاكل في الرابط
@@ -27,22 +35,60 @@ export default function CheckoutButton({
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
-        // 2. إدخال أو تحديث الاشتراك في قاعدة البيانات كطلب معلق لكي يظهر للأدمن في لوحة التحكم (للسماح بإعادة تقديم الطلب في حال الرفض)
-        await supabase
-          .from("subscriptions")
-          .upsert(
-            [
-              {
-                user_id: user.id,
-                course_id: course.id,
+        // 2. إدخال أو تحديث الاشتراك في قاعدة البيانات كطلب معلق لكي يظهر للأدمن في لوحة التحكم
+        if (lesson) {
+          // Check if there is an existing pending/rejected subscription for this specific lesson
+          const { data: existingLessonSub } = await supabase
+            .from("subscriptions")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("course_id", course.id)
+            .eq("lesson_id", lesson.id)
+            .maybeSingle();
+
+          if (existingLessonSub) {
+            await supabase
+              .from("subscriptions")
+              .update({
                 payment_method: method === "vodafone" ? "vodafone_cash" : "instapay",
                 status: "pending",
-                receipt_url: null // سيتم إرساله يدوياً على واتساب
-              }
-            ],
-            { onConflict: "user_id,course_id" }
-          )
-          .select();
+                receipt_url: null,
+                created_at: new Date().toISOString()
+              })
+              .eq("id", existingLessonSub.id);
+          } else {
+            await supabase
+              .from("subscriptions")
+              .insert([
+                {
+                  user_id: user.id,
+                  course_id: course.id,
+                  lesson_id: lesson.id,
+                  payment_method: method === "vodafone" ? "vodafone_cash" : "instapay",
+                  status: "pending",
+                  receipt_url: null
+                }
+              ]);
+          }
+        } else {
+          // Full course subscription
+          await supabase
+            .from("subscriptions")
+            .upsert(
+              [
+                {
+                  user_id: user.id,
+                  course_id: course.id,
+                  lesson_id: null,
+                  payment_method: method === "vodafone" ? "vodafone_cash" : "instapay",
+                  status: "pending",
+                  receipt_url: null
+                }
+              ],
+              { onConflict: "user_id,course_id" }
+            )
+            .select();
+        }
       }
     } catch (error) {
       console.error("فشل تسجيل الاشتراك في قاعدة البيانات:", error);
@@ -50,7 +96,33 @@ export default function CheckoutButton({
 
     const paymentLabel = method === "vodafone" ? "Vodafone Cash" : "InstaPay";
 
-    const message = `السلام عليكم
+    let message = "";
+    if (lesson) {
+      message = `السلام عليكم
+
+أرغب في الاشتراك في حصة جديدة.
+
+👤 الاسم:
+${name}
+
+📞 رقم الهاتف:
+${phone}
+
+📚 الكورس:
+${course.title}
+
+📖 الحصة:
+${lesson.title}
+
+💰 سعر الحصة:
+${lesson.price || 0} جنيه
+
+💳 طريقة الدفع:
+${paymentLabel}
+
+وسأرسل صورة الإيصال الآن.`;
+    } else {
+      message = `السلام عليكم
 
 أرغب في الاشتراك في كورس جديد.
 
@@ -63,10 +135,14 @@ ${phone}
 📚 الكورس:
 ${course.title}
 
+💰 سعر الكورس:
+${course.price} جنيه
+
 💳 طريقة الدفع:
 ${paymentLabel}
 
 وسأرسل صورة الإيصال الآن.`;
+    }
 
     // فتح واتساب الأكاديمية بالرابط الصحيح
     window.open(

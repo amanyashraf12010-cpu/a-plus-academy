@@ -99,21 +99,66 @@ export async function getCourseSubscriptionStatus(courseId: string) {
   const supabase = createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { isLoggedIn: false, status: null };
-
-  const { data, error } = await supabase
-    .from("subscriptions")
-    .select("status")
-    .eq("user_id", user.id)
-    .eq("course_id", courseId)
-    .maybeSingle();
-
-  if (error) {
-    console.error("خطأ في جلب حالة الاشتراك:", error.message);
-    return { isLoggedIn: true, status: null };
+  if (!user) {
+    return {
+      isLoggedIn: false,
+      status: null,
+      isFullApproved: false,
+      unlockedLessonIds: [] as string[],
+      pendingLessonIds: [] as string[],
+    };
   }
 
-  return { isLoggedIn: true, status: data ? data.status : null };
+  try {
+    // 1. Fetch full course subscription (lesson_id IS NULL)
+    const { data: fullSub } = await supabase
+      .from("subscriptions")
+      .select("status, lesson_id")
+      .eq("user_id", user.id)
+      .eq("course_id", courseId)
+      .is("lesson_id", null)
+      .maybeSingle();
+
+    const isFullApproved = fullSub?.status === "approved";
+    const fullStatus = fullSub ? fullSub.status : null;
+
+    // 2. Fetch all lesson_access records for this user in this course
+    const { data: lessonAccessData } = await supabase
+      .from("lesson_access")
+      .select("lesson_id")
+      .eq("user_id", user.id)
+      .eq("course_id", courseId);
+
+    const unlockedLessonIds = (lessonAccessData || []).map((la: any) => la.lesson_id);
+
+    // 3. Fetch pending lesson subscriptions
+    const { data: pendingLessonsData } = await supabase
+      .from("subscriptions")
+      .select("lesson_id")
+      .eq("user_id", user.id)
+      .eq("course_id", courseId)
+      .eq("status", "pending")
+      .not("lesson_id", "is", null);
+
+    const pendingLessonIds = (pendingLessonsData || []).map((pl: any) => pl.lesson_id).filter(Boolean);
+
+    return {
+      isLoggedIn: true,
+      status: fullStatus,
+      isFullApproved,
+      unlockedLessonIds,
+      pendingLessonIds,
+    };
+  } catch (error: any) {
+    console.error("خطأ في جلب حالة الاشتراك:", error.message);
+    return {
+      isLoggedIn: true,
+      status: null,
+      isFullApproved: false,
+      unlockedLessonIds: [],
+      pendingLessonIds: [],
+    };
+  }
 }
 
 // =========================================================================
@@ -126,7 +171,8 @@ export async function getMyCourses() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("يجب تسجيل الدخول أولاً.");
 
-  const { data, error } = await supabase
+  // 1. Fetch courses with full approved subscription
+  const { data: fullSubs, error: fullError } = await supabase
     .from("subscriptions")
     .select(`
       course_id,
@@ -147,10 +193,49 @@ export async function getMyCourses() {
     .eq("user_id", user.id)
     .eq("status", "approved");
 
-  if (error) throw error;
-  
-  // Extract and return only the courses objects
-  return data.map((sub: any) => sub.courses);
+  if (fullError) throw fullError;
+
+  // 2. Fetch courses with single lesson access
+  const { data: lessonAccessList, error: laError } = await supabase
+    .from("lesson_access")
+    .select(`
+      course_id,
+      courses (
+        id,
+        title,
+        description,
+        image,
+        grade,
+        subject,
+        video_count,
+        duration,
+        teachers (
+          name
+        )
+      )
+    `)
+    .eq("user_id", user.id);
+
+  if (laError) {
+    console.warn("Could not fetch lesson_access in getMyCourses:", laError.message);
+  }
+
+  // Combine and deduplicate courses
+  const courseMap = new Map<string, any>();
+
+  (fullSubs || []).forEach((sub: any) => {
+    if (sub.courses && !courseMap.has(sub.courses.id)) {
+      courseMap.set(sub.courses.id, sub.courses);
+    }
+  });
+
+  (lessonAccessList || []).forEach((la: any) => {
+    if (la.courses && !courseMap.has(la.courses.id)) {
+      courseMap.set(la.courses.id, la.courses);
+    }
+  });
+
+  return Array.from(courseMap.values());
 }
 
 // =========================================================================

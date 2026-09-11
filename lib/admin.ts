@@ -52,7 +52,8 @@ export async function getPendingSubscriptions() {
     .select(`
       *,
       profiles:user_id (full_name, phone),
-      courses:course_id (title, price)
+      courses:course_id (title, price),
+      lessons:lesson_id (id, title, price)
     `)
     .eq("status", "pending")
     .order("created_at", { ascending: false });
@@ -64,12 +65,44 @@ export async function getPendingSubscriptions() {
 export async function approveSubscription(id: string) {
   const supabase = createClient();
 
-  const { error } = await supabase
+  // 1. Fetch subscription details first to see if it's for a specific lesson
+  const { data: sub, error: fetchError } = await supabase
+    .from("subscriptions")
+    .select("id, user_id, course_id, lesson_id")
+    .eq("id", id)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  // 2. Update status to approved
+  const { error: updateError } = await supabase
     .from("subscriptions")
     .update({ status: "approved" })
     .eq("id", id);
 
-  if (error) throw error;
+  if (updateError) throw updateError;
+
+  // 3. If it's a specific lesson subscription, grant access in lesson_access table
+  if (sub?.lesson_id && sub?.user_id && sub?.course_id) {
+    try {
+      const { error: accessError } = await supabase
+        .from("lesson_access")
+        .upsert(
+          {
+            user_id: sub.user_id,
+            course_id: sub.course_id,
+            lesson_id: sub.lesson_id,
+          },
+          { onConflict: "user_id,lesson_id" }
+        );
+
+      if (accessError) {
+        console.error("Error inserting into lesson_access:", accessError);
+      }
+    } catch (e) {
+      console.warn("Could not insert to lesson_access:", e);
+    }
+  }
 }
 
 export async function rejectSubscription(id: string) {
@@ -205,6 +238,7 @@ export async function addCourse(course: {
   subject?: string;
   price?: number;
   original_price?: number | null;
+  subscription_type?: string;
   video_count?: number;
   duration?: string;
   what_will_learn?: string;
@@ -230,6 +264,7 @@ export async function updateCourse(id: string, course: {
   subject?: string;
   price?: number;
   original_price?: number | null;
+  subscription_type?: string;
   video_count?: number;
   duration?: string;
   what_will_learn?: string;
@@ -280,6 +315,9 @@ export async function addLesson(lesson: {
   title: string;
   video_url: string;
   order?: number;
+  price?: number;
+  description?: string;
+  duration?: string;
   pdf_url?: string;
   publish_at?: string | null;
   video_verified?: boolean;
@@ -299,6 +337,9 @@ export async function updateLesson(id: string, lesson: {
   title?: string;
   video_url?: string;
   order?: number;
+  price?: number;
+  description?: string;
+  duration?: string;
   pdf_url?: string;
   publish_at?: string | null;
   video_verified?: boolean;

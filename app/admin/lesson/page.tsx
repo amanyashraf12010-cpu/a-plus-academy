@@ -25,6 +25,9 @@ function LessonsContent() {
   const [videoUrl, setVideoUrl] = useState("");
   const [isVideoVerified, setIsVideoVerified] = useState(false);
   const [order, setOrder] = useState("0");
+  const [price, setPrice] = useState("0");
+  const [description, setDescription] = useState("");
+  const [duration, setDuration] = useState("");
   const [pdfUrl, setPdfUrl] = useState("");
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [publishAt, setPublishAt] = useState("");
@@ -87,6 +90,9 @@ function LessonsContent() {
     setTitle("");
     setVideoUrl("");
     setIsVideoVerified(false);
+    setPrice("0");
+    setDescription("");
+    setDuration("");
     setPdfUrl("");
     setPublishAt("");
     setOrder(String(lessons.length + 1));
@@ -99,6 +105,9 @@ function LessonsContent() {
     setTitle(lesson.title);
     setVideoUrl(lesson.video_url);
     setIsVideoVerified(Boolean(lesson.video_verified || (lesson.video_url && lesson.video_url.trim() !== "")));
+    setPrice(lesson.price ? String(lesson.price) : "0");
+    setDescription(lesson.description || "");
+    setDuration(lesson.duration || "");
     setPdfUrl(lesson.pdf_url || "");
     setPublishAt(lesson.publish_at ? formatDateTimeLocal(lesson.publish_at) : "");
     setOrder(String(lesson.order));
@@ -123,6 +132,9 @@ function LessonsContent() {
       title,
       video_url: videoUrl,
       order: parseInt(order) || 0,
+      price: parseFloat(price) || 0,
+      description: description.trim() || undefined,
+      duration: duration.trim() || undefined,
       pdf_url: pdfUrl.trim() || undefined,
       publish_at: publishAt ? new Date(publishAt).toISOString() : null,
       video_verified: isVideoVerified
@@ -140,14 +152,7 @@ function LessonsContent() {
 
         alert("تم إضافة الدرس وتأكيد الفيديو بنجاح 🎉");
       } else if (modalMode === "edit" && selectedLessonId) {
-        await updateLesson(selectedLessonId, {
-          title,
-          video_url: videoUrl,
-          order: parseInt(order) || 0,
-          pdf_url: pdfUrl.trim() || undefined,
-          publish_at: publishAt ? new Date(publishAt).toISOString() : null,
-          video_verified: isVideoVerified
-        });
+        await updateLesson(selectedLessonId, payload);
         alert("تم تحديث الدرس وتأكيد الفيديو بنجاح 🎉");
       }
       setShowModal(false);
@@ -229,6 +234,25 @@ function LessonsContent() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-bold text-[#2D2B7A] text-lg truncate">{lesson.title}</h3>
                     
+                    {/* Price Badge */}
+                    {Number(lesson.price) > 0 ? (
+                      <span className="bg-purple-50 text-[#7D79F1] text-[11px] px-2.5 py-0.5 rounded-lg border border-purple-200 font-bold">
+                        💰 {lesson.price} جنيه
+                      </span>
+                    ) : (
+                      <span className="bg-gray-100 text-gray-500 text-[10px] px-2 py-0.5 rounded-lg font-medium">
+                        ضمن الكورس
+                      </span>
+                    )}
+
+                    {/* Duration Badge */}
+                    {lesson.duration && (
+                      <span className="bg-blue-50 text-blue-700 text-[10px] px-2 py-0.5 rounded-lg border border-blue-200 font-bold flex items-center gap-1">
+                        <Clock size={10} />
+                        {lesson.duration}
+                      </span>
+                    )}
+
                     {/* Video Verification Badge */}
                     {lesson.video_verified ? (
                       <span className="bg-emerald-50 text-emerald-700 text-[10px] px-2 py-0.5 rounded-lg border border-emerald-200 font-bold flex items-center gap-1">
@@ -249,7 +273,10 @@ function LessonsContent() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-400 mt-1 dir-ltr text-right truncate">{lesson.video_url}</p>
+                  {lesson.description && (
+                    <p className="text-xs text-gray-600 mt-1 line-clamp-1">{lesson.description}</p>
+                  )}
+                  <p className="text-[11px] text-gray-400 mt-0.5 dir-ltr text-right truncate">{lesson.video_url}</p>
                 </div>
               </div>
 
@@ -313,6 +340,45 @@ function LessonsContent() {
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium text-sm"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
+                />
+              </div>
+
+              {/* Price & Duration Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">سعر الحصة المنفصلة (جنيه)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="مثال: 50 (اتركه 0 إذا كانت مجانية أو ضمن الكورس)"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium text-sm"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">سعر شراء هذه الحصة بشكل مستقل.</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">مدة الحصة التقريبية</label>
+                  <input
+                    type="text"
+                    placeholder="مثال: 45 دقيقة، 1 ساعة"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium text-sm"
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">تظهر للطالب في استعراض محتوى الحصة.</p>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">وصف ومحتوى الحصة (اختياري)</label>
+                <textarea
+                  rows={3}
+                  placeholder="اكتب نبذة مختصرة عما سيتعلمه الطالب في هذه الحصة..."
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium text-sm"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
 

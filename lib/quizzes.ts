@@ -220,17 +220,13 @@ export async function getQuizAttempts(userId: string, quizId: string) {
   return data || [];
 }
 
-// =========================================================================
-// 3. Lesson Lock / Unlock and Course Progress States
-// =========================================================================
-
 export async function getCourseProgressAndLocks(userId: string, courseId: string) {
   const supabase = createClient();
 
   // 1. Fetch all lessons
   const { data: rawLessons, error: lessonsError } = await supabase
     .from("lessons")
-    .select("id, title, order, pdf_url, publish_at")
+    .select("id, title, order, pdf_url, publish_at, price, description, duration")
     .eq("course_id", courseId)
     .order("order", { ascending: true });
 
@@ -243,6 +239,29 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
 
   if (!lessons || lessons.length === 0) {
     return { lessons: [], courseProgress: 0, finalExamUnlocked: false };
+  }
+
+  // 1.b Check student full subscription vs individual lesson access
+  const { data: fullSub } = await supabase
+    .from("subscriptions")
+    .select("id, status")
+    .eq("user_id", userId)
+    .eq("course_id", courseId)
+    .is("lesson_id", null)
+    .eq("status", "approved")
+    .maybeSingle();
+
+  const isFullCourseApproved = Boolean(fullSub);
+
+  let purchasedLessonIds = new Set<string>();
+  if (!isFullCourseApproved) {
+    const { data: laData } = await supabase
+      .from("lesson_access")
+      .select("lesson_id")
+      .eq("user_id", userId)
+      .eq("course_id", courseId);
+
+    purchasedLessonIds = new Set((laData || []).map((la: any) => la.lesson_id));
   }
 
   // Fetch video progress to track lesson completion when there is no quiz
@@ -317,14 +336,32 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
 
   // 4. Calculate lock states for each lesson
   const lessonsWithLockState: any[] = [];
-  let isPreviousLessonQuizPassed = true; // First lesson is always unlocked
+  let isPreviousLessonQuizPassed = true; // First lesson is always unlocked for full subscribers
 
   for (let i = 0; i < lessons.length; i++) {
     const lesson = lessons[i];
     const lessonQuiz = quizByLessonMap.get(lesson.id);
-    
-    // A lesson is locked if the previous lesson's quiz is NOT passed
-    const isLocked = !isPreviousLessonQuizPassed;
+
+    // Determine purchase and lock states
+    let isPurchased = true;
+    let isLocked = false;
+    let lockReason: "not_purchased" | "quiz_required" | null = null;
+
+    if (isFullCourseApproved) {
+      isPurchased = true;
+      isLocked = !isPreviousLessonQuizPassed;
+      if (isLocked) lockReason = "quiz_required";
+    } else {
+      if (purchasedLessonIds.has(lesson.id)) {
+        isPurchased = true;
+        isLocked = false;
+        lockReason = null;
+      } else {
+        isPurchased = false;
+        isLocked = true;
+        lockReason = "not_purchased";
+      }
+    }
 
     // Fetch quiz status for this lesson
     let quizStatus = "no_quiz";
@@ -357,7 +394,9 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
 
     lessonsWithLockState.push({
       ...lesson,
+      isPurchased,
       isLocked,
+      lockReason,
       quizStatus,
       quizId,
       quizAttemptsCount,

@@ -19,6 +19,7 @@ export default function AddCoursePage() {
   const [teacherId, setTeacherId] = useState("");
   const [price, setPrice] = useState("");
   const [originalPrice, setOriginalPrice] = useState("");
+  const [subscriptionType, setSubscriptionType] = useState("full");
   const [image, setImage] = useState("");
   const [selectedGrades, setSelectedGrades] = useState<string[]>(["الصف الأول الثانوي"]);
   const [subject, setSubject] = useState("");
@@ -64,6 +65,7 @@ export default function AddCoursePage() {
       teacher_id: teacherId,
       price: parseFloat(price) || 0,
       original_price: originalPrice ? parseFloat(originalPrice) : null,
+      subscription_type: subscriptionType,
       image: image.trim() || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600",
       grade: selectedGrades.join(","),
       subject,
@@ -179,6 +181,27 @@ export default function AddCoursePage() {
                 min="0"
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7D79F1] focus:ring-2 focus:ring-[#7D79F1]/20 outline-none text-[#2D2B7A] transition font-medium"
               />
+            </div>
+
+            {/* Subscription Type */}
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-gray-500 mb-1.5 flex items-center gap-1.5">
+                🎯 نظام الاشتراك في الكورس *
+              </label>
+              <select
+                value={subscriptionType}
+                onChange={(e) => setSubscriptionType(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-[#2D2B7A] font-semibold bg-white cursor-pointer focus:border-[#7D79F1]"
+              >
+                <option value="full">📦 اشتراك في الكورس بالكامل فقط (النظام الافتراضي)</option>
+                <option value="lessons">📖 اشتراك في الحصص منفصلة فقط</option>
+                <option value="both">✨ متاح كورس كامل أو حصص منفصلة معاً</option>
+              </select>
+              <p className="text-[11px] text-gray-400 mt-1">
+                {subscriptionType === "full" && "سيقوم الطالب بالاشتراك في الكورس كاملًا ليفتح له جميع الحصص دفعة واحدة."}
+                {subscriptionType === "lessons" && "سيكون الاشتراك بالحصة فقط بسعر كل حصة المحدد في صفحة إدارة الدروس."}
+                {subscriptionType === "both" && "يمكن للطالب الاختيار بين شراء الكورس كاملًا بخصم أو شراء حصص منفصلة بشكل مستقل."}
+              </p>
             </div>
 
             {/* Grade Select */}

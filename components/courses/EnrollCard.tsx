@@ -101,10 +101,20 @@ export default function EnrollCard({ course }: any) {
       );
     }
 
+    if (course.subscription_type === "lessons") {
+      return (
+        <a href="#lessons" className="w-full block">
+          <button className="w-full mt-4 bg-gradient-to-r from-[#7D79F1] to-[#5E5AEF] hover:from-[#655EF0] hover:to-[#4A46D6] text-white text-base font-bold py-4 rounded-2xl transition duration-300 shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer">
+            📖 اختر حصة للاشتراك من الأسفل
+          </button>
+        </a>
+      );
+    }
+
     return (
       <Link href={isLoggedIn ? `/courses/${course.id}/checkout` : `/login?redirectTo=/courses/${course.id}`} className="w-full">
         <button className="w-full mt-4 bg-[#7D79F1] hover:bg-[#655EF0] text-white text-lg font-bold py-4 rounded-2xl transition duration-300 shadow-md hover:shadow-lg cursor-pointer">
-          اشترك الآن
+          {course.subscription_type === "both" ? "اشترك في الكورس بالكامل 📦" : "اشترك الآن"}
         </button>
       </Link>
     );
@@ -113,7 +123,17 @@ export default function EnrollCard({ course }: any) {
   return (
     <div className="bg-white rounded-3xl shadow-lg border p-6 sticky top-24">
       <div className="text-center">
-        {Number(course.price) === 0 ? (
+        {course.subscription_type === "lessons" ? (
+          <div className="space-y-1">
+            <span className="inline-block bg-purple-50 border border-purple-200 text-[#7D79F1] font-bold text-xs px-3 py-1 rounded-full mb-1">
+              نظام الحصص المنفصلة
+            </span>
+            <h2 className="text-2xl font-black text-[#2D2B7A] tracking-tight">
+              الاشتراك بالحصة المستقلة
+            </h2>
+            <p className="text-xs text-gray-500">اختر أي حصة للاشتراك بسعرها الخاص</p>
+          </div>
+        ) : Number(course.price) === 0 ? (
           <h2 className="text-4xl font-black text-[#2D2B7A] tracking-tight">
             <span className="text-[#7D79F1] font-bold">كورس مجاني 🎉</span>
           </h2>
@@ -127,6 +147,11 @@ export default function EnrollCard({ course }: any) {
             <h2 className="text-4xl font-black text-[#2D2B7A] tracking-tight">
               {course.price} <span className="text-xl font-normal text-gray-500">جنيه</span>
             </h2>
+            {course.subscription_type === "both" && (
+              <span className="inline-block text-[11px] text-[#7D79F1] font-bold mt-1">
+                سعر الكورس بالكامل (وفر أكثر)
+              </span>
+            )}
           </div>
         )}
         {renderEnrollButton()}

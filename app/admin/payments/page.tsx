@@ -104,56 +104,76 @@ export default function AdminPaymentsPage() {
                 <thead className="bg-[#F5F7FB] border-b text-[#2D2B7A] font-bold">
                   <tr>
                     <th className="p-4">الطالب</th>
-                    <th className="p-4">الكورس المطلوب</th>
+                    <th className="p-4">المحتوى المطلوب</th>
+                    <th className="p-4">المبلغ</th>
                     <th className="p-4">طريقة الدفع</th>
                     <th className="p-4 text-center">تفاصيل</th>
                     <th className="p-4 text-center">الإجراءات</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y text-gray-700">
-                  {subscriptions.map((sub) => (
-                    <tr key={sub.id} className="hover:bg-[#F3F2FF]/30 transition">
-                      <td className="p-4 font-bold text-[#2D2B7A]">
-                        <div>
-                          {sub.profiles?.full_name}
-                          <span className="block text-xs text-gray-400 font-normal">{sub.profiles?.phone}</span>
-                        </div>
-                      </td>
-                      <td className="p-4 text-sm font-semibold">{sub.courses?.title}</td>
-                      <td className="p-4 text-sm font-semibold">
-                        <span className="px-2 py-1 bg-purple-50 text-[#7D79F1] border border-purple-200 rounded-lg text-xs">
-                          {sub.payment_method === "vodafone_cash" ? "فودافون كاش" : "انستا باي"}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center">
-                        <button
-                          onClick={() => handleViewReceipt(sub)}
-                          className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition text-xs font-bold flex items-center gap-1.5 mx-auto"
-                        >
-                          <Eye size={14} />
-                          عرض الإيصال
-                        </button>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center justify-center gap-2">
+                  {subscriptions.map((sub) => {
+                    const isLessonSub = Boolean(sub.lessons);
+                    const amount = isLessonSub ? sub.lessons?.price : sub.courses?.price;
+
+                    return (
+                      <tr key={sub.id} className="hover:bg-[#F3F2FF]/30 transition">
+                        <td className="p-4 font-bold text-[#2D2B7A]">
+                          <div>
+                            {sub.profiles?.full_name}
+                            <span className="block text-xs text-gray-400 font-normal">{sub.profiles?.phone}</span>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <p className="text-sm font-bold text-[#2D2B7A]">{sub.courses?.title}</p>
+                          {isLessonSub ? (
+                            <span className="inline-block mt-1 px-2.5 py-0.5 bg-purple-50 text-[#7D79F1] border border-purple-200 rounded-lg text-xs font-bold">
+                              📖 حصة: {sub.lessons?.title}
+                            </span>
+                          ) : (
+                            <span className="inline-block mt-1 px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold">
+                              📦 كورس كامل
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-4 text-sm font-bold text-[#7D79F1]">
+                          {amount} جنيه
+                        </td>
+                        <td className="p-4 text-sm font-semibold">
+                          <span className="px-2 py-1 bg-purple-50 text-[#7D79F1] border border-purple-200 rounded-lg text-xs">
+                            {sub.payment_method === "vodafone_cash" ? "فودافون كاش" : "انستا باي"}
+                          </span>
+                        </td>
+                        <td className="p-4 text-center">
                           <button
-                            onClick={() => handleApprove(sub.id)}
-                            title="تفعيل وتأكيد الدفع"
-                            className="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition"
+                            onClick={() => handleViewReceipt(sub)}
+                            className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition text-xs font-bold flex items-center gap-1.5 mx-auto"
                           >
-                            <Check size={16} />
+                            <Eye size={14} />
+                            عرض الإيصال
                           </button>
-                          <button
-                            onClick={() => handleReject(sub.id)}
-                            title="رفض الطلب"
-                            className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleApprove(sub.id)}
+                              title="تفعيل وتأكيد الدفع"
+                              className="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition"
+                            >
+                              <Check size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleReject(sub.id)}
+                              title="رفض الطلب"
+                              className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -172,7 +192,12 @@ export default function AdminPaymentsPage() {
                 <div className="text-sm text-gray-700 bg-gray-50 p-4 rounded-xl border space-y-2">
                   <p><strong>الطالب:</strong> {selectedSub.profiles?.full_name}</p>
                   <p><strong>الكورس:</strong> {selectedSub.courses?.title}</p>
-                  <p><strong>سعر الكورس:</strong> {selectedSub.courses?.price} جنيه</p>
+                  {selectedSub.lessons ? (
+                    <p><strong>نوع الاشتراك:</strong> <span className="text-[#7D79F1] font-bold">حصة: {selectedSub.lessons.title}</span></p>
+                  ) : (
+                    <p><strong>نوع الاشتراك:</strong> <span className="text-blue-700 font-bold">كورس بالكامل</span></p>
+                  )}
+                  <p><strong>المبلغ المطلوب:</strong> {selectedSub.lessons ? selectedSub.lessons.price : selectedSub.courses?.price} جنيه</p>
                   <p><strong>طريقة التحويل:</strong> {selectedSub.payment_method === "vodafone_cash" ? "فودافون كاش" : "انستا باي"}</p>
                 </div>
                 

@@ -1,19 +1,22 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
 import { createClient } from "@/utils/supabase/client";
 import StudentInfo from "@/components/checkout/StudentInfo";
 import PaymentMethod from "@/components/checkout/PaymentMethod";
 import CheckoutButton from "@/components/checkout/CheckoutButton";
 import CourseSummary from "@/components/checkout/CourseSummary";
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const id = params.id;
+  const lessonId = searchParams.get("lessonId");
 
   const [course, setCourse] = useState<any>(null);
+  const [lesson, setLesson] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const [name, setName] = useState("");
@@ -59,7 +62,23 @@ export default function CheckoutPage() {
           return;
         }
 
-        if (Number(dbCourse.price) === 0) {
+        // 3. If lessonId is provided, fetch specific lesson
+        let lessonData = null;
+        if (lessonId) {
+          const { data: dbLesson, error: lessonError } = await supabase
+            .from("lessons")
+            .select("id, title, price, duration, order")
+            .eq("id", lessonId)
+            .single();
+
+          if (!lessonError && dbLesson) {
+            lessonData = dbLesson;
+            setLesson(dbLesson);
+          }
+        }
+
+        // Guard against free full course
+        if (!lessonId && Number(dbCourse.price) === 0) {
           router.push(`/courses/${id}`);
           return;
         }
@@ -69,6 +88,9 @@ export default function CheckoutPage() {
           title: dbCourse.title,
           teacher: dbCourse.teachers?.name || "مدرس الأكاديمية",
           price: dbCourse.price,
+          grade: dbCourse.grade,
+          duration: dbCourse.duration,
+          lessons: dbCourse.video_count,
           image: dbCourse.image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600"
         });
       } catch (error) {
@@ -78,7 +100,7 @@ export default function CheckoutPage() {
       }
     }
     loadData();
-  }, [id]);
+  }, [id, lessonId]);
 
   const validate = () => {
     const newErrors = {
@@ -123,11 +145,13 @@ export default function CheckoutPage() {
         <div className="rounded-3xl bg-gradient-to-r from-[#7D79F1] to-[#5E5AEF] text-white p-8 md:p-10 shadow-lg">
 
           <h1 className="text-3xl md:text-4xl font-bold">
-            💳 إتمام الاشتراك
+            {lesson ? `💳 إتمام الاشتراك في حصة: ${lesson.title}` : "💳 إتمام الاشتراك"}
           </h1>
 
           <p className="mt-3 text-white/90">
-            أكمل بياناتك واختر طريقة الدفع لإتمام الاشتراك.
+            {lesson 
+              ? `أكمل بياناتك لتأكيد الاشتراك في هذه الحصة من كورس ${course.title}.`
+              : "أكمل بياناتك واختر طريقة الدفع لإتمام الاشتراك."}
           </p>
 
         </div>
@@ -156,6 +180,7 @@ export default function CheckoutPage() {
 
             <CheckoutButton
               course={course}
+              lesson={lesson}
               name={name}
               phone={phone}
               method={method}
@@ -166,7 +191,7 @@ export default function CheckoutPage() {
 
           {/* Right Side */}
           <div className="lg:col-start-3">
-            <CourseSummary course={course} />
+            <CourseSummary course={course} lesson={lesson} />
           </div>
 
         </div>
@@ -174,5 +199,17 @@ export default function CheckoutPage() {
       </div>
 
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#F8F9FD]" dir="rtl">
+        <p className="text-[#2D2B7A] font-bold text-lg">جاري تحميل صفحة الدفع...</p>
+      </div>
+    }>
+      <CheckoutContent />
+    </Suspense>
   );
 }
