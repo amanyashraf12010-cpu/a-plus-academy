@@ -6,6 +6,9 @@ import CourseLessonsList from "@/components/courses/CourseLessonsList";
 import EnrollCard from "@/components/courses/EnrollCard";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function Page({ params }: any) {
   const { id } = await params;
 

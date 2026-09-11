@@ -261,7 +261,20 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
       .eq("user_id", userId)
       .eq("course_id", courseId);
 
-    purchasedLessonIds = new Set((laData || []).map((la: any) => la.lesson_id));
+    const { data: approvedLessonSubs } = await supabase
+      .from("subscriptions")
+      .select("lesson_id")
+      .eq("user_id", userId)
+      .eq("course_id", courseId)
+      .eq("status", "approved")
+      .not("lesson_id", "is", null);
+
+    const ids = [
+      ...(laData || []).map((la: any) => la.lesson_id),
+      ...(approvedLessonSubs || []).map((s: any) => s.lesson_id)
+    ].filter(Boolean);
+
+    purchasedLessonIds = new Set(ids);
   }
 
   // Fetch video progress to track lesson completion when there is no quiz

@@ -122,14 +122,27 @@ export async function getCourseSubscriptionStatus(courseId: string) {
     const isFullApproved = fullSub?.status === "approved";
     const fullStatus = fullSub ? fullSub.status : null;
 
-    // 2. Fetch all lesson_access records for this user in this course
+    // 2. Fetch all lesson_access records and approved lesson subscriptions for this user in this course
     const { data: lessonAccessData } = await supabase
       .from("lesson_access")
       .select("lesson_id")
       .eq("user_id", user.id)
       .eq("course_id", courseId);
 
-    const unlockedLessonIds = (lessonAccessData || []).map((la: any) => la.lesson_id);
+    const { data: approvedLessonSubs } = await supabase
+      .from("subscriptions")
+      .select("lesson_id")
+      .eq("user_id", user.id)
+      .eq("course_id", courseId)
+      .eq("status", "approved")
+      .not("lesson_id", "is", null);
+
+    const unlockedSet = new Set([
+      ...(lessonAccessData || []).map((la: any) => la.lesson_id),
+      ...(approvedLessonSubs || []).map((as: any) => as.lesson_id)
+    ].filter(Boolean));
+
+    const unlockedLessonIds = Array.from(unlockedSet);
 
     // 3. Fetch pending lesson subscriptions
     const { data: pendingLessonsData } = await supabase
