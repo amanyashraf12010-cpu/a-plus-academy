@@ -67,6 +67,7 @@ function ExamsPageContent() {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [showSolutions, setShowSolutions] = useState(false);
   const [isSavingQuiz, setIsSavingQuiz] = useState(false);
 
   // Questions List
@@ -198,6 +199,7 @@ function ExamsPageContent() {
         setStartTime(activeQuiz.start_time ? activeQuiz.start_time.substring(0, 16) : "");
         setEndTime(activeQuiz.end_time ? activeQuiz.end_time.substring(0, 16) : "");
         setIsActive(activeQuiz.is_active);
+        setShowSolutions(Boolean(activeQuiz.show_solutions));
 
         // Sort questions by created_at
         const sortedQuestions = (activeQuiz.questions || []).sort((a: any, b: any) => 
@@ -216,7 +218,8 @@ function ExamsPageContent() {
           title: defaultTitle,
           type: (lessonId ? "quiz" : "final") as "quiz" | "final",
           passing_score: 50,
-          is_active: true
+          is_active: true,
+          show_solutions: false
         };
 
         const newQuiz = await saveQuiz(payload);
@@ -227,6 +230,7 @@ function ExamsPageContent() {
         setStartTime("");
         setEndTime("");
         setIsActive(newQuiz.is_active);
+        setShowSolutions(false);
         setQuestions([]);
       }
 
@@ -279,7 +283,8 @@ function ExamsPageContent() {
         duration: duration ? Number(duration) : null,
         start_time: startTime ? new Date(startTime).toISOString() : null,
         end_time: endTime ? new Date(endTime).toISOString() : null,
-        is_active: isActive
+        is_active: isActive,
+        show_solutions: showSolutions
       };
 
       const saved = await saveQuiz(payload);
@@ -865,6 +870,27 @@ function ExamsPageContent() {
               </div>
             )}
 
+            {/* Show Solutions / Model Answers after Exam ends */}
+            {!lessonId && (
+              <div className="p-3.5 rounded-2xl bg-purple-50/60 border border-purple-150 space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="show_solutions"
+                    className="w-4 h-4 text-[#7D79F1] border-gray-300 rounded focus:ring-[#7D79F1]/20 cursor-pointer"
+                    checked={showSolutions}
+                    onChange={(e) => setShowSolutions(e.target.checked)}
+                  />
+                  <label htmlFor="show_solutions" className="text-xs font-bold text-[#2D2B7A] cursor-pointer">
+                    👁️ إتاحة مراجعة الحل وتصحيح الأسئلة للطلاب بعد انتهاء الامتحان
+                  </label>
+                </div>
+                <p className="text-[11px] text-gray-500 leading-relaxed pr-6">
+                  عند تفعيل هذا الخيار وبعد انتهاء مدة الامتحان المحددة، سيتمكن الطلاب من مراجعة الأسئلة وتصحيح إجاباتهم. طالما لم يتم تفعيله، تظهر للطالب درجته فقط.
+                </p>
+              </div>
+            )}
+
             <div className="flex items-center gap-2 pt-2">
               <input
                 type="checkbox"
@@ -917,6 +943,62 @@ function ExamsPageContent() {
               تقارير ودرجات الطلاب
             </button>
           </div>
+
+          {/* Quick Solutions Review Controller Banner for Final Exams */}
+          {!lessonId && quiz && (
+            <div className="bg-white p-4 rounded-2xl border shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className={`p-2.5 rounded-xl ${showSolutions ? "bg-green-50 text-green-600" : "bg-purple-50 text-[#7D79F1]"}`}>
+                  <BookOpen size={20} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-[#2D2B7A]">
+                    مراجعة وتصحيح الحل النموذجي للطلاب:
+                    <span className={`mr-1.5 font-black ${showSolutions ? "text-green-600" : "text-amber-600"}`}>
+                      {showSolutions ? "متاح للطلاب بعد انتهاء الموعد ✓" : "محجوب (تظهر الدرجة فقط) 🔒"}
+                    </span>
+                  </p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {showSolutions
+                      ? "الطلاب يستطيعون مراجعة الأسئلة وتصحيح أخطائهم بعد انتهاء موعد الامتحان."
+                      : "الطلاب يرون درجاتهم فقط عند تسليم الامتحان، وتصحيح الأسئلة محجوب عنهم."}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const nextState = !showSolutions;
+                  setShowSolutions(nextState);
+                  try {
+                    await saveQuiz({
+                      id: quiz.id,
+                      course_id: quiz.course_id,
+                      title: quiz.title,
+                      type: quiz.type,
+                      passing_score: quiz.passing_score,
+                      duration: quiz.duration,
+                      start_time: quiz.start_time,
+                      end_time: quiz.end_time,
+                      is_active: quiz.is_active,
+                      show_solutions: nextState,
+                    });
+                    alert(nextState ? "🎉 تم إتاحة مراجعة الحل وتصحيح الأسئلة للطلاب بعد انتهاء الامتحان!" : "🔒 تم حجب مراجعة الأسئلة (ستظهر للطلاب درجاتهم فقط).");
+                    loadData();
+                  } catch (err: any) {
+                    alert("فشل تحديث حالة عرض الحل: " + err.message);
+                  }
+                }}
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                  showSolutions
+                    ? "bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200"
+                    : "bg-green-600 hover:bg-green-700 text-white shadow-xs"
+                }`}
+              >
+                {showSolutions ? "🔒 حجب الحل النموذجي" : "👁️ فتح مراجعة الحل للطلاب"}
+              </button>
+            </div>
+          )}
 
           {/* QUESTIONS LIST TAB */}
           {activeTab === "questions" && (

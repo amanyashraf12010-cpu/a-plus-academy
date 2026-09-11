@@ -6,3 +6,7 @@ ALTER TABLE public.questions ADD COLUMN IF NOT EXISTS order_num integer DEFAULT 
 
 CREATE INDEX IF NOT EXISTS idx_questions_passage_id ON public.questions(passage_id);
 CREATE INDEX IF NOT EXISTS idx_questions_quiz_order ON public.questions(quiz_id, order_num);
+
+-- Migration for Final Exam Solutions Visibility Toggle
+ALTER TABLE public.quizzes ADD COLUMN IF NOT EXISTS show_solutions boolean DEFAULT false;
+

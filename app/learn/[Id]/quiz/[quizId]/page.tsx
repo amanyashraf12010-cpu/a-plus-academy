@@ -348,13 +348,20 @@ export default function StudentQuizPage() {
   }
 
   // If already submitted and showing results!
-  const isFinalBeforeDeadline = quiz?.type === "final" && quiz?.end_time && new Date(quiz.end_time) > new Date();
-  
   if (submittedResult || (quiz?.type === "final" && attempt?.status === "submitted")) {
     const finalScore = submittedResult?.score ?? attempt?.score;
     const finalCorrect = submittedResult?.correct_count ?? attempt?.correct_count;
     const finalTotal = submittedResult?.total_questions ?? attempt?.total_questions;
     const isPassed = Number(finalScore) >= quiz?.passing_score;
+
+    const isFinalExam = quiz?.type === "final";
+    const isFinalExamDeadlinePassed = !quiz?.end_time || new Date(quiz.end_time) <= new Date();
+    
+    // For final exam: allowed ONLY if admin enabled show_solutions AND exam deadline has passed
+    // For lesson quiz: allowed if score >= passing_score (50%)
+    const canViewFinalSolutions = isFinalExam && Boolean(quiz?.show_solutions) && isFinalExamDeadlinePassed;
+    const canViewQuizSolutions = !isFinalExam && Number(finalScore) >= (quiz?.passing_score || 50);
+    const showDetailedReview = isFinalExam ? canViewFinalSolutions : canViewQuizSolutions;
 
     return (
       <div className="min-h-screen bg-[#F8F9FD] py-12 px-6" dir="rtl">
@@ -388,15 +395,6 @@ export default function StudentQuizPage() {
               الأسئلة الصحيحة: <span className="font-bold text-[#2D2B7A]">{finalCorrect}</span> من أصل <span className="font-bold text-[#2D2B7A]">{finalTotal}</span> أسئلة.
             </p>
 
-            {isFinalBeforeDeadline ? (
-              <div className="bg-blue-50 text-blue-800 p-4 rounded-2xl border border-blue-100 text-xs text-right leading-relaxed flex gap-2">
-                <Clock size={16} className="shrink-0 text-blue-600 mt-0.5" />
-                <span>
-                  <strong>تنبيه الأمان والنزاهة:</strong> تم حجب مراجعة الإجابات والأخطاء حالياً وسيتم إتاحتها تلقائياً بعد إغلاق موعد الامتحان النهائي للجميع في تاريخ <strong>{new Date(quiz.end_time).toLocaleString("ar-EG")}</strong>.
-                </span>
-              </div>
-            ) : null}
-
             <div className="flex gap-4 pt-4 border-t">
               <button
                 onClick={() => router.push(`/learn/${courseId}`)}
@@ -423,10 +421,33 @@ export default function StudentQuizPage() {
             </div>
           </div>
 
-          {/* Detailed Correction (Only if Lesson Quiz or after Final Exam Deadline, and score >= 50%) */}
-          {(!isFinalBeforeDeadline && quiz.questions?.length > 0 && Number(finalScore) >= 50) && (
+          {/* Locked Notice for Final Exams when solutions are hidden */}
+          {isFinalExam && !canViewFinalSolutions && (
+            <div className="bg-purple-50 text-[#2D2B7A] p-6 rounded-3xl border border-purple-150 text-center space-y-3">
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto text-[#7D79F1] shadow-xs">
+                <Clock size={24} className="animate-pulse" />
+              </div>
+              <h3 className="font-extrabold text-[#2D2B7A] text-lg">مراجعة وتصحيح الأسئلة محجوبة حالياً</h3>
+              <p className="text-sm text-gray-600 max-w-md mx-auto leading-relaxed">
+                {quiz?.end_time && new Date(quiz.end_time) > new Date()
+                  ? `تم تسجيل درجتك بنجاح. ستتاح مراجعة وتصحيح الأسئلة لجميع الطلاب بعد إغلاق موعد الامتحان النهائي في: ${new Date(quiz.end_time).toLocaleString("ar-EG")}.`
+                  : "تم تسجيل درجتك بنجاح. ستتاح مراجعة وتصحيح الأسئلة للجميع فور إتاحتها وتفعيلها من قِبل إدارة الأكاديمية."}
+              </p>
+            </div>
+          )}
+
+          {/* Detailed Correction (When allowed) */}
+          {showDetailedReview && quiz.questions?.length > 0 && (
             <div className="space-y-6">
-              <h2 className="text-xl font-extrabold text-[#2D2B7A] border-b pb-3">🔍 مراجعة وتصحيح الأسئلة</h2>
+              <div className="flex items-center justify-between border-b pb-3">
+                <h2 className="text-xl font-extrabold text-[#2D2B7A]">🔍 مراجعة وتصحيح الأسئلة</h2>
+                {isFinalExam && (
+                  <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-bold border border-green-200">
+                    تم فتح الحل النموذجي
+                  </span>
+                )}
+              </div>
+
               {quiz.questions.map((q: any, idx: number) => {
                 const studentAns = selectedAnswers[q.id];
                 const isCorrect = studentAns === q.correct_option;
@@ -515,8 +536,8 @@ export default function StudentQuizPage() {
             </div>
           )}
 
-          {/* Fallback Banner if score < 50% */}
-          {(!isFinalBeforeDeadline && quiz.questions?.length > 0 && Number(finalScore) < 50) && (
+          {/* Fallback Banner if score < 50% for Lesson Quizzes */}
+          {!isFinalExam && !showDetailedReview && quiz.questions?.length > 0 && (
             <div className="bg-amber-50 text-amber-800 p-6 rounded-3xl border border-amber-250 text-center space-y-3">
               <AlertTriangle className="text-amber-500 mx-auto animate-pulse" size={32} />
               <h3 className="font-extrabold text-[#2D2B7A] text-lg">مراجعة وتصحيح الأسئلة محجوبة</h3>

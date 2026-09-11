@@ -31,50 +31,93 @@ export async function saveQuiz(quiz: {
   start_time?: string | null;
   end_time?: string | null;
   is_active: boolean;
+  show_solutions?: boolean;
 }) {
   const supabase = createClient();
 
+  const basePayload: any = {
+    title: quiz.title,
+    passing_score: quiz.passing_score,
+    duration: quiz.duration || null,
+    start_time: quiz.start_time || null,
+    end_time: quiz.end_time || null,
+    is_active: quiz.is_active,
+  };
+
+  const extendedPayload: any = {
+    ...basePayload,
+    show_solutions: quiz.show_solutions ?? false,
+  };
+
   if (quiz.id) {
-    // Update
-    const { data, error } = await supabase
+    // Update (try extended first, fallback to base if column pending migration)
+    let { data, error } = await supabase
       .from("quizzes")
-      .update({
-        title: quiz.title,
-        passing_score: quiz.passing_score,
-        duration: quiz.duration,
-        start_time: quiz.start_time,
-        end_time: quiz.end_time,
-        is_active: quiz.is_active,
-      })
+      .update(extendedPayload)
       .eq("id", quiz.id)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      const fallback = await supabase
+        .from("quizzes")
+        .update(basePayload)
+        .eq("id", quiz.id)
+        .select()
+        .single();
+      if (fallback.error) throw fallback.error;
+      data = fallback.data;
+    }
     return data;
   } else {
     // Insert
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("quizzes")
       .insert([
         {
           course_id: quiz.course_id,
           lesson_id: quiz.lesson_id || null,
-          title: quiz.title,
           type: quiz.type,
-          passing_score: quiz.passing_score,
-          duration: quiz.duration || null,
-          start_time: quiz.start_time || null,
-          end_time: quiz.end_time || null,
-          is_active: quiz.is_active,
+          ...extendedPayload,
         }
       ])
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      const fallback = await supabase
+        .from("quizzes")
+        .insert([
+          {
+            course_id: quiz.course_id,
+            lesson_id: quiz.lesson_id || null,
+            type: quiz.type,
+            ...basePayload,
+          }
+        ])
+        .select()
+        .single();
+      if (fallback.error) throw fallback.error;
+      data = fallback.data;
+    }
     return data;
   }
+}
+
+export async function toggleQuizSolutions(quizId: string, showSolutions: boolean) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("quizzes")
+    .update({ show_solutions: showSolutions })
+    .eq("id", quizId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("فشل تعديل حالة إتاحة الحل للطلاب:", error.message);
+    throw error;
+  }
+  return data;
 }
 
 export async function deleteQuiz(quizId: string) {
