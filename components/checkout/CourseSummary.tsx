@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 export default function CourseSummary({ course }: any) {
   return (
     <div className="sticky top-24 bg-white rounded-3xl overflow-hidden border shadow-lg">
@@ -7,14 +5,15 @@ export default function CourseSummary({ course }: any) {
       <div className="bg-white rounded-3xl shadow-sm border overflow-hidden">
 
         {/* Course Image */}
-        <div className="relative h-52">
+        <div className="relative h-52 w-full bg-gray-100 overflow-hidden">
 
-          <Image
-            src={course.image}
+          <img
+            src={course.image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600"}
             alt={course.title}
-            fill
-            sizes="400px"
-            className="object-cover"
+            className="w-full h-full object-cover"
+            onError={(e: any) => {
+              e.currentTarget.src = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600";
+            }}
           />
 
           <span className="absolute top-4 right-4 bg-[#7D79F1] text-white text-sm px-4 py-1 rounded-full">

@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 export default function CourseHero({ course }: any) {
   return (
     <div className="bg-gradient-to-r from-[#7D79F1] to-[#5B57E6] rounded-3xl p-8 text-white">
@@ -37,13 +35,15 @@ export default function CourseHero({ course }: any) {
 
         {/* Right */}
 
-        <div className="relative aspect-[16/9] w-full rounded-3xl overflow-hidden shadow-2xl">
+        <div className="relative aspect-[16/9] w-full rounded-3xl overflow-hidden shadow-2xl bg-white/10">
 
-          <Image
-            src={course.image}
+          <img
+            src={course.image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600"}
             alt={course.title}
-            fill
-            className="object-cover"
+            className="w-full h-full object-cover"
+            onError={(e: any) => {
+              e.currentTarget.src = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600";
+            }}
           />
 
         </div>

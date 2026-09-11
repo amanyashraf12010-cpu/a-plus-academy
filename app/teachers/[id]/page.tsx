@@ -1,5 +1,4 @@
 import { createClient } from "@/utils/supabase/server";
-import Image from "next/image";
 import TeacherCourses from "@/components/home/teachers/TeacherCourses";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -75,12 +74,14 @@ export default async function Page({ params }: any) {
         <div className="flex flex-col md:flex-row items-center gap-8">
 
           {/* Image */}
-          <div className="w-40 h-40 relative">
-            <Image
+          <div className="w-40 h-40 relative rounded-2xl overflow-hidden border-4 border-white bg-white/10 flex-shrink-0">
+            <img
               src={mappedTeacher.image}
               alt={mappedTeacher.name}
-              fill
-              className="rounded-2xl object-cover border-4 border-white"
+              className="w-full h-full object-cover"
+              onError={(e: any) => {
+                e.currentTarget.src = `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(mappedTeacher.name)}`;
+              }}
             />
           </div>
 

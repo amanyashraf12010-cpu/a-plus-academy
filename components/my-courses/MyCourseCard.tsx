@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { PlayCircle } from "lucide-react";
 
@@ -7,14 +6,15 @@ export default function MyCourseCard({ course }: any) {
     <div className="bg-white rounded-3xl border shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden">
 
       {/* Image */}
-      <div className="relative aspect-[16/9] w-full">
+      <div className="relative aspect-[16/9] w-full bg-gray-100 overflow-hidden">
 
-        <Image
-          src={course.image}
+        <img
+          src={course.image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600"}
           alt={course.title}
-          fill
-          sizes="100vw"
-          className="object-cover"
+          className="w-full h-full object-cover"
+          onError={(e: any) => {
+            e.currentTarget.src = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600";
+          }}
         />
 
       </div>

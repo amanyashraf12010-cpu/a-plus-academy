@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 interface CourseCardProps {
@@ -42,12 +41,13 @@ export default function CourseCard({ course, isSubscribed = false }: CourseCardP
         {/* الصورة */}
         <div className="relative overflow-hidden aspect-[16/9] w-full flex-shrink-0">
 
-          <Image
-            src={course.image}
+          <img
+            src={course.image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600"}
             alt={course.title}
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-110"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            onError={(e: any) => {
+              e.currentTarget.src = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600";
+            }}
           />
 
           {/* Badge */}

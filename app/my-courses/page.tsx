@@ -20,7 +20,7 @@ export default function MyCoursesPage() {
         id: course.id,
         title: course.title,
         teacher: course.teachers?.name || "مدرس الأكاديمية",
-        image: course.image || "/teacher1.jpg",
+        image: course.image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600",
         progress: 0 // Progress tracking can be added later if needed
       }));
 

@@ -1,24 +1,21 @@
 import Link from "next/link";
-import Image from "next/image";
 
 export default function TeacherCourseCard({ course }: any) {
-    console.log("COURSE:", course);
-console.log("ID:", course?.id);
   return (
-    
-
     <div className="bg-white rounded-3xl overflow-hidden shadow-sm border hover:shadow-xl hover:-translate-y-2 transition duration-300">
 
       {/* Image -> Course Details Page */}
       <Link href={`/courses/${course.id}`}>
 
-        <div className="relative h-48">
+        <div className="relative h-48 w-full overflow-hidden bg-gray-100">
 
-          <Image
-            src={course.image}
+          <img
+            src={course.image || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600"}
             alt={course.title}
-            fill
-            className="object-cover"
+            className="w-full h-full object-cover"
+            onError={(e: any) => {
+              e.currentTarget.src = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600";
+            }}
           />
 
           <span className="absolute top-4 right-4 bg-[#7D79F1] text-white text-xs px-3 py-1 rounded-full">
