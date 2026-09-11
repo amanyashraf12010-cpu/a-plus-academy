@@ -42,7 +42,7 @@ export default async function Page({ params }: any) {
   // 3. Fetch Course Lessons
   const { data: dbLessons } = await supabase
     .from("lessons")
-    .select("id, title, description, price, duration, pdf_url, publish_at, order")
+    .select("*")
     .eq("course_id", id)
     .order("order", { ascending: true });
 

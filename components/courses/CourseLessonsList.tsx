@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -62,19 +62,22 @@ export default function CourseLessonsList({
     setExpandedLessonId(prev => (prev === id ? null : id));
   };
 
+  const hasAnyLessonWithPrice = lessons.some((l: any) => Number(l.price) > 0);
   const allowsLessonPurchase = 
-    course.subscription_type === "lessons" || course.subscription_type === "both";
+    course.subscription_type === "lessons" || 
+    course.subscription_type === "both" || 
+    hasAnyLessonWithPrice;
 
   if (!lessons || lessons.length === 0) {
     return (
-      <div className="bg-white rounded-3xl shadow-sm border p-8 text-center text-gray-400">
+      <div id="lessons" className="bg-white rounded-3xl shadow-sm border p-8 text-center text-gray-400 scroll-mt-24">
         لم يتم إضافة حصص لهذا الكورس بعد.
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm border p-6 md:p-8 space-y-6">
+    <div id="lessons" className="bg-white rounded-3xl shadow-sm border p-6 md:p-8 space-y-6 scroll-mt-24">
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-5">
@@ -104,6 +107,7 @@ export default function CourseLessonsList({
             userStatus.unlockedLessonIds.includes(lesson.id);
           const isPending = userStatus.pendingLessonIds.includes(lesson.id);
           const lessonPrice = Number(lesson.price) || 0;
+          const isLessonPurchasable = allowsLessonPurchase || lessonPrice > 0;
 
           return (
             <div 
@@ -148,11 +152,15 @@ export default function CourseLessonsList({
                       )}
 
                       {/* Price Badge */}
-                      {allowsLessonPurchase && (
-                        <span className="bg-purple-50 text-[#7D79F1] text-[11px] px-2.5 py-0.5 rounded-lg border border-purple-200 font-bold">
-                          {lessonPrice > 0 ? `${lessonPrice} جنيه` : "مجانية"}
+                      {lessonPrice > 0 ? (
+                        <span className="bg-purple-50 text-[#7D79F1] text-[11px] px-2.5 py-0.5 rounded-lg border border-purple-200 font-bold flex items-center gap-1 shadow-xs">
+                          <span>💰</span> {lessonPrice} جنيه
                         </span>
-                      )}
+                      ) : course.subscription_type === "lessons" ? (
+                        <span className="bg-emerald-50 text-emerald-700 text-[11px] px-2.5 py-0.5 rounded-lg border border-emerald-200 font-bold">
+                          مجانية
+                        </span>
+                      ) : null}
                     </div>
 
                     {lesson.description && (
@@ -184,20 +192,20 @@ export default function CourseLessonsList({
                       <Clock size={13} className="animate-pulse" />
                       قيد المراجعة ⏳
                     </span>
-                  ) : allowsLessonPurchase ? (
+                  ) : isLessonPurchasable ? (
                     <Link
                       href={
                         userStatus.isLoggedIn
                           ? `/courses/${course.id}/checkout?lessonId=${lesson.id}`
                           : `/login?redirectTo=/courses/${course.id}/checkout?lessonId=${lesson.id}`
                       }
-                      className="px-4 py-2 bg-[#7D79F1] hover:bg-[#655EF0] text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5"
+                      className="px-4 py-2 bg-[#7D79F1] hover:bg-[#655EF0] text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5 hover:shadow"
                     >
                       <ShoppingBag size={14} />
                       {lessonPrice > 0 ? `اشتراك بالحصة (${lessonPrice} ج)` : "اشترك بالحصة"}
                     </Link>
                   ) : (
-                    <span className="text-xs text-gray-400 flex items-center gap-1 font-medium">
+                    <span className="text-xs text-gray-400 flex items-center gap-1 font-medium bg-gray-50 px-2.5 py-1 rounded-lg border">
                       <Lock size={13} />
                       ضمن الكورس الكامل
                     </span>

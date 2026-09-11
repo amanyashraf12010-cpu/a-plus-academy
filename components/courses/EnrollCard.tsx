@@ -112,11 +112,19 @@ export default function EnrollCard({ course }: any) {
     }
 
     return (
-      <Link href={isLoggedIn ? `/courses/${course.id}/checkout` : `/login?redirectTo=/courses/${course.id}`} className="w-full">
-        <button className="w-full mt-4 bg-[#7D79F1] hover:bg-[#655EF0] text-white text-lg font-bold py-4 rounded-2xl transition duration-300 shadow-md hover:shadow-lg cursor-pointer">
-          {course.subscription_type === "both" ? "اشترك في الكورس بالكامل 📦" : "اشترك الآن"}
-        </button>
-      </Link>
+      <div className="space-y-2">
+        <Link href={isLoggedIn ? `/courses/${course.id}/checkout` : `/login?redirectTo=/courses/${course.id}`} className="w-full block">
+          <button className="w-full mt-4 bg-[#7D79F1] hover:bg-[#655EF0] text-white text-lg font-bold py-4 rounded-2xl transition duration-300 shadow-md hover:shadow-lg cursor-pointer">
+            {course.subscription_type === "both" ? "اشترك في الكورس بالكامل 📦" : "اشترك في الكورس بالكامل"}
+          </button>
+        </Link>
+        <a 
+          href="#lessons" 
+          className="inline-flex items-center justify-center gap-1 text-xs font-bold text-[#7D79F1] hover:text-[#5E5AEF] py-1.5 px-3 rounded-lg hover:bg-purple-50 transition w-full"
+        >
+          📖 أو اشترك في حصة منفصلة من الأسفل 👇
+        </a>
+      </div>
     );
   };
 
