@@ -1,4 +1,4 @@
-﻿-- =========================================================================
+-- =========================================================================
 -- Migration: Unique Watched Ranges Video Progress (80% Threshold)
 -- A+ Academy Platform
 -- =========================================================================
@@ -11,7 +11,80 @@ ALTER TABLE public.video_progress
   ADD COLUMN IF NOT EXISTS video_duration numeric DEFAULT 0,
   ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
 
--- 2. Create the server-side unique range tracking & merging RPC function
+-- 2. Redefine get_lesson_video_url to STOP auto-incrementing on refresh/fetch!
+-- Views MUST ONLY be incremented when student watches >= 80% unique content via sync_video_watch_progress.
+CREATE OR REPLACE FUNCTION public.get_lesson_video_url(p_lesson_id uuid)
+RETURNS text AS $$
+DECLARE
+  v_video_url text;
+  v_views_count int;
+  v_limit int := 4; -- Limit set to 4 views
+  v_user_role text;
+  v_is_approved boolean;
+  v_has_access boolean := false;
+BEGIN
+  -- 1. Get user details
+  SELECT role, is_approved INTO v_user_role, v_is_approved 
+  FROM public.profiles 
+  WHERE id = auth.uid();
+  
+  -- If admin or teacher, bypass limits and return url
+  IF v_user_role IN ('admin', 'teacher') THEN
+    SELECT video_url INTO v_video_url FROM public.lessons WHERE id = p_lesson_id;
+    RETURN v_video_url;
+  END IF;
+
+  -- Verify user is approved profile
+  IF v_is_approved = false THEN
+    RAISE EXCEPTION 'حسابك غير مفعل بعد من قبل الإدارة.';
+  END IF;
+
+  -- 2. Check full course subscription access OR approved single lesson subscription
+  IF EXISTS (
+    SELECT 1 FROM public.subscriptions s
+    JOIN public.lessons l ON l.course_id = s.course_id
+    WHERE s.user_id = auth.uid()
+    AND s.status = 'approved'
+    AND (s.lesson_id IS NULL OR s.lesson_id = p_lesson_id)
+    AND l.id = p_lesson_id
+  ) THEN
+    v_has_access := true;
+  END IF;
+
+  -- 3. Check individual lesson_access table
+  IF NOT v_has_access AND EXISTS (
+    SELECT 1 FROM public.lesson_access la
+    WHERE la.user_id = auth.uid()
+    AND la.lesson_id = p_lesson_id
+  ) THEN
+    v_has_access := true;
+  END IF;
+
+  IF NOT v_has_access THEN
+    RAISE EXCEPTION 'غير مصرح لك بمشاهدة هذه الحصة أو لم يتم تفعيل اشتراكك بعد.';
+  END IF;
+
+  -- 4. Ensure record exists in video_progress (without modifying views_count)
+  INSERT INTO public.video_progress (user_id, lesson_id, views_count, watched_ranges, total_unique_seconds, last_position, video_duration)
+  VALUES (auth.uid(), p_lesson_id, 0, '[]'::jsonb, 0, 0, 0)
+  ON CONFLICT (user_id, lesson_id) DO NOTHING;
+
+  -- 5. Check views count
+  SELECT views_count INTO v_views_count
+  FROM public.video_progress
+  WHERE user_id = auth.uid() AND lesson_id = p_lesson_id;
+
+  IF v_views_count >= v_limit THEN
+    RAISE EXCEPTION 'لقد تجاوزت الحد الأقصى للمشاهدات المسموح بها لهذا الفيديو (% مرات).', v_limit;
+  END IF;
+
+  -- 6. Retrieve video path/url (NO auto-increment here! Views are ONLY incremented by sync_video_watch_progress)
+  SELECT video_url INTO v_video_url FROM public.lessons WHERE id = p_lesson_id;
+  RETURN v_video_url;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 3. Create the server-side unique range tracking & merging RPC function
 CREATE OR REPLACE FUNCTION public.sync_video_watch_progress(
   p_lesson_id uuid,
   p_start_sec numeric,
