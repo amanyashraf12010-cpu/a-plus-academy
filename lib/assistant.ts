@@ -283,6 +283,22 @@ export interface StudentCourseProgressData {
     correctCount?: number;
     totalQuestions?: number;
   }>;
+  finalExam?: {
+    id: string;
+    title: string;
+    hasFinalExam: boolean;
+    isSubmitted: boolean;
+    isPassed: boolean;
+    score?: number;
+    scoreText: string;
+    correctCount?: number;
+    totalQuestions?: number;
+    passingScore?: number;
+    submittedAt?: string;
+    duration?: number;
+    startTime?: string;
+    endTime?: string;
+  } | null;
 }
 
 export async function getAssistantStudentCourseProgress(
@@ -331,10 +347,10 @@ export async function getAssistantStudentCourseProgress(
     });
   }
 
-  // 4. Fetch Quizzes (Lesson Homeworks)
+  // 4. Fetch Quizzes (Lesson Homeworks + Final Exam)
   const { data: quizzes, error: qErr } = await supabase
     .from("quizzes")
-    .select("id, lesson_id, title, type, passing_score, is_active")
+    .select("id, lesson_id, title, type, passing_score, is_active, start_time, end_time, duration")
     .eq("course_id", courseId);
 
   if (qErr) throw qErr;
@@ -438,9 +454,58 @@ export async function getAssistantStudentCourseProgress(
     };
   });
 
+  // 9. Build Final Exam Data
+  const rawFinalQuiz = quizList.find((q: any) => q.type === "final");
+  let finalExamData: StudentCourseProgressData["finalExam"] = null;
+
+  if (rawFinalQuiz) {
+    const att = attemptsMap.get(rawFinalQuiz.id);
+    let isSubmitted = false;
+    let score: number | undefined = undefined;
+    let scoreText = "لم يتم الحل بعد";
+    let correctCount: number | undefined = undefined;
+    let totalQuestions: number | undefined = undefined;
+    let submittedAt: string | undefined = undefined;
+    const passingScore = Number(rawFinalQuiz.passing_score) || 50;
+    let isPassed = false;
+
+    if (att) {
+      isSubmitted = true;
+      score = Number(att.score);
+      correctCount = att.correct_count;
+      totalQuestions = att.total_questions;
+      submittedAt = att.submitted_at;
+      isPassed = score >= passingScore;
+
+      if (totalQuestions !== undefined && totalQuestions > 0) {
+        scoreText = `${correctCount} / ${totalQuestions} (${score}%)`;
+      } else {
+        scoreText = `${score}%`;
+      }
+    }
+
+    finalExamData = {
+      id: rawFinalQuiz.id,
+      title: rawFinalQuiz.title || "الامتحان النهائي الشامل",
+      hasFinalExam: true,
+      isSubmitted,
+      isPassed,
+      score,
+      scoreText,
+      correctCount,
+      totalQuestions,
+      passingScore,
+      submittedAt,
+      duration: rawFinalQuiz.duration,
+      startTime: rawFinalQuiz.start_time,
+      endTime: rawFinalQuiz.end_time,
+    };
+  }
+
   return {
     videos,
     homeworks,
+    finalExam: finalExamData,
   };
 }
 

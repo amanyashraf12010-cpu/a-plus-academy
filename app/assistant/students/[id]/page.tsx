@@ -19,7 +19,10 @@ import {
   XCircle, 
   Loader2,
   GraduationCap,
-  Eye
+  Eye,
+  Award,
+  Clock,
+  Calendar
 } from "lucide-react";
 
 function StudentDetailsContent() {
@@ -234,7 +237,114 @@ function StudentDetailsContent() {
       ) : !progressData ? null : (
         <div className="space-y-8">
           
-          {/* 1. Video Watch Tracking Section */}
+          {/* 1. Final Exam Section */}
+          <div className="bg-white rounded-3xl border shadow-sm overflow-hidden space-y-4 p-6">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <h3 className="text-lg font-black text-[#2D2B7A] flex items-center gap-2">
+                <Award className="text-[#7D79F1]" size={22} />
+                الامتحان النهائي الشامل
+              </h3>
+              <span className="text-xs text-gray-400 font-bold">
+                درجة وتقييم الامتحان الشامل للكورس
+              </span>
+            </div>
+
+            {!progressData.finalExam ? (
+              <div className="p-8 text-center bg-[#F8F9FD] rounded-2xl border border-dashed border-gray-200">
+                <Award className="mx-auto text-gray-300 mb-2" size={32} />
+                <p className="text-gray-500 font-bold text-sm">لا يوجد امتحان شامل مضاف لهذا الكورس حالياً.</p>
+              </div>
+            ) : (
+              <div className="p-6 rounded-2xl border bg-gradient-to-br from-indigo-50/40 via-purple-50/30 to-white border-purple-100 space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-purple-100/60">
+                  <div>
+                    <span className="text-[11px] font-extrabold text-[#7D79F1] uppercase tracking-wider block mb-0.5">
+                      الامتحان الشامل
+                    </span>
+                    <h4 className="text-lg font-black text-[#2D2B7A]">
+                      {progressData.finalExam.title}
+                    </h4>
+                  </div>
+
+                  <div>
+                    {progressData.finalExam.isSubmitted ? (
+                      progressData.finalExam.isPassed ? (
+                        <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3.5 py-1.5 rounded-xl text-xs font-bold border border-emerald-200 shadow-sm">
+                          <CheckCircle2 size={15} />
+                          تم الاجتياز بنجاح ✓
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 px-3.5 py-1.5 rounded-xl text-xs font-bold border border-rose-200 shadow-sm">
+                          <XCircle size={15} />
+                          لم يتم الاجتياز ✗
+                        </span>
+                      )
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 px-3.5 py-1.5 rounded-xl text-xs font-bold border border-amber-200 shadow-sm">
+                        <Clock size={15} />
+                        لم يتم التسليم بعد
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  
+                  {/* Score Card */}
+                  <div className="bg-white p-4 rounded-2xl border border-purple-100 shadow-sm space-y-1">
+                    <span className="text-xs text-gray-400 font-bold block">درجة الطالب المحققة</span>
+                    {progressData.finalExam.isSubmitted ? (
+                      <div className="space-y-0.5">
+                        <span className="text-2xl font-black text-[#7D79F1]">
+                          {progressData.finalExam.score}%
+                        </span>
+                        {progressData.finalExam.totalQuestions && (
+                          <p className="text-xs text-gray-500 font-semibold">
+                            ({progressData.finalExam.correctCount} من أصل {progressData.finalExam.totalQuestions} سؤال)
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-sm font-bold text-gray-400">لم يقم بالحل بعد</span>
+                    )}
+                  </div>
+
+                  {/* Passing Score Card */}
+                  <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-1">
+                    <span className="text-xs text-gray-400 font-bold block">درجة النجاح المطلوبة</span>
+                    <span className="text-xl font-extrabold text-[#2D2B7A]">
+                      {progressData.finalExam.passingScore}%
+                    </span>
+                    <p className="text-[11px] text-gray-400">الحد الأدنى لاجتياز الامتحان</p>
+                  </div>
+
+                  {/* Submission Date / Status */}
+                  <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-1">
+                    <span className="text-xs text-gray-400 font-bold block">
+                      {progressData.finalExam.isSubmitted ? "تاريخ ووقت التسليم" : "حالة الامتحان"}
+                    </span>
+                    {progressData.finalExam.isSubmitted && progressData.finalExam.submittedAt ? (
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-bold text-gray-700 block">
+                          {new Date(progressData.finalExam.submittedAt).toLocaleDateString("ar-EG")}
+                        </span>
+                        <span className="text-[11px] font-mono text-gray-400 block">
+                          {new Date(progressData.finalExam.submittedAt).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs font-bold text-amber-700 block">
+                        في انتظار بدء وحل الامتحان
+                      </span>
+                    )}
+                  </div>
+
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 2. Video Watch Tracking Section */}
           <div className="bg-white rounded-3xl border shadow-sm overflow-hidden space-y-4 p-6">
             <div className="flex items-center justify-between pb-3 border-b">
               <h3 className="text-lg font-black text-[#2D2B7A] flex items-center gap-2">
@@ -300,7 +410,7 @@ function StudentDetailsContent() {
             )}
           </div>
 
-          {/* 2. Homeworks Section */}
+          {/* 3. Homeworks Section */}
           <div className="bg-white rounded-3xl border shadow-sm overflow-hidden space-y-4 p-6">
             <div className="flex items-center justify-between pb-3 border-b">
               <h3 className="text-lg font-black text-[#2D2B7A] flex items-center gap-2">
