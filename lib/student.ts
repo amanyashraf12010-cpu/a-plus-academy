@@ -287,15 +287,98 @@ export async function getVideoProgress(lessonId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data, error } = await supabase
-    .from("video_progress")
-    .select("views_count")
-    .eq("user_id", user.id)
-    .eq("lesson_id", lessonId)
-    .maybeSingle();
+  try {
+    const { data, error } = await supabase
+      .from("video_progress")
+      .select("views_count, total_unique_seconds, video_duration, last_position")
+      .eq("user_id", user.id)
+      .eq("lesson_id", lessonId)
+      .maybeSingle();
 
-  if (error) throw error;
-  return data ? data.views_count : 0;
+    if (error) {
+      console.warn("Error fetching full video_progress, falling back to views_count:", error.message);
+      const { data: fallbackData } = await supabase
+        .from("video_progress")
+        .select("views_count")
+        .eq("user_id", user.id)
+        .eq("lesson_id", lessonId)
+        .maybeSingle();
+
+      return {
+        views_count: fallbackData?.views_count || 0,
+        unique_percent: 0,
+        total_unique_seconds: 0,
+        last_position: 0,
+      };
+    }
+
+    if (!data) {
+      return {
+        views_count: 0,
+        unique_percent: 0,
+        total_unique_seconds: 0,
+        last_position: 0,
+      };
+    }
+
+    const views_count = data.views_count || 0;
+    const total_unique = Number(data.total_unique_seconds) || 0;
+    const duration = Number(data.video_duration) || 0;
+    const unique_percent = duration > 0 ? Math.min(100, Math.round((total_unique / duration) * 100)) : 0;
+
+    return {
+      views_count,
+      unique_percent,
+      total_unique_seconds: total_unique,
+      last_position: Number(data.last_position) || 0,
+    };
+  } catch (err: any) {
+    console.error("getVideoProgress error:", err);
+    return {
+      views_count: 0,
+      unique_percent: 0,
+      total_unique_seconds: 0,
+      last_position: 0,
+    };
+  }
+}
+
+export async function syncVideoWatchProgress(
+  lessonId: string,
+  startSec: number,
+  endSec: number,
+  duration: number,
+  currentPos: number = 0
+) {
+  const supabase = createClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) throw new Error("يجب تسجيل الدخول.");
+
+  try {
+    const { data, error } = await supabase.rpc("sync_video_watch_progress", {
+      p_lesson_id: lessonId,
+      p_start_sec: Math.round(startSec * 10) / 10,
+      p_end_sec: Math.round(endSec * 10) / 10,
+      p_duration: Math.round(duration * 10) / 10,
+      p_current_pos: Math.round(currentPos * 10) / 10,
+    });
+
+    if (error) {
+      console.warn("sync_video_watch_progress RPC error:", error.message);
+      throw error;
+    }
+
+    return data as {
+      views_count: number;
+      unique_percent: number;
+      total_unique_seconds: number;
+      completed_view: boolean;
+      is_locked: boolean;
+    };
+  } catch (err: any) {
+    console.error("Error in syncVideoWatchProgress:", err);
+    throw err;
+  }
 }
 
 export async function recordLessonVideoWatch(lessonId: string) {
@@ -340,3 +423,4 @@ export async function recordLessonVideoWatch(lessonId: string) {
   if (upsertErr) throw upsertErr;
   return nextViews;
 }
+

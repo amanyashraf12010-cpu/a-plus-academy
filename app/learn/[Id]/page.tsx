@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { getLessonVideoUrl, getVideoProgress, recordLessonVideoWatch } from "@/lib/student";
+import { getLessonVideoUrl, getVideoProgress, syncVideoWatchProgress, recordLessonVideoWatch } from "@/lib/student";
 import { 
   Play, 
   BookOpen, 
@@ -13,7 +13,7 @@ import {
   Lock, 
   AlertTriangle, 
   Loader2, 
-  ArrowRight,
+  ArrowRight, 
   Eye,
   CheckCircle,
   XCircle,
@@ -39,34 +39,139 @@ export default function LearnPage() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [viewsCount, setViewsCount] = useState<number>(0);
+  const [uniquePercent, setUniquePercent] = useState<number>(0);
   const [activeTab, setActiveTab] = useState("description");
-  const [hasIncrementedView, setHasIncrementedView] = useState(false);
-  const [watchedSeconds, setWatchedSeconds] = useState<number>(0);
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 
-  // Trigger view increment in database when reaching 20 minutes / threshold
-  async function triggerViewIncrement() {
-    if (hasIncrementedView || !activeLesson) return;
-    try {
-      setHasIncrementedView(true);
-      const newCount = await recordLessonVideoWatch(activeLesson.id);
-      setViewsCount(newCount);
-      console.log("Views incremented successfully. New count:", newCount);
+  // Range tracking refs
+  const segmentStartRef = useRef<number | null>(null);
+  const segmentEndRef = useRef<number | null>(null);
+  const durationRef = useRef<number>(0);
+  const lastSyncTimeRef = useRef<number>(0);
+  const isSyncingRef = useRef<boolean>(false);
 
-      // Refresh course progress info so progress bar increases live!
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user && courseId) {
-        const progressData = await getCourseProgressAndLocks(session.user.id, courseId);
-        setProgressInfo(progressData);
+  // Core sync helper for video interval ranges
+  const flushSegment = useCallback(async (startSec: number, endSec: number, duration: number, currentPos: number) => {
+    if (!activeLesson?.id || isSyncingRef.current) return;
+    if (endSec <= startSec || (endSec - startSec) < 1) return;
+
+    try {
+      isSyncingRef.current = true;
+      const res = await syncVideoWatchProgress(
+        activeLesson.id,
+        startSec,
+        endSec,
+        duration,
+        currentPos
+      );
+
+      if (res) {
+        setViewsCount(res.views_count);
+        setUniquePercent(res.unique_percent);
+
+        if (res.completed_view) {
+          // Re-fetch course progress to update progress bar and unlock next items live!
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user && courseId) {
+            const progressData = await getCourseProgressAndLocks(session.user.id, courseId);
+            setProgressInfo(progressData);
+          }
+        }
+
+        if (res.is_locked || res.views_count >= 4) {
+          setVideoUrl(null);
+          setVideoError("⚠️ لقد تجاوزت الحد الأقصى للمشاهدات المسموح بها لهذا الفيديو (4 مرات).");
+        }
       }
     } catch (err: any) {
-      console.error("Failed to increment views:", err.message);
-      if (err.message && err.message.includes("تجاوزت الحد الأقصى")) {
+      console.warn("Video progress sync warning:", err?.message || err);
+      if (err?.message && err.message.includes("تجاوزت الحد الأقصى")) {
         setVideoUrl(null);
         setVideoError("⚠️ لقد تجاوزت الحد الأقصى للمشاهدات المسموح بها لهذا الفيديو (4 مرات).");
       }
+    } finally {
+      isSyncingRef.current = false;
     }
-  }
+  }, [activeLesson?.id, courseId, supabase]);
+
+  // Handle continuous timeupdate / ticks
+  const handleTimeProgress = useCallback(async (currentTime: number, duration: number) => {
+    if (!activeLesson?.id || viewsCount >= 4) return;
+    if (typeof duration === "number" && !isNaN(duration) && duration > 0) {
+      durationRef.current = duration;
+    }
+
+    const now = Date.now();
+    const start = segmentStartRef.current;
+    const end = segmentEndRef.current;
+
+    if (start === null || end === null) {
+      segmentStartRef.current = currentTime;
+      segmentEndRef.current = currentTime;
+      lastSyncTimeRef.current = now;
+      return;
+    }
+
+    // Continuous playback forward (up to 4 seconds difference)
+    if (currentTime >= end && (currentTime - end) <= 4) {
+      segmentEndRef.current = currentTime;
+    } else if (currentTime < start - 1 || currentTime > end + 4) {
+      // Seek / skip detected! Flush previous segment first
+      const prevStart = start;
+      const prevEnd = end;
+      segmentStartRef.current = currentTime;
+      segmentEndRef.current = currentTime;
+      lastSyncTimeRef.current = now;
+
+      if (prevEnd - prevStart >= 1.5) {
+        await flushSegment(prevStart, prevEnd, durationRef.current, currentTime);
+      }
+      return;
+    }
+
+    // Periodic heartbeat flush every 6 seconds if accumulated interval >= 4 seconds
+    const curStart = segmentStartRef.current;
+    const curEnd = segmentEndRef.current;
+    if (curStart !== null && curEnd !== null && now - lastSyncTimeRef.current >= 6000 && (curEnd - curStart) >= 4) {
+      segmentStartRef.current = currentTime;
+      segmentEndRef.current = currentTime;
+      lastSyncTimeRef.current = now;
+
+      await flushSegment(curStart, curEnd, durationRef.current, currentTime);
+    }
+  }, [activeLesson?.id, viewsCount, flushSegment]);
+
+  // Handle pause, ended, or seek
+  const handlePlayerPauseOrStop = useCallback(async (currentPos?: number) => {
+    if (segmentStartRef.current !== null && segmentEndRef.current !== null) {
+      const s = segmentStartRef.current;
+      const e = segmentEndRef.current;
+      segmentStartRef.current = null;
+      segmentEndRef.current = null;
+      if (e - s >= 1.5) {
+        await flushSegment(s, e, durationRef.current, currentPos ?? e);
+      }
+    }
+  }, [flushSegment]);
+
+  // Flush remaining ranges before page unload / unmount
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (segmentStartRef.current !== null && segmentEndRef.current !== null) {
+        const s = segmentStartRef.current;
+        const e = segmentEndRef.current;
+        if (e - s >= 1.5 && activeLesson?.id) {
+          syncVideoWatchProgress(activeLesson.id, s, e, durationRef.current, e).catch(() => {});
+        }
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      handleBeforeUnload();
+    };
+  }, [activeLesson?.id]);
 
   // Secure and direct file download handler
   async function handleDownloadPdf(url: string, suggestedName: string) {
@@ -188,16 +293,27 @@ export default function LearnPage() {
       setLoadingVideo(true);
       setVideoError(null);
       setVideoUrl(null);
-      setHasIncrementedView(false); // Reset tracking flag for this video load
-      setWatchedSeconds(0); // Reset active watch counter
+      segmentStartRef.current = null;
+      segmentEndRef.current = null;
 
       // 1. Fetch secure video link
       const url = await getLessonVideoUrl(lesson.id);
-      setVideoUrl(url);
 
-      // 2. Fetch views count
-      const views = await getVideoProgress(lesson.id);
-      setViewsCount(views || 0); // true count before viewing
+      // 2. Fetch views count & unique progress
+      const progress = await getVideoProgress(lesson.id);
+      const count = progress?.views_count || 0;
+      const percent = progress?.unique_percent || 0;
+
+      setViewsCount(count);
+      setUniquePercent(percent);
+
+      if (count >= 4) {
+        setVideoError("⚠️ لقد تجاوزت الحد الأقصى للمشاهدات المسموح بها لهذا الفيديو (4 مرات).");
+        setLoadingVideo(false);
+        return;
+      }
+
+      setVideoUrl(url);
     } catch (error: any) {
       console.error("فشل تحميل الفيديو:", error.message || error);
       setVideoError(error.message || "فشل تحميل الفيديو، يرجى المحاولة لاحقاً.");
@@ -212,44 +328,9 @@ export default function LearnPage() {
     }
   }, [activeLesson]);
 
-  // Helper to check if watch threshold reached (20 minutes or 50% for shorter videos)
-  function checkWatchThreshold(currentTime: number, duration: number, activeSeconds: number = 0) {
-    // Prevent false triggers on load or within first 30 seconds
-    if (currentTime < 30 && activeSeconds < 30) return false;
-
-    // 1. Reached 20 minutes (1200 seconds) in playback time OR active watch seconds
-    if (currentTime >= 1200 || activeSeconds >= 1200) return true;
-
-    // 2. If video total duration is valid and shorter than 20 minutes (between 60s and 1200s), require at least 50%
-    if (typeof duration === "number" && !isNaN(duration) && duration >= 60 && duration < 1200) {
-      if (currentTime >= duration * 0.5 || activeSeconds >= duration * 0.5) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  // Active page session watch timer: increments watch time every second while on page with video loaded
-  useEffect(() => {
-    if (!videoUrl || !activeLesson || hasIncrementedView) return;
-
-    const interval = setInterval(() => {
-      setWatchedSeconds((prev) => {
-        const next = prev + 1;
-        if (next >= 1200) {
-          triggerViewIncrement();
-        }
-        return next;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [videoUrl, activeLesson, hasIncrementedView]);
-
   // Track YouTube, Vimeo, and Bunny player watch progress
   useEffect(() => {
-    if (!videoUrl || !activeLesson || hasIncrementedView) return;
+    if (!videoUrl || !activeLesson || viewsCount >= 4) return;
 
     const isYouTube = videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be");
     const isVimeo = videoUrl.includes("vimeo.com");
@@ -279,14 +360,16 @@ export default function LearnPage() {
                     if (ytPlayer && typeof ytPlayer.getCurrentTime === "function") {
                       const currentTime = ytPlayer.getCurrentTime();
                       const duration = ytPlayer.getDuration();
-                      if (checkWatchThreshold(currentTime, duration, watchedSeconds)) {
-                        triggerViewIncrement();
-                        clearInterval(intervalId);
-                      }
+                      handleTimeProgress(currentTime, duration);
                     }
                   }, 1000);
                 } else {
                   if (intervalId) clearInterval(intervalId);
+                  if (ytPlayer && typeof ytPlayer.getCurrentTime === "function") {
+                    handlePlayerPauseOrStop(ytPlayer.getCurrentTime());
+                  } else {
+                    handlePlayerPauseOrStop();
+                  }
                 }
               }
             }
@@ -306,6 +389,7 @@ export default function LearnPage() {
       return () => {
         clearInterval(checkYt);
         if (intervalId) clearInterval(intervalId);
+        handlePlayerPauseOrStop();
       };
     } else if (isVimeo) {
       const loadVimeo = () => {
@@ -315,11 +399,16 @@ export default function LearnPage() {
         const setupVimeoPlayer = () => {
           vimeoPlayer = new (window as any).Vimeo.Player(iframe);
           vimeoPlayer.on("timeupdate", (data: any) => {
-            const currentTime = data.seconds || 0;
-            const duration = data.duration || 0;
-            if (checkWatchThreshold(currentTime, duration, watchedSeconds)) {
-              triggerViewIncrement();
-            }
+            handleTimeProgress(data.seconds || 0, data.duration || 0);
+          });
+          vimeoPlayer.on("pause", (data: any) => {
+            handlePlayerPauseOrStop(data?.seconds);
+          });
+          vimeoPlayer.on("ended", () => {
+            handlePlayerPauseOrStop();
+          });
+          vimeoPlayer.on("seeked", (data: any) => {
+            handlePlayerPauseOrStop(data?.seconds);
           });
         };
 
@@ -334,6 +423,9 @@ export default function LearnPage() {
       };
 
       setTimeout(loadVimeo, 1000);
+      return () => {
+        handlePlayerPauseOrStop();
+      };
     } else if (isBunny) {
       const loadBunny = () => {
         const iframe = document.getElementById("bunny-player") as HTMLIFrameElement;
@@ -344,11 +436,16 @@ export default function LearnPage() {
             const player = new (window as any).playerjs.Player(iframe);
             player.on("ready", () => {
               player.on("timeupdate", (data: any) => {
-                const currentTime = data.seconds || 0;
-                const duration = data.duration || 0;
-                if (checkWatchThreshold(currentTime, duration, watchedSeconds)) {
-                  triggerViewIncrement();
-                }
+                handleTimeProgress(data.seconds || 0, data.duration || 0);
+              });
+              player.on("pause", (data: any) => {
+                handlePlayerPauseOrStop(data?.seconds);
+              });
+              player.on("ended", () => {
+                handlePlayerPauseOrStop();
+              });
+              player.on("seeked", (data: any) => {
+                handlePlayerPauseOrStop(data?.seconds);
               });
             });
           } catch (e) {
@@ -367,8 +464,11 @@ export default function LearnPage() {
       };
 
       setTimeout(loadBunny, 1000);
+      return () => {
+        handlePlayerPauseOrStop();
+      };
     }
-  }, [videoUrl, activeLesson, hasIncrementedView, watchedSeconds]);
+  }, [videoUrl, activeLesson, viewsCount, handleTimeProgress, handlePlayerPauseOrStop]);
 
   // Helper to extract YouTube/Vimeo/Bunny Embed links
   function getEmbedUrl(url: string) {
@@ -563,9 +663,16 @@ export default function LearnPage() {
                       className="w-full h-full object-contain"
                       onTimeUpdate={(e) => {
                         const video = e.currentTarget;
-                        if (checkWatchThreshold(video.currentTime, video.duration, watchedSeconds)) {
-                          triggerViewIncrement();
-                        }
+                        handleTimeProgress(video.currentTime, video.duration);
+                      }}
+                      onPause={(e) => {
+                        handlePlayerPauseOrStop(e.currentTarget.currentTime);
+                      }}
+                      onEnded={(e) => {
+                        handlePlayerPauseOrStop(e.currentTarget.currentTime);
+                      }}
+                      onSeeked={(e) => {
+                        handlePlayerPauseOrStop(e.currentTarget.currentTime);
                       }}
                     />
                   )
@@ -579,14 +686,35 @@ export default function LearnPage() {
 
               {/* View Limits Info Bar */}
               {activeLesson && !videoError && !loadingVideo && (
-                <div className="bg-white px-6 py-3.5 rounded-2xl border shadow-sm flex items-center justify-between text-xs md:text-sm font-semibold">
-                  <div className="flex items-center gap-2 text-[#2D2B7A]">
-                    <Eye size={18} className="text-[#7D79F1]" />
-                    <span>عدد مشاهداتك لهذا الدرس:</span>
+                <div className="bg-white px-6 py-4 rounded-2xl border shadow-sm space-y-2 text-xs md:text-sm">
+                  <div className="flex items-center justify-between font-bold">
+                    <div className="flex items-center gap-2 text-[#2D2B7A]">
+                      <Eye size={18} className="text-[#7D79F1]" />
+                      <span>عدد مشاهداتك لهذا الدرس:</span>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full font-bold ${
+                      viewsCount >= 4
+                        ? "bg-red-100 text-red-800 border border-red-200"
+                        : "bg-purple-100 text-[#2D2B7A] border border-purple-200"
+                    }`}>
+                      {viewsCount} / 4 مشاهدات مكتملة
+                    </span>
                   </div>
-                  <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full">
-                    {viewsCount} / 4 مشاهدات مسموحة
-                  </span>
+
+                  {viewsCount < 4 && (
+                    <div className="space-y-1.5 pt-1 border-t border-gray-100">
+                      <div className="flex justify-between items-center text-xs text-gray-500">
+                        <span>نسبة إكمال المشاهدة الحالية (تُحتسب عند 80% من محتوى الفيديو الفريد):</span>
+                        <span className="font-bold text-[#7D79F1]">{uniquePercent}%</span>
+                      </div>
+                      <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                        <div 
+                          className="bg-gradient-to-r from-[#7D79F1] to-[#655EF0] h-full rounded-full transition-all duration-300" 
+                          style={{ width: `${Math.min(100, Math.round((uniquePercent / 80) * 100))}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
