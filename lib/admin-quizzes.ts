@@ -138,7 +138,7 @@ export async function uploadQuizImage(file: File): Promise<string> {
   const { error: uploadError } = await supabase.storage
     .from("quizzes-files")
     .upload(filePath, file, {
-      cacheControl: "3600",
+      cacheControl: "31536000",
       upsert: true,
     });
 

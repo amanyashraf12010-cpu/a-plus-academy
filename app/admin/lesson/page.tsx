@@ -423,7 +423,10 @@ function LessonsContent() {
                           
                           const { data, error } = await supabase.storage
                             .from("teachers-images")
-                            .upload(`lessons_attachments/${cleanFileName}`, file);
+                            .upload(`lessons_attachments/${cleanFileName}`, file, {
+                              cacheControl: '31536000',
+                              upsert: true
+                            });
 
                           if (error) throw error;
                           

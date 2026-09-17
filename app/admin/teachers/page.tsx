@@ -102,7 +102,7 @@ export default function AdminTeachersPage() {
         const { error: uploadError } = await supabase.storage
           .from("teachers-images")
           .upload(filePath, imageFile, {
-            cacheControl: '3600',
+            cacheControl: '31536000',
             upsert: true
           });
 
