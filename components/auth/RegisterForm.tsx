@@ -381,81 +381,79 @@ export default function RegisterForm() {
       </div>
     </form>
 
-    {/* Confirmation Modal Popup */}
+    {/* Confirmation Modal Popup - Small Centered Box */}
     {mounted && isRegistered && typeof document !== "undefined" && createPortal(
-      <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+      <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 overflow-y-auto">
         {/* Dimmed Background Overlay (الصفحة باهتة وراها) */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={() => setIsRegistered(false)}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm cursor-pointer"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm cursor-pointer"
         />
 
-        {/* Centered Modal Card (مربع في نص الصفحة) */}
+        {/* Small Centered Modal Card (مربع صغير في نص الصفحة) */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          initial={{ opacity: 0, scale: 0.9, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-          className="relative z-10 w-full max-w-xl bg-white rounded-3xl p-6 sm:p-10 shadow-2xl border border-purple-100 text-center flex flex-col items-center my-auto"
+          exit={{ opacity: 0, scale: 0.9, y: 15 }}
+          transition={{ type: "spring", stiffness: 320, damping: 26 }}
+          className="relative z-10 w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-purple-100 text-center flex flex-col items-center my-auto mx-auto"
         >
           {/* Close Button (علامة X في طرف المربع) */}
           <button
             type="button"
             onClick={() => setIsRegistered(false)}
-            className="absolute top-4 left-4 sm:top-5 sm:left-5 w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 flex items-center justify-center transition-colors shadow-sm cursor-pointer"
+            className="absolute top-3.5 left-3.5 sm:top-4 sm:left-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-800 flex items-center justify-center transition-colors shadow-sm cursor-pointer"
             aria-label="إغلاق"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
 
-          {/* Success Icon */}
-          <div className="relative mb-5 mt-2">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shadow-inner">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-emerald-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/30 text-white">
-                <CheckCircle2 className="w-9 h-9 sm:w-10 sm:h-10 stroke-[2.5]" />
+          {/* Small Success Icon */}
+          <div className="relative mb-3 mt-1">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-emerald-400 flex items-center justify-center shadow-md shadow-emerald-500/30 text-white">
+                <CheckCircle2 className="w-6 h-6 stroke-[2.5]" />
               </div>
             </div>
-            <span className="absolute -top-1.5 -right-1.5 flex h-6 w-6">
+            <span className="absolute -top-1 -right-1 flex h-4 w-4">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-6 w-6 bg-emerald-500 items-center justify-center text-white text-xs font-bold">✓</span>
+              <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 items-center justify-center text-white text-[9px] font-bold">✓</span>
             </span>
           </div>
 
           {/* Title */}
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#2D2B7A] tracking-tight mb-3 leading-snug">
+          <h2 className="text-xl sm:text-2xl font-black text-[#2D2B7A] tracking-tight mb-2 leading-snug">
             تم إنشاء حسابك بنجاح 🎉
           </h2>
 
           {/* Review Timeframe */}
-          <div className="flex items-center justify-center gap-2 text-base sm:text-lg font-bold text-gray-700 mb-5">
-            <Clock className="w-5 h-5 text-[#7D79F1] shrink-0" />
+          <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold text-gray-600 mb-3">
+            <Clock className="w-4 h-4 text-[#7D79F1] shrink-0" />
             <span>سيتم مراجعة وقبول حسابك خلال 24 ساعة كحد أقصى.</span>
           </div>
 
-          {/* Prominent Warning Callout Box */}
-          <div className="w-full bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 sm:p-5 mb-5 text-center shadow-sm flex flex-col sm:flex-row items-center justify-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-              <AlertTriangle className="w-5 h-5 stroke-[2.5]" />
-            </div>
-            <p className="text-amber-950 font-black text-sm sm:text-base leading-relaxed">
+          {/* Warning Callout Box */}
+          <div className="w-full bg-amber-50 border border-amber-300 rounded-xl p-3 mb-3 text-center flex items-center justify-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <p className="text-amber-950 font-bold text-xs sm:text-sm leading-snug">
               برجاء عدم تسجيل حساب جديد مرة أخرى، وانتظار تفعيل حسابك من الإدارة.
             </p>
           </div>
 
           {/* Instruction */}
-          <p className="text-gray-600 text-sm sm:text-base font-semibold mb-6 max-w-md leading-relaxed">
+          <p className="text-gray-500 text-xs sm:text-sm font-medium mb-4 leading-relaxed">
             بعد قبول الحساب، يمكنك تسجيل الدخول والبدء في استخدام المنصة.
           </p>
 
           {/* Login Button */}
           <Link
             href="/login"
-            className="w-full sm:w-auto min-w-[260px] inline-flex items-center justify-center gap-3 bg-[#7D79F1] hover:bg-[#655EF0] text-white font-black text-lg py-4 px-8 rounded-2xl shadow-lg shadow-[#7D79F1]/30 transition-all duration-200 transform hover:scale-105 active:scale-95"
+            className="w-full inline-flex items-center justify-center gap-2 bg-[#7D79F1] hover:bg-[#655EF0] text-white font-bold text-base py-3 px-6 rounded-xl shadow-md shadow-[#7D79F1]/25 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
           >
-            <LogIn className="w-5 h-5" />
+            <LogIn className="w-4 h-4" />
             <span>تسجيل الدخول إلى حسابك</span>
           </Link>
         </motion.div>
