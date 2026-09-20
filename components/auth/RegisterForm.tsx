@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { CheckCircle2, Clock, AlertTriangle, LogIn } from "lucide-react";
 import AuthInput from "./AuthInput";
 import AuthButton from "./AuthButton";
@@ -161,62 +162,114 @@ export default function RegisterForm() {
 
   if (isRegistered) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-2xl p-4 sm:p-6 md:p-10 overflow-y-auto min-h-screen">
-        {/* Ambient Dark Purple Spotlight */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full bg-[#7D79F1]/20 blur-[120px] pointer-events-none" />
-        <div className="absolute top-1/4 left-1/4 h-80 w-80 rounded-full bg-[#F18A2E]/10 blur-[100px] pointer-events-none" />
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4 sm:p-6 md:p-10 overflow-y-auto min-h-screen"
+      >
+        {/* Ambient Pulsing Glows */}
+        <motion.div
+          animate={{ scale: [1, 1.15, 1], opacity: [0.25, 0.4, 0.25] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[700px] w-[700px] rounded-full bg-[#7D79F1]/25 blur-[140px] pointer-events-none"
+        />
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], opacity: [0.15, 0.3, 0.15] }}
+          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          className="absolute bottom-10 right-10 h-96 w-96 rounded-full bg-[#F18A2E]/15 blur-[120px] pointer-events-none"
+        />
 
-        {/* High-Contrast Centered Card */}
-        <div className="relative z-10 w-full max-w-2xl bg-[#0F0E17] border-2 border-[#7D79F1]/40 rounded-3xl sm:rounded-[36px] p-6 sm:p-10 md:p-14 shadow-[0_0_80px_rgba(125,121,241,0.25)] text-center flex flex-col items-center animate-in fade-in zoom-in-95 duration-300">
-          {/* Glowing Success Badge */}
-          <div className="relative mb-6">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shadow-[0_0_35px_rgba(16,185,129,0.3)]">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/40 text-white">
-                <CheckCircle2 className="w-10 h-10 sm:w-12 sm:h-12 stroke-[2.5]" />
+        {/* High-Contrast Large Centered Card */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85, y: 30 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
+          className="relative z-10 w-full max-w-3xl bg-[#0F0E17]/95 border-2 border-[#7D79F1]/50 rounded-3xl sm:rounded-[44px] p-8 sm:p-12 md:p-16 shadow-[0_0_100px_rgba(125,121,241,0.35)] text-center flex flex-col items-center"
+        >
+          {/* Animated Glowing Success Badge */}
+          <motion.div
+            initial={{ scale: 0, rotate: -25 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 280, damping: 18, delay: 0.25 }}
+            className="relative mb-8"
+          >
+            <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-emerald-500/15 border-2 border-emerald-500/40 flex items-center justify-center shadow-[0_0_45px_rgba(16,185,129,0.35)]">
+              <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center shadow-xl shadow-emerald-500/50 text-white">
+                <CheckCircle2 className="w-12 h-12 sm:w-14 sm:h-14 stroke-[2.5]" />
               </div>
             </div>
-            <span className="absolute -top-2 -right-2 flex h-6 w-6">
+            <span className="absolute -top-2 -right-2 flex h-7 w-7">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-6 w-6 bg-emerald-500 items-center justify-center text-white text-xs font-bold">✓</span>
+              <span className="relative inline-flex rounded-full h-7 w-7 bg-emerald-500 items-center justify-center text-white text-sm font-black">✓</span>
             </span>
-          </div>
+          </motion.div>
 
-          {/* Main Title */}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-4 leading-snug drop-shadow-[0_2px_15px_rgba(255,255,255,0.2)]">
+          {/* Main Title - Extra Large */}
+          <motion.h1
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35, duration: 0.5 }}
+            className="text-3xl sm:text-5xl md:text-6xl font-black text-white tracking-tight mb-5 leading-tight drop-shadow-[0_4px_25px_rgba(255,255,255,0.25)]"
+          >
             تم إنشاء حسابك بنجاح 🎉
-          </h1>
+          </motion.h1>
 
           {/* Review Timeframe */}
-          <div className="flex items-center justify-center gap-2.5 text-base sm:text-xl font-bold text-gray-200 mb-6">
-            <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-[#A5A2FF] shrink-0" />
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45, duration: 0.5 }}
+            className="flex items-center justify-center gap-3 text-lg sm:text-2xl font-bold text-gray-200 mb-8"
+          >
+            <Clock className="w-6 h-6 sm:w-7 sm:h-7 text-[#A5A2FF] shrink-0" />
             <span>سيتم مراجعة وقبول حسابك خلال 24 ساعة كحد أقصى.</span>
-          </div>
+          </motion.div>
 
           {/* Prominent Warning Callout */}
-          <div className="w-full bg-amber-950/40 border-2 border-amber-500/60 rounded-2xl p-4 sm:p-5 mb-6 text-center shadow-[0_0_25px_rgba(245,158,11,0.15)] flex flex-col sm:flex-row items-center justify-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
-              <AlertTriangle className="w-5 h-5 stroke-[2.5]" />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.55, duration: 0.5 }}
+            className="w-full bg-gradient-to-r from-amber-950/70 via-amber-900/50 to-amber-950/70 border-2 border-amber-400/90 rounded-3xl p-5 sm:p-7 mb-8 text-center shadow-[0_0_35px_rgba(251,191,36,0.25)] flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/30 text-amber-300 border border-amber-400/50 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-6 h-6 sm:w-7 sm:h-7 stroke-[2.5]" />
             </div>
-            <p className="text-amber-200 font-black text-sm sm:text-base leading-relaxed">
+            <p className="text-amber-100 font-black text-base sm:text-xl leading-relaxed">
               برجاء عدم تسجيل حساب جديد مرة أخرى، وانتظار تفعيل حسابك من الإدارة.
             </p>
-          </div>
+          </motion.div>
 
           {/* Instruction */}
-          <p className="text-gray-300 text-sm sm:text-base font-medium mb-8 max-w-lg leading-relaxed">
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.65, duration: 0.5 }}
+            className="text-gray-300 text-base sm:text-xl font-semibold mb-10 max-w-xl leading-relaxed"
+          >
             بعد قبول الحساب، يمكنك تسجيل الدخول والبدء في استخدام المنصة.
-          </p>
+          </motion.p>
 
           {/* Login Button */}
-          <Link
-            href="/login"
-            className="w-full sm:w-auto min-w-[280px] inline-flex items-center justify-center gap-3 bg-gradient-to-r from-[#7D79F1] to-[#6C63FF] hover:from-[#6C63FF] hover:to-[#5A54E8] text-white font-black text-lg py-4 px-8 rounded-2xl shadow-[0_0_30px_rgba(125,121,241,0.45)] transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.75, duration: 0.5 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full sm:w-auto"
           >
-            <LogIn className="w-5 h-5" />
-            <span>تسجيل الدخول إلى حسابك</span>
-          </Link>
-        </div>
-      </div>
+            <Link
+              href="/login"
+              className="w-full sm:w-auto min-w-[320px] inline-flex items-center justify-center gap-3.5 bg-gradient-to-r from-[#7D79F1] via-[#6C63FF] to-[#5A54E8] text-white font-black text-xl py-4.5 sm:py-5 px-10 rounded-2xl shadow-[0_0_40px_rgba(125,121,241,0.55)] transition-shadow hover:shadow-[0_0_60px_rgba(125,121,241,0.85)]"
+            >
+              <LogIn className="w-6 h-6" />
+              <span>تسجيل الدخول إلى حسابك</span>
+            </Link>
+          </motion.div>
+        </motion.div>
+      </motion.div>
     );
   }
 
