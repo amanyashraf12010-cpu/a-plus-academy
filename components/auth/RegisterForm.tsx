@@ -161,18 +161,17 @@ export default function RegisterForm() {
 
   if (isRegistered) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#F8F7FF] p-4 sm:p-6 md:p-10 overflow-y-auto min-h-screen">
-        {/* Background Glows */}
-        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-[#7D79F1]/20 blur-3xl pointer-events-none" />
-        <div className="absolute top-1/2 -right-32 h-[500px] w-[500px] rounded-full bg-[#7D79F1]/10 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-[#F18A2E]/10 blur-3xl pointer-events-none" />
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-2xl p-4 sm:p-6 md:p-10 overflow-y-auto min-h-screen">
+        {/* Ambient Dark Purple Spotlight */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full bg-[#7D79F1]/20 blur-[120px] pointer-events-none" />
+        <div className="absolute top-1/4 left-1/4 h-80 w-80 rounded-full bg-[#F18A2E]/10 blur-[100px] pointer-events-none" />
 
-        {/* Confirmation Card */}
-        <div className="relative z-10 w-full max-w-2xl bg-white rounded-3xl sm:rounded-[36px] p-6 sm:p-10 md:p-14 shadow-[0_25px_80px_rgba(45,43,122,0.12)] border border-purple-100 text-center flex flex-col items-center animate-in fade-in zoom-in-95 duration-300">
-          {/* Animated Success Badge */}
+        {/* High-Contrast Centered Card */}
+        <div className="relative z-10 w-full max-w-2xl bg-[#0F0E17] border-2 border-[#7D79F1]/40 rounded-3xl sm:rounded-[36px] p-6 sm:p-10 md:p-14 shadow-[0_0_80px_rgba(125,121,241,0.25)] text-center flex flex-col items-center animate-in fade-in zoom-in-95 duration-300">
+          {/* Glowing Success Badge */}
           <div className="relative mb-6">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-tr from-[#7D79F1]/20 via-purple-100 to-emerald-100 flex items-center justify-center shadow-inner">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-emerald-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/30 text-white">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shadow-[0_0_35px_rgba(16,185,129,0.3)]">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/40 text-white">
                 <CheckCircle2 className="w-10 h-10 sm:w-12 sm:h-12 stroke-[2.5]" />
               </div>
             </div>
@@ -182,36 +181,36 @@ export default function RegisterForm() {
             </span>
           </div>
 
-          {/* Title */}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#2D2B7A] tracking-tight mb-4 leading-snug">
+          {/* Main Title */}
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight mb-4 leading-snug drop-shadow-[0_2px_15px_rgba(255,255,255,0.2)]">
             تم إنشاء حسابك بنجاح 🎉
           </h1>
 
-          {/* Review timeframe */}
-          <div className="flex items-center justify-center gap-2 text-base sm:text-xl font-bold text-gray-700 mb-6">
-            <Clock className="w-5 h-5 text-[#7D79F1] shrink-0" />
+          {/* Review Timeframe */}
+          <div className="flex items-center justify-center gap-2.5 text-base sm:text-xl font-bold text-gray-200 mb-6">
+            <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-[#A5A2FF] shrink-0" />
             <span>سيتم مراجعة وقبول حسابك خلال 24 ساعة كحد أقصى.</span>
           </div>
 
           {/* Prominent Warning Callout */}
-          <div className="w-full bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 sm:p-5 mb-6 text-center shadow-sm flex flex-col sm:flex-row items-center justify-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+          <div className="w-full bg-amber-950/40 border-2 border-amber-500/60 rounded-2xl p-4 sm:p-5 mb-6 text-center shadow-[0_0_25px_rgba(245,158,11,0.15)] flex flex-col sm:flex-row items-center justify-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
               <AlertTriangle className="w-5 h-5 stroke-[2.5]" />
             </div>
-            <p className="text-amber-950 font-black text-sm sm:text-base leading-relaxed">
+            <p className="text-amber-200 font-black text-sm sm:text-base leading-relaxed">
               برجاء عدم تسجيل حساب جديد مرة أخرى، وانتظار تفعيل حسابك من الإدارة.
             </p>
           </div>
 
           {/* Instruction */}
-          <p className="text-gray-600 text-sm sm:text-base font-semibold mb-8 max-w-lg">
+          <p className="text-gray-300 text-sm sm:text-base font-medium mb-8 max-w-lg leading-relaxed">
             بعد قبول الحساب، يمكنك تسجيل الدخول والبدء في استخدام المنصة.
           </p>
 
           {/* Login Button */}
           <Link
             href="/login"
-            className="w-full sm:w-auto min-w-[280px] inline-flex items-center justify-center gap-3 bg-[#7D79F1] hover:bg-[#655EF0] text-white font-bold text-lg py-4 px-8 rounded-2xl shadow-lg shadow-[#7D79F1]/30 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0"
+            className="w-full sm:w-auto min-w-[280px] inline-flex items-center justify-center gap-3 bg-gradient-to-r from-[#7D79F1] to-[#6C63FF] hover:from-[#6C63FF] hover:to-[#5A54E8] text-white font-black text-lg py-4 px-8 rounded-2xl shadow-[0_0_30px_rgba(125,121,241,0.45)] transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
           >
             <LogIn className="w-5 h-5" />
             <span>تسجيل الدخول إلى حسابك</span>
