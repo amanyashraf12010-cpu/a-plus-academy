@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { CheckCircle2, Clock, AlertTriangle, LogIn, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { CheckCircle2, Clock, AlertTriangle, Home, X } from "lucide-react";
 import AuthInput from "./AuthInput";
 import AuthButton from "./AuthButton";
 import PasswordInput from "./PasswordInput";
@@ -28,12 +28,23 @@ export default function RegisterForm() {
   const [parentJob, setParentJob] = useState("");
   const [loading, setLoading] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [showWarningModal, setShowWarningModal] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Show the red warning modal automatically after 5 seconds from registration success
+  useEffect(() => {
+    if (isRegistered) {
+      const timer = setTimeout(() => {
+        setShowWarningModal(true);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [isRegistered]);
 
   const getTracks = () => {
     if (!grade) return [];
@@ -153,6 +164,7 @@ export default function RegisterForm() {
 
     if (result.success) {
       setIsRegistered(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       setErrors({ email: result.error || "حدث خطأ، حاول مرة أخرى" });
     }
@@ -165,12 +177,118 @@ export default function RegisterForm() {
         : "border border-gray-200 focus:border-[#7D79F1] focus:ring-[#7D79F1]/20"
     }`;
 
+  // When registered: Show title, timeframe, and home button across the screen + 5s red warning modal popup
+  if (isRegistered) {
+    return (
+      <div className="w-full flex flex-col items-center justify-center text-center py-8 sm:py-12 space-y-6 animate-in fade-in duration-300">
+        {/* Success Icon */}
+        <div className="relative mb-2">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shadow-inner">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-emerald-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/30 text-white">
+              <CheckCircle2 className="w-9 h-9 sm:w-10 sm:h-10 stroke-[2.5]" />
+            </div>
+          </div>
+          <span className="absolute -top-1.5 -right-1.5 flex h-6 w-6">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-6 w-6 bg-emerald-500 items-center justify-center text-white text-xs font-bold">✓</span>
+          </span>
+        </div>
+
+        {/* 1. Main Title - Spans Across Screen */}
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#2D2B7A] tracking-tight leading-snug">
+          تم إنشاء حسابك بنجاح 🎉
+        </h1>
+
+        {/* 2. Review Timeframe */}
+        <div className="flex items-center justify-center gap-2.5 text-base sm:text-xl font-bold text-gray-700">
+          <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-[#7D79F1] shrink-0" />
+          <span>سيتم مراجعة وقبول حسابك خلال 24 ساعة كحد أقصى.</span>
+        </div>
+
+        {/* 3. Instruction */}
+        <p className="text-gray-500 text-sm sm:text-base font-medium max-w-md leading-relaxed">
+          بعد قبول الحساب، يمكنك تسجيل الدخول والبدء في استخدام المنصة.
+        </p>
+
+        {/* 4. Go to Home Page Button */}
+        <div className="pt-4 w-full sm:w-auto">
+          <Link
+            href="/"
+            className="w-full sm:w-auto min-w-[280px] inline-flex items-center justify-center gap-3 bg-[#7D79F1] hover:bg-[#655EF0] text-white font-black text-lg py-4 px-10 rounded-2xl shadow-lg shadow-[#7D79F1]/30 transition-all duration-200 transform hover:scale-105 active:scale-95"
+          >
+            <Home className="w-5 h-5" />
+            <span>الذهاب إلى الصفحة الرئيسية</span>
+          </Link>
+        </div>
+
+        {/* 5. Red Warning Modal Popup (Appears after 5 seconds on top) */}
+        {mounted && showWarningModal && typeof document !== "undefined" && createPortal(
+          <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+            {/* Dimmed Background Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowWarningModal(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm cursor-pointer"
+            />
+
+            {/* Red Warning Box in Center */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.85, y: 20 }}
+              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+              className="relative z-10 w-full max-w-md bg-white border-2 border-red-500 rounded-3xl p-6 sm:p-8 shadow-[0_15px_50px_rgba(239,68,68,0.3)] text-center flex flex-col items-center my-auto mx-auto"
+            >
+              {/* Close Button (X in corner) */}
+              <button
+                type="button"
+                onClick={() => setShowWarningModal(false)}
+                className="absolute top-3.5 left-3.5 sm:top-4 sm:left-4 w-9 h-9 rounded-full bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-800 flex items-center justify-center transition-colors shadow-sm cursor-pointer"
+                aria-label="إغلاق التنبيه"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Red Warning Icon */}
+              <div className="w-16 h-16 rounded-2xl bg-red-100 border border-red-200 text-red-600 flex items-center justify-center mb-4 mt-1 shadow-inner">
+                <AlertTriangle className="w-8 h-8 stroke-[2.5] text-red-600 animate-pulse" />
+              </div>
+
+              {/* Red Title */}
+              <h3 className="text-2xl font-black text-red-600 mb-3">
+                تنبيه هام ⚠️
+              </h3>
+
+              {/* Red Warning Message */}
+              <div className="w-full bg-red-50 border border-red-200 rounded-2xl p-4 mb-6 text-center">
+                <p className="text-red-950 font-black text-base sm:text-lg leading-relaxed">
+                  برجاء عدم تسجيل حساب جديد مرة أخرى، وانتظار تفعيل حسابك من الإدارة.
+                </p>
+              </div>
+
+              {/* Dismiss Button */}
+              <button
+                type="button"
+                onClick={() => setShowWarningModal(false)}
+                className="w-full inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-black text-base py-3.5 px-6 rounded-xl shadow-lg shadow-red-600/30 transition-all cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <span>فهمت ذلك (إغلاق التنبيه)</span>
+              </button>
+            </motion.div>
+          </div>,
+          document.body
+        )}
+      </div>
+    );
+  }
+
   return (
-    <>
-      <form
-        onSubmit={handleRegister}
-        className="grid grid-cols-1 md:grid-cols-2 gap-5"
-      >
+    <form
+      onSubmit={handleRegister}
+      className="grid grid-cols-1 md:grid-cols-2 gap-5"
+    >
       {/* 1. Full Name */}
       <div className="md:col-span-2">
         <AuthInput
@@ -380,86 +498,5 @@ export default function RegisterForm() {
         </AuthButton>
       </div>
     </form>
-
-    {/* Confirmation Modal Popup - Small Centered Box */}
-    {mounted && isRegistered && typeof document !== "undefined" && createPortal(
-      <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 overflow-y-auto">
-        {/* Dimmed Background Overlay (الصفحة باهتة وراها) */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={() => setIsRegistered(false)}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm cursor-pointer"
-        />
-
-        {/* Small Centered Modal Card (مربع صغير في نص الصفحة) */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 15 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: 15 }}
-          transition={{ type: "spring", stiffness: 320, damping: 26 }}
-          className="relative z-10 w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-purple-100 text-center flex flex-col items-center my-auto mx-auto"
-        >
-          {/* Close Button (علامة X في طرف المربع) */}
-          <button
-            type="button"
-            onClick={() => setIsRegistered(false)}
-            className="absolute top-3.5 left-3.5 sm:top-4 sm:left-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-800 flex items-center justify-center transition-colors shadow-sm cursor-pointer"
-            aria-label="إغلاق"
-          >
-            <X className="w-4 h-4" />
-          </button>
-
-          {/* Small Success Icon */}
-          <div className="relative mb-3 mt-1">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shadow-sm">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-emerald-400 flex items-center justify-center shadow-md shadow-emerald-500/30 text-white">
-                <CheckCircle2 className="w-6 h-6 stroke-[2.5]" />
-              </div>
-            </div>
-            <span className="absolute -top-1 -right-1 flex h-4 w-4">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 items-center justify-center text-white text-[9px] font-bold">✓</span>
-            </span>
-          </div>
-
-          {/* Title */}
-          <h2 className="text-xl sm:text-2xl font-black text-[#2D2B7A] tracking-tight mb-2 leading-snug">
-            تم إنشاء حسابك بنجاح 🎉
-          </h2>
-
-          {/* Review Timeframe */}
-          <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold text-gray-600 mb-3">
-            <Clock className="w-4 h-4 text-[#7D79F1] shrink-0" />
-            <span>سيتم مراجعة وقبول حسابك خلال 24 ساعة كحد أقصى.</span>
-          </div>
-
-          {/* Warning Callout Box */}
-          <div className="w-full bg-amber-50 border border-amber-300 rounded-xl p-3 mb-3 text-center flex items-center justify-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-            <p className="text-amber-950 font-bold text-xs sm:text-sm leading-snug">
-              برجاء عدم تسجيل حساب جديد مرة أخرى، وانتظار تفعيل حسابك من الإدارة.
-            </p>
-          </div>
-
-          {/* Instruction */}
-          <p className="text-gray-500 text-xs sm:text-sm font-medium mb-4 leading-relaxed">
-            بعد قبول الحساب، يمكنك تسجيل الدخول والبدء في استخدام المنصة.
-          </p>
-
-          {/* Login Button */}
-          <Link
-            href="/login"
-            className="w-full inline-flex items-center justify-center gap-2 bg-[#7D79F1] hover:bg-[#655EF0] text-white font-bold text-base py-3 px-6 rounded-xl shadow-md shadow-[#7D79F1]/25 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <LogIn className="w-4 h-4" />
-            <span>تسجيل الدخول إلى حسابك</span>
-          </Link>
-        </motion.div>
-      </div>,
-      document.body
-    )}
-  </>
   );
 }
