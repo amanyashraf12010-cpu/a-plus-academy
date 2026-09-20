@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { CheckCircle2, Clock, AlertTriangle, LogIn } from "lucide-react";
@@ -27,7 +28,12 @@ export default function RegisterForm() {
   const [parentJob, setParentJob] = useState("");
   const [loading, setLoading] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const getTracks = () => {
     if (!grade) return [];
@@ -161,56 +167,51 @@ export default function RegisterForm() {
     }`;
 
   if (isRegistered) {
-    return (
+    const confirmationScreen = (
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-        className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/95 backdrop-blur-3xl p-4 sm:p-6 md:p-10 overflow-y-auto min-h-screen"
+        transition={{ duration: 0.45, ease: "easeOut" }}
+        className="fixed inset-0 z-[999999] flex flex-col items-center justify-center bg-[#07060d]/98 backdrop-blur-3xl p-6 sm:p-10 md:p-16 overflow-y-auto min-h-screen w-screen"
       >
-        {/* Ambient Pulsing Glows */}
+        {/* Ambient Pulsing Glows across the screen */}
         <motion.div
-          animate={{ scale: [1, 1.15, 1], opacity: [0.25, 0.4, 0.25] }}
+          animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.35, 0.2] }}
           transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[700px] w-[700px] rounded-full bg-[#7D79F1]/25 blur-[140px] pointer-events-none"
+          className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[800px] w-[800px] rounded-full bg-[#7D79F1]/20 blur-[150px] pointer-events-none"
         />
         <motion.div
-          animate={{ scale: [1, 1.2, 1], opacity: [0.15, 0.3, 0.15] }}
+          animate={{ scale: [1, 1.25, 1], opacity: [0.15, 0.3, 0.15] }}
           transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="absolute bottom-10 right-10 h-96 w-96 rounded-full bg-[#F18A2E]/15 blur-[120px] pointer-events-none"
+          className="absolute bottom-10 right-1/4 h-[500px] w-[500px] rounded-full bg-[#F18A2E]/15 blur-[140px] pointer-events-none"
         />
 
-        {/* High-Contrast Large Centered Card */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.85, y: 30 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
-          className="relative z-10 w-full max-w-3xl bg-[#0F0E17]/95 border-2 border-[#7D79F1]/50 rounded-3xl sm:rounded-[44px] p-8 sm:p-12 md:p-16 shadow-[0_0_100px_rgba(125,121,241,0.35)] text-center flex flex-col items-center"
-        >
+        {/* Content Container spanning naturally across the screen width */}
+        <div className="relative z-10 w-full max-w-5xl mx-auto flex flex-col items-center justify-center text-center space-y-6 sm:space-y-8 my-auto py-10">
           {/* Animated Glowing Success Badge */}
           <motion.div
             initial={{ scale: 0, rotate: -25 }}
             animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 280, damping: 18, delay: 0.25 }}
-            className="relative mb-8"
+            transition={{ type: "spring", stiffness: 280, damping: 18, delay: 0.15 }}
+            className="relative"
           >
-            <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-emerald-500/15 border-2 border-emerald-500/40 flex items-center justify-center shadow-[0_0_45px_rgba(16,185,129,0.35)]">
-              <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center shadow-xl shadow-emerald-500/50 text-white">
-                <CheckCircle2 className="w-12 h-12 sm:w-14 sm:h-14 stroke-[2.5]" />
+            <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl bg-emerald-500/15 border-2 border-emerald-500/40 flex items-center justify-center shadow-[0_0_55px_rgba(16,185,129,0.35)]">
+              <div className="w-20 h-20 sm:w-26 sm:h-26 rounded-2xl bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center shadow-2xl shadow-emerald-500/50 text-white">
+                <CheckCircle2 className="w-12 h-12 sm:w-16 sm:h-16 stroke-[2.5]" />
               </div>
             </div>
-            <span className="absolute -top-2 -right-2 flex h-7 w-7">
+            <span className="absolute -top-2 -right-2 flex h-8 w-8">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-7 w-7 bg-emerald-500 items-center justify-center text-white text-sm font-black">✓</span>
+              <span className="relative inline-flex rounded-full h-8 w-8 bg-emerald-500 items-center justify-center text-white text-base font-black shadow-lg">✓</span>
             </span>
           </motion.div>
 
-          {/* Main Title - Extra Large */}
+          {/* Main Title - Spans Across Screen */}
           <motion.h1
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35, duration: 0.5 }}
-            className="text-3xl sm:text-5xl md:text-6xl font-black text-white tracking-tight mb-5 leading-tight drop-shadow-[0_4px_25px_rgba(255,255,255,0.25)]"
+            transition={{ delay: 0.25, duration: 0.5 }}
+            className="text-4xl sm:text-6xl md:text-7xl font-black text-white tracking-tight leading-tight drop-shadow-[0_4px_35px_rgba(255,255,255,0.3)] max-w-4xl"
           >
             تم إنشاء حسابك بنجاح 🎉
           </motion.h1>
@@ -219,24 +220,24 @@ export default function RegisterForm() {
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45, duration: 0.5 }}
-            className="flex items-center justify-center gap-3 text-lg sm:text-2xl font-bold text-gray-200 mb-8"
+            transition={{ delay: 0.35, duration: 0.5 }}
+            className="flex items-center justify-center gap-3 sm:gap-4 text-xl sm:text-3xl font-bold text-gray-200 max-w-3xl"
           >
-            <Clock className="w-6 h-6 sm:w-7 sm:h-7 text-[#A5A2FF] shrink-0" />
+            <Clock className="w-7 h-7 sm:w-9 sm:h-9 text-[#A5A2FF] shrink-0" />
             <span>سيتم مراجعة وقبول حسابك خلال 24 ساعة كحد أقصى.</span>
           </motion.div>
 
-          {/* Prominent Warning Callout */}
+          {/* Wide Prominent Warning Callout Banner */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.55, duration: 0.5 }}
-            className="w-full bg-gradient-to-r from-amber-950/70 via-amber-900/50 to-amber-950/70 border-2 border-amber-400/90 rounded-3xl p-5 sm:p-7 mb-8 text-center shadow-[0_0_35px_rgba(251,191,36,0.25)] flex flex-col sm:flex-row items-center justify-center gap-4"
+            transition={{ delay: 0.45, duration: 0.5 }}
+            className="w-full max-w-4xl bg-gradient-to-r from-amber-950/70 via-amber-900/50 to-amber-950/70 border-2 border-amber-400/90 rounded-3xl p-6 sm:p-8 text-center shadow-[0_0_50px_rgba(251,191,36,0.25)] flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6"
           >
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/30 text-amber-300 border border-amber-400/50 flex items-center justify-center shrink-0">
-              <AlertTriangle className="w-6 h-6 sm:w-7 sm:h-7 stroke-[2.5]" />
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-500/30 text-amber-300 border border-amber-400/50 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-7 h-7 sm:w-8 sm:h-8 stroke-[2.5]" />
             </div>
-            <p className="text-amber-100 font-black text-base sm:text-xl leading-relaxed">
+            <p className="text-amber-100 font-black text-lg sm:text-2xl leading-relaxed">
               برجاء عدم تسجيل حساب جديد مرة أخرى، وانتظار تفعيل حسابك من الإدارة.
             </p>
           </motion.div>
@@ -245,8 +246,8 @@ export default function RegisterForm() {
           <motion.p
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.65, duration: 0.5 }}
-            className="text-gray-300 text-base sm:text-xl font-semibold mb-10 max-w-xl leading-relaxed"
+            transition={{ delay: 0.55, duration: 0.5 }}
+            className="text-gray-300 text-lg sm:text-2xl font-semibold max-w-3xl leading-relaxed"
           >
             بعد قبول الحساب، يمكنك تسجيل الدخول والبدء في استخدام المنصة.
           </motion.p>
@@ -255,22 +256,27 @@ export default function RegisterForm() {
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.75, duration: 0.5 }}
-            whileHover={{ scale: 1.03 }}
+            transition={{ delay: 0.65, duration: 0.5 }}
+            whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.98 }}
-            className="w-full sm:w-auto"
+            className="pt-2"
           >
             <Link
               href="/login"
-              className="w-full sm:w-auto min-w-[320px] inline-flex items-center justify-center gap-3.5 bg-gradient-to-r from-[#7D79F1] via-[#6C63FF] to-[#5A54E8] text-white font-black text-xl py-4.5 sm:py-5 px-10 rounded-2xl shadow-[0_0_40px_rgba(125,121,241,0.55)] transition-shadow hover:shadow-[0_0_60px_rgba(125,121,241,0.85)]"
+              className="w-full sm:w-auto min-w-[340px] inline-flex items-center justify-center gap-4 bg-gradient-to-r from-[#7D79F1] via-[#6C63FF] to-[#5A54E8] text-white font-black text-xl sm:text-2xl py-5 sm:py-6 px-12 rounded-3xl shadow-[0_0_50px_rgba(125,121,241,0.6)] hover:shadow-[0_0_80px_rgba(125,121,241,0.9)] transition-all duration-300"
             >
-              <LogIn className="w-6 h-6" />
+              <LogIn className="w-7 h-7" />
               <span>تسجيل الدخول إلى حسابك</span>
             </Link>
           </motion.div>
-        </motion.div>
+        </div>
       </motion.div>
     );
+
+    if (mounted && typeof document !== "undefined") {
+      return createPortal(confirmationScreen, document.body);
+    }
+    return confirmationScreen;
   }
 
   return (
