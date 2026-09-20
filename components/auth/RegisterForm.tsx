@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { CheckCircle2, Clock, AlertTriangle, LogIn } from "lucide-react";
 import AuthInput from "./AuthInput";
 import AuthButton from "./AuthButton";
 import PasswordInput from "./PasswordInput";
@@ -23,7 +25,7 @@ export default function RegisterForm() {
   const [parentPhone, setParentPhone] = useState("");
   const [parentJob, setParentJob] = useState("");
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState("");
+  const [isRegistered, setIsRegistered] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const getTracks = () => {
@@ -122,7 +124,6 @@ export default function RegisterForm() {
     }
 
     setLoading(true);
-    setSuccess("");
 
     const { cleanEmail, cleanPhone, cleanParentPhone, cleanFullName, cleanSchool, cleanParentJob } = getCleanData();
 
@@ -144,7 +145,8 @@ export default function RegisterForm() {
     setLoading(false);
 
     if (result.success) {
-      setSuccess("تم إنشاء الحساب بنجاح 🎉 في انتظار موافقة الإدارة (سيتم تفعيل الحساب خلال 24 ساعة)");
+      setIsRegistered(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       setErrors({ email: result.error || "حدث خطأ، حاول مرة أخرى" });
     }
@@ -156,6 +158,68 @@ export default function RegisterForm() {
         ? "border-2 border-red-500 focus:ring-red-200"
         : "border border-gray-200 focus:border-[#7D79F1] focus:ring-[#7D79F1]/20"
     }`;
+
+  if (isRegistered) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#F8F7FF] p-4 sm:p-6 md:p-10 overflow-y-auto min-h-screen">
+        {/* Background Glows */}
+        <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-[#7D79F1]/20 blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 -right-32 h-[500px] w-[500px] rounded-full bg-[#7D79F1]/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-[#F18A2E]/10 blur-3xl pointer-events-none" />
+
+        {/* Confirmation Card */}
+        <div className="relative z-10 w-full max-w-2xl bg-white rounded-3xl sm:rounded-[36px] p-6 sm:p-10 md:p-14 shadow-[0_25px_80px_rgba(45,43,122,0.12)] border border-purple-100 text-center flex flex-col items-center animate-in fade-in zoom-in-95 duration-300">
+          {/* Animated Success Badge */}
+          <div className="relative mb-6">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-tr from-[#7D79F1]/20 via-purple-100 to-emerald-100 flex items-center justify-center shadow-inner">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-emerald-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/30 text-white">
+                <CheckCircle2 className="w-10 h-10 sm:w-12 sm:h-12 stroke-[2.5]" />
+              </div>
+            </div>
+            <span className="absolute -top-2 -right-2 flex h-6 w-6">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-6 w-6 bg-emerald-500 items-center justify-center text-white text-xs font-bold">✓</span>
+            </span>
+          </div>
+
+          {/* Title */}
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#2D2B7A] tracking-tight mb-4 leading-snug">
+            تم إنشاء حسابك بنجاح 🎉
+          </h1>
+
+          {/* Review timeframe */}
+          <div className="flex items-center justify-center gap-2 text-base sm:text-xl font-bold text-gray-700 mb-6">
+            <Clock className="w-5 h-5 text-[#7D79F1] shrink-0" />
+            <span>سيتم مراجعة وقبول حسابك خلال 24 ساعة كحد أقصى.</span>
+          </div>
+
+          {/* Prominent Warning Callout */}
+          <div className="w-full bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 sm:p-5 mb-6 text-center shadow-sm flex flex-col sm:flex-row items-center justify-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5 stroke-[2.5]" />
+            </div>
+            <p className="text-amber-950 font-black text-sm sm:text-base leading-relaxed">
+              برجاء عدم تسجيل حساب جديد مرة أخرى، وانتظار تفعيل حسابك من الإدارة.
+            </p>
+          </div>
+
+          {/* Instruction */}
+          <p className="text-gray-600 text-sm sm:text-base font-semibold mb-8 max-w-lg">
+            بعد قبول الحساب، يمكنك تسجيل الدخول والبدء في استخدام المنصة.
+          </p>
+
+          {/* Login Button */}
+          <Link
+            href="/login"
+            className="w-full sm:w-auto min-w-[280px] inline-flex items-center justify-center gap-3 bg-[#7D79F1] hover:bg-[#655EF0] text-white font-bold text-lg py-4 px-8 rounded-2xl shadow-lg shadow-[#7D79F1]/30 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0"
+          >
+            <LogIn className="w-5 h-5" />
+            <span>تسجيل الدخول إلى حسابك</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form
@@ -365,12 +429,6 @@ export default function RegisterForm() {
       />
 
       {/* Submit Button */}
-      {success && (
-        <div className="md:col-span-2 rounded-2xl bg-green-50 border border-green-200 p-4 text-green-700 text-center font-medium">
-          {success}
-        </div>
-      )}
-
       <div className="md:col-span-2">
         <AuthButton type="submit" disabled={loading}>
           {loading ? "جاري إنشاء الحساب..." : "إنشاء الحساب"}
