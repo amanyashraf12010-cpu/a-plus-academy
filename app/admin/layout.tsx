@@ -9,6 +9,7 @@ import {
   GraduationCap,
   CreditCard,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import { logoutUser } from "@/lib/auth";
 
@@ -80,6 +81,11 @@ export default function AdminLayout({
           <Link href="/admin/students" className={getLinkClass("/admin/students")}>
             <Users size={20} />
             الطلاب
+          </Link>
+
+          <Link href="/admin/course-access" className={getLinkClass("/admin/course-access")}>
+            <ShieldCheck size={20} />
+            صلاحيات الكورسات
           </Link>
 
           <Link href="/admin/payments" className={getLinkClass("/admin/payments")}>

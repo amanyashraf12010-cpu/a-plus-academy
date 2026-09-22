@@ -102,6 +102,29 @@ export async function approveSubscription(id: string) {
     } catch (e) {
       console.warn("Could not insert to lesson_access:", e);
     }
+  } else if (sub?.user_id && sub?.course_id) {
+    // 4. If full course subscription, sync to course_access table as active payment access
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase
+        .from("course_access")
+        .upsert(
+          {
+            student_id: sub.user_id,
+            course_id: sub.course_id,
+            status: "active",
+            access_type: "payment",
+            granted_by: user?.id || null,
+            revoked_by: null,
+            granted_at: new Date().toISOString(),
+            revoked_at: null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "student_id,course_id" }
+        );
+    } catch (caErr) {
+      console.warn("Could not sync to course_access in approveSubscription:", caErr);
+    }
   }
 }
 

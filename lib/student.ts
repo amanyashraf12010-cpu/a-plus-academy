@@ -55,7 +55,21 @@ export async function subscribeToFreeCourse(courseId: string) {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) throw new Error("يجب تسجيل الدخول أولاً.");
 
-  // 2. Check if already has a subscription
+  // 2. Insert or update course_access directly as active free access
+  try {
+    await supabase.from("course_access").upsert({
+      student_id: user.id,
+      course_id: courseId,
+      status: "active",
+      access_type: "free",
+      granted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "student_id,course_id" });
+  } catch (caErr) {
+    console.warn("Could not upsert to course_access in subscribeToFreeCourse:", caErr);
+  }
+
+  // 3. Check if already has a subscription
   const { data: existingSub, error: checkError } = await supabase
     .from("subscriptions")
     .select("status")
@@ -78,7 +92,7 @@ export async function subscribeToFreeCourse(courseId: string) {
     return { success: true, message: "تم تفعيل اشتراكك بنجاح!" };
   }
 
-  // 3. Insert subscription record directly as approved!
+  // 4. Insert subscription record directly as approved!
   const { error: dbError } = await supabase
     .from("subscriptions")
     .insert([
@@ -110,7 +124,18 @@ export async function getCourseSubscriptionStatus(courseId: string) {
   }
 
   try {
-    // 1. Fetch full course subscription (lesson_id IS NULL)
+    // 1. Check course_access table first (independent layer)
+    const { data: directAccess } = await supabase
+      .from("course_access")
+      .select("status, access_type")
+      .eq("student_id", user.id)
+      .eq("course_id", courseId)
+      .maybeSingle();
+
+    const isAccessActive = directAccess?.status === "active";
+    const isAccessRevoked = directAccess?.status === "revoked";
+
+    // 2. Fetch full course subscription (lesson_id IS NULL)
     const { data: fullSub } = await supabase
       .from("subscriptions")
       .select("status, lesson_id")
@@ -119,10 +144,19 @@ export async function getCourseSubscriptionStatus(courseId: string) {
       .is("lesson_id", null)
       .maybeSingle();
 
-    const isFullApproved = fullSub?.status === "approved";
-    const fullStatus = fullSub ? fullSub.status : null;
+    let isFullApproved = isAccessActive;
+    let fullStatus: "approved" | "pending" | "rejected" | null = isAccessActive 
+      ? "approved" 
+      : isAccessRevoked 
+        ? null 
+        : (fullSub ? fullSub.status : null);
 
-    // 2. Fetch all lesson_access records and approved lesson subscriptions for this user in this course
+    if (!isAccessActive && !isAccessRevoked && fullSub?.status === "approved") {
+      isFullApproved = true;
+      fullStatus = "approved";
+    }
+
+    // 3. Fetch all lesson_access records and approved lesson subscriptions for this user in this course
     const { data: lessonAccessData } = await supabase
       .from("lesson_access")
       .select("lesson_id")
@@ -144,7 +178,7 @@ export async function getCourseSubscriptionStatus(courseId: string) {
 
     const unlockedLessonIds = Array.from(unlockedSet);
 
-    // 3. Fetch pending lesson subscriptions
+    // 4. Fetch pending lesson subscriptions
     const { data: pendingLessonsData } = await supabase
       .from("subscriptions")
       .select("lesson_id")
@@ -184,7 +218,34 @@ export async function getMyCourses() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("يجب تسجيل الدخول أولاً.");
 
-  // 1. Fetch courses with full approved subscription
+  // 1. Fetch courses with active course_access
+  const { data: directAccessList, error: directError } = await supabase
+    .from("course_access")
+    .select(`
+      course_id,
+      status,
+      courses (
+        id,
+        title,
+        description,
+        image,
+        grade,
+        subject,
+        video_count,
+        duration,
+        teachers (
+          name
+        )
+      )
+    `)
+    .eq("student_id", user.id)
+    .eq("status", "active");
+
+  if (directError) {
+    console.warn("Could not fetch course_access in getMyCourses:", directError.message);
+  }
+
+  // 2. Fetch courses with full approved subscription
   const { data: fullSubs, error: fullError } = await supabase
     .from("subscriptions")
     .select(`
@@ -208,7 +269,7 @@ export async function getMyCourses() {
 
   if (fullError) throw fullError;
 
-  // 2. Fetch courses with single lesson access
+  // 3. Fetch courses with single lesson access
   const { data: lessonAccessList, error: laError } = await supabase
     .from("lesson_access")
     .select(`
@@ -233,11 +294,26 @@ export async function getMyCourses() {
     console.warn("Could not fetch lesson_access in getMyCourses:", laError.message);
   }
 
+  // 4. Find any revoked courses to exclude from legacy subs
+  const { data: revokedList } = await supabase
+    .from("course_access")
+    .select("course_id")
+    .eq("student_id", user.id)
+    .eq("status", "revoked");
+
+  const revokedCourseIds = new Set((revokedList || []).map((r: any) => r.course_id));
+
   // Combine and deduplicate courses
   const courseMap = new Map<string, any>();
 
+  (directAccessList || []).forEach((item: any) => {
+    if (item.courses && !courseMap.has(item.courses.id)) {
+      courseMap.set(item.courses.id, item.courses);
+    }
+  });
+
   (fullSubs || []).forEach((sub: any) => {
-    if (sub.courses && !courseMap.has(sub.courses.id)) {
+    if (sub.courses && !revokedCourseIds.has(sub.courses.id) && !courseMap.has(sub.courses.id)) {
       courseMap.set(sub.courses.id, sub.courses);
     }
   });

@@ -241,7 +241,17 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
     return { lessons: [], courseProgress: 0, finalExamUnlocked: false };
   }
 
-  // 1.b Check student full subscription vs individual lesson access
+  // 1.b Check student full subscription or active course_access vs individual lesson access
+  const { data: directAccess } = await supabase
+    .from("course_access")
+    .select("status")
+    .eq("student_id", userId)
+    .eq("course_id", courseId)
+    .maybeSingle();
+
+  const isAccessActive = directAccess?.status === "active";
+  const isAccessRevoked = directAccess?.status === "revoked";
+
   const { data: fullSub } = await supabase
     .from("subscriptions")
     .select("id, status")
@@ -251,7 +261,7 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
     .eq("status", "approved")
     .maybeSingle();
 
-  const isFullCourseApproved = Boolean(fullSub);
+  const isFullCourseApproved = isAccessActive || (!isAccessRevoked && Boolean(fullSub));
 
   let purchasedLessonIds = new Set<string>();
   if (!isFullCourseApproved) {

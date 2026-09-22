@@ -8,7 +8,7 @@ import { Loader2, PlayCircle, Clock } from "lucide-react";
 
 export default function EnrollCard({ course }: any) {
   const router = useRouter();
-  const [subStatus, setSubStatus] = useState<"approved" | "pending" | null>(null);
+  const [subStatus, setSubStatus] = useState<"approved" | "pending" | "rejected" | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [checking, setChecking] = useState(true);
   const [submitting, setSubmitting] = useState(false);
