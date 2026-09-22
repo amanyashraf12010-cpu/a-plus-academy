@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getStudents, approveStudent, rejectStudent, resetStudentVideoProgress } from "@/lib/admin";
-import { Search, Check, Trash2, Phone, User, GraduationCap, MapPin, Eye, School, Mail } from "lucide-react";
+import { Search, Check, Trash2, Phone, User, GraduationCap, MapPin, Eye, School, Mail, ShieldCheck } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
 function mapGradeToArabic(grade: string) {
@@ -39,14 +40,36 @@ export default function AdminStudentsPage() {
       setLoadingPerformance(true);
       setStudentPerformance([]);
       
-      // 1. Fetch Subscriptions
-      const { data: subs, error: subsError } = await supabase
-        .from("subscriptions")
-        .select("*, courses(*)")
-        .eq("user_id", studentId)
-        .eq("status", "approved");
+      // 1. Fetch Subscriptions & Course Access
+      const [{ data: subs, error: subsError }, { data: directAccessList }] = await Promise.all([
+        supabase
+          .from("subscriptions")
+          .select("*, courses(*)")
+          .eq("user_id", studentId)
+          .eq("status", "approved"),
+        supabase
+          .from("course_access")
+          .select("*, courses(*)")
+          .eq("student_id", studentId)
+          .eq("status", "active")
+      ]);
 
       if (subsError) throw subsError;
+
+      // Merge courses without duplicates
+      const coursesMap = new Map<string, any>();
+      (directAccessList || []).forEach((item: any) => {
+        if (item.courses && !coursesMap.has(item.courses.id)) {
+          coursesMap.set(item.courses.id, item.courses);
+        }
+      });
+      (subs || []).forEach((sub: any) => {
+        if (sub.courses && !coursesMap.has(sub.courses.id)) {
+          coursesMap.set(sub.courses.id, sub.courses);
+        }
+      });
+
+      const uniqueCourses = Array.from(coursesMap.values());
 
       // 2. Fetch Attempts
       const { data: attempts, error: attError } = await supabase
@@ -68,8 +91,7 @@ export default function AdminStudentsPage() {
       });
 
       // 3. For each course, fetch its quizzes, lessons, video progress and calculate progress
-      const perfDetails = await Promise.all((subs || []).map(async (sub: any) => {
-        const course = sub.courses;
+      const perfDetails = await Promise.all(uniqueCourses.map(async (course: any) => {
         if (!course) return null;
 
         // Fetch quizzes of this course
@@ -508,6 +530,14 @@ export default function AdminStudentsPage() {
                       ))}
                     </div>
                   )}
+
+                  <Link
+                    href={`/admin/course-access`}
+                    className="w-full py-2.5 px-3 bg-[#F3F2FF] hover:bg-[#E9E7FF] text-[#7D79F1] font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition mt-3"
+                  >
+                    <ShieldCheck size={16} />
+                    إدارة ومنح صلاحيات الكورسات لهذا الطالب
+                  </Link>
                 </div>
 
                 <div className="flex gap-3 border-t pt-4 mt-4">
