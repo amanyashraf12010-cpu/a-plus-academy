@@ -154,9 +154,12 @@ export async function saveQuestion(
   quizId: string,
   question: {
     id?: string;
+    type?: "mcq" | "paragraph";
     question_text?: string;
     question_image?: string;
-    correct_option: "A" | "B" | "C" | "D";
+    correct_option?: "A" | "B" | "C" | "D" | null;
+    min_words?: number | null;
+    max_words?: number | null;
     passage_id?: string | null;
     passage_title?: string | null;
     passage_text?: string | null;
@@ -166,20 +169,23 @@ export async function saveQuestion(
     option_letter: "A" | "B" | "C" | "D";
     option_text?: string;
     option_image?: string;
-  }>
+  }> = []
 ) {
   const supabase = createClient();
-
   let questionId = question.id;
+  const qType = question.type || "mcq";
 
   const basePayload: any = {
     question_text: question.question_text || null,
     question_image: question.question_image || null,
-    correct_option: question.correct_option,
+    correct_option: qType === "paragraph" ? null : (question.correct_option || "A"),
   };
 
   const extendedPayload: any = {
     ...basePayload,
+    type: qType,
+    min_words: qType === "paragraph" ? (question.min_words ?? 150) : null,
+    max_words: qType === "paragraph" ? (question.max_words ?? 180) : null,
     passage_id: question.passage_id || null,
     passage_title: question.passage_title || null,
     passage_text: question.passage_text || null,
@@ -227,19 +233,21 @@ export async function saveQuestion(
     questionId = newQ.id;
   }
 
-  // 2. Upsert Options
-  const optionsPayload = options.map((opt) => ({
-    question_id: questionId!,
-    option_letter: opt.option_letter,
-    option_text: opt.option_text || null,
-    option_image: opt.option_image || null,
-  }));
+  // 2. Upsert Options only if MCQ and options provided
+  if (qType === "mcq" && options && options.length > 0) {
+    const optionsPayload = options.map((opt) => ({
+      question_id: questionId!,
+      option_letter: opt.option_letter,
+      option_text: opt.option_text || null,
+      option_image: opt.option_image || null,
+    }));
 
-  const { error: optError } = await supabase
-    .from("options")
-    .upsert(optionsPayload, { onConflict: "question_id,option_letter" });
+    const { error: optError } = await supabase
+      .from("options")
+      .upsert(optionsPayload, { onConflict: "question_id,option_letter" });
 
-  if (optError) throw optError;
+    if (optError) throw optError;
+  }
 
   return questionId;
 }
@@ -355,9 +363,12 @@ export async function bulkImportQuestions(
     // 1. Prepare Question Payloads
     const extendedQuestionsPayload = chunk.map((q, idx) => ({
       quiz_id: targetQuizId,
+      type: q.type || "mcq",
+      min_words: q.type === "paragraph" ? (q.min_words ?? 150) : null,
+      max_words: q.type === "paragraph" ? (q.max_words ?? 180) : null,
       question_text: q.question_text || null,
       question_image: q.question_image || null,
-      correct_option: q.correct_option || "A",
+      correct_option: q.type === "paragraph" ? null : (q.correct_option || "A"),
       passage_id: q.passage_id ? passageIdMap.get(q.passage_id) || null : null,
       passage_title: q.passage_title || null,
       passage_text: q.passage_text || null,
@@ -368,7 +379,7 @@ export async function bulkImportQuestions(
       quiz_id: targetQuizId,
       question_text: q.question_text || null,
       question_image: q.question_image || null,
-      correct_option: q.correct_option || "A",
+      correct_option: q.type === "paragraph" ? "A" : (q.correct_option || "A"),
     }));
 
     let insertedQuestions: any[] = [];

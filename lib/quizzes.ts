@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
+import { countWords } from "@/lib/word-counter";
 
 // =========================================================================
 // 1. Quizzes Fetching
@@ -84,23 +85,50 @@ export async function startQuizAttempt(quizId: string) {
   return data;
 }
 
-export async function saveAnswer(attemptId: string, questionId: string, selectedOption: string) {
+export async function saveAnswer(
+  attemptId: string, 
+  questionId: string, 
+  selectedOption?: string | null,
+  answerText?: string | null
+) {
   const supabase = createClient();
 
-  const { error } = await supabase
-    .from("student_answers")
-    .upsert(
-      {
-        attempt_id: attemptId,
-        question_id: questionId,
-        selected_option: selectedOption,
-      },
-      { onConflict: "attempt_id,question_id" }
-    );
+  const wordCount = typeof answerText === "string" ? countWords(answerText) : null;
 
-  if (error) {
-    console.error("خطأ في حفظ الإجابة:", error.message);
-    throw error;
+  const payload: any = {
+    attempt_id: attemptId,
+    question_id: questionId,
+  };
+
+  if (selectedOption !== undefined) {
+    payload.selected_option = selectedOption;
+  }
+  if (answerText !== undefined) {
+    payload.answer_text = answerText;
+    payload.word_count = wordCount;
+  }
+
+  try {
+    const { error } = await supabase
+      .from("student_answers")
+      .upsert(payload, { onConflict: "attempt_id,question_id" });
+
+    if (error) throw error;
+  } catch (err: any) {
+    // Fallback if extended columns are not yet present
+    const fallbackPayload: any = {
+      attempt_id: attemptId,
+      question_id: questionId,
+      selected_option: selectedOption || "A",
+    };
+    const { error: fbErr } = await supabase
+      .from("student_answers")
+      .upsert(fallbackPayload, { onConflict: "attempt_id,question_id" });
+
+    if (fbErr) {
+      console.error("خطأ في حفظ الإجابة:", fbErr.message);
+      throw fbErr;
+    }
   }
 }
 
@@ -148,8 +176,8 @@ export async function submitQuizAttempt(attemptId: string) {
 
   if (answersError) throw answersError;
 
-  const answersMap = new Map<string, string>(
-    (savedAnswers || []).map((ans: any) => [ans.question_id, ans.selected_option])
+  const answersMap = new Map<string, any>(
+    (savedAnswers || []).map((ans: any) => [ans.question_id, ans])
   );
 
   // 3. Score the quiz
@@ -157,17 +185,39 @@ export async function submitQuizAttempt(attemptId: string) {
   const scoredAnswersPayload: any[] = [];
 
   for (const q of questions) {
-    const studentChoice = answersMap.get(q.id);
-    const isCorrect = studentChoice === q.correct_option;
-    if (isCorrect) correctCount++;
+    const studentAns = answersMap.get(q.id);
+    const qType = q.type || "mcq";
 
-    if (studentChoice) {
+    if (qType === "paragraph") {
+      const text = studentAns?.answer_text || "";
+      const wordCount = countWords(text);
+      const minWords = typeof q.min_words === "number" ? q.min_words : 150;
+      const maxWords = typeof q.max_words === "number" ? q.max_words : 180;
+      
+      const isCorrect = wordCount >= minWords && wordCount <= maxWords;
+      if (isCorrect) correctCount++;
+
       scoredAnswersPayload.push({
         attempt_id: attemptId,
         question_id: q.id,
-        selected_option: studentChoice,
-        is_correct: isCorrect
+        answer_text: text,
+        word_count: wordCount,
+        is_correct: isCorrect,
       });
+    } else {
+      // Standard MCQ question
+      const studentChoice = studentAns?.selected_option;
+      const isCorrect = Boolean(studentChoice && studentChoice === q.correct_option);
+      if (isCorrect) correctCount++;
+
+      if (studentChoice) {
+        scoredAnswersPayload.push({
+          attempt_id: attemptId,
+          question_id: q.id,
+          selected_option: studentChoice,
+          is_correct: isCorrect
+        });
+      }
     }
   }
 
@@ -175,10 +225,14 @@ export async function submitQuizAttempt(attemptId: string) {
 
   // 4. Update student_answers with is_correct field (triggers DB update for all resolved answers)
   if (scoredAnswersPayload.length > 0) {
-    const { error: batchUpdateError } = await supabase
-      .from("student_answers")
-      .upsert(scoredAnswersPayload, { onConflict: "attempt_id,question_id" });
-    if (batchUpdateError) console.error("خطأ في تحديث صحة إجابات الطالب:", batchUpdateError.message);
+    try {
+      const { error: batchUpdateError } = await supabase
+        .from("student_answers")
+        .upsert(scoredAnswersPayload, { onConflict: "attempt_id,question_id" });
+      if (batchUpdateError) console.error("خطأ في تحديث صحة إجابات الطالب:", batchUpdateError.message);
+    } catch (batchErr: any) {
+      console.warn("Could not upsert extended scored answers, trying base:", batchErr);
+    }
   }
 
   // 5. Update attempt status, score, counts, and submission time

@@ -11,6 +11,7 @@ import {
   submitQuizAttempt,
   getQuizAttempts
 } from "@/lib/quizzes";
+import { countWords, getWordCountFeedback } from "@/lib/word-counter";
 import { 
   Loader2, 
   Clock, 
@@ -24,7 +25,8 @@ import {
   RefreshCw,
   Award,
   BookOpen,
-  X
+  X,
+  FileText
 } from "lucide-react";
 import Link from "next/link";
 
@@ -63,6 +65,7 @@ export default function StudentQuizPage() {
   // Quiz Player States
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({}); // questionId -> selectedOption ('A'|'B'|'C'|'D')
+  const [paragraphAnswers, setParagraphAnswers] = useState<Record<string, string>>({}); // questionId -> answerText
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [timeLeft, setTimeLeft] = useState<number | null>(null); // in seconds
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,6 +81,7 @@ export default function StudentQuizPage() {
   attemptRef.current = attempt;
   const quizRef = useRef(quiz);
   quizRef.current = quiz;
+  const paragraphSaveTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
 
   // Load Quiz data and attempts
   async function loadQuizAndAttempt() {
@@ -143,10 +147,17 @@ export default function StudentQuizPage() {
 
         if (!answersError && savedAnswers) {
           const restoredAnswers: Record<string, string> = {};
+          const restoredParagraphs: Record<string, string> = {};
           savedAnswers.forEach((ans: any) => {
-            restoredAnswers[ans.question_id] = ans.selected_option;
+            if (ans.selected_option) {
+              restoredAnswers[ans.question_id] = ans.selected_option;
+            }
+            if (ans.answer_text) {
+              restoredParagraphs[ans.question_id] = ans.answer_text;
+            }
           });
           setSelectedAnswers(restoredAnswers);
+          setParagraphAnswers(restoredParagraphs);
         }
 
         // Order questions sequence
@@ -209,10 +220,17 @@ export default function StudentQuizPage() {
       if (answersError) throw answersError;
 
       const restoredAnswers: Record<string, string> = {};
+      const restoredParagraphs: Record<string, string> = {};
       savedAnswers?.forEach((ans: any) => {
-        restoredAnswers[ans.question_id] = ans.selected_option;
+        if (ans.selected_option) {
+          restoredAnswers[ans.question_id] = ans.selected_option;
+        }
+        if (ans.answer_text) {
+          restoredParagraphs[ans.question_id] = ans.answer_text;
+        }
       });
       setSelectedAnswers(restoredAnswers);
+      setParagraphAnswers(restoredParagraphs);
 
       // 5. Order questions sequence
       const rawQuestions = quizData.questions || [];
@@ -342,6 +360,28 @@ export default function StudentQuizPage() {
     }
   }
 
+  // Handle Paragraph text input with debounced auto-save
+  function handleParagraphChange(questionId: string, text: string) {
+    if (submittedResult) return; // Prevent edits after submission
+
+    setParagraphAnswers((prev) => ({ ...prev, [questionId]: text }));
+    setAutoSaveStatus("saving");
+
+    if (paragraphSaveTimeoutRef.current[questionId]) {
+      clearTimeout(paragraphSaveTimeoutRef.current[questionId]);
+    }
+
+    paragraphSaveTimeoutRef.current[questionId] = setTimeout(async () => {
+      try {
+        await saveAnswer(attempt.id, questionId, null, text);
+        setAutoSaveStatus("saved");
+        setTimeout(() => setAutoSaveStatus("idle"), 1500);
+      } catch (error) {
+        setAutoSaveStatus("error");
+      }
+    }, 800);
+  }
+
   // Format seconds to MM:SS
   function formatTime(seconds: number) {
     const mins = Math.floor(seconds / 60);
@@ -354,14 +394,46 @@ export default function StudentQuizPage() {
     if (e) e.preventDefault();
     if (submittedResult) return;
 
-    const unansweredCount = questions.length - Object.keys(selectedAnswers).length;
+    // Check unanswered & word count validity
+    let unansweredCount = 0;
+    let invalidParagraphsCount = 0;
+
+    questions.forEach((q) => {
+      if (q.type === "paragraph") {
+        const text = paragraphAnswers[q.id] || "";
+        const feedback = getWordCountFeedback(text, q.min_words || 150, q.max_words || 180);
+        if (feedback.count === 0) {
+          unansweredCount++;
+        } else if (!feedback.isValid) {
+          invalidParagraphsCount++;
+        }
+      } else {
+        if (!selectedAnswers[q.id]) {
+          unansweredCount++;
+        }
+      }
+    });
+
     if (unansweredCount > 0 && e) {
-      const confirmSubmit = confirm(`لديك ${unansweredCount} سؤالاً غير مجاب عليها. هل أنت متأكد من رغبتك في تسليم الامتحان؟`);
+      const confirmSubmit = confirm(`لديك ${unansweredCount} ${unansweredCount === 1 ? "سؤال غير مجاب عليه" : "أسئلة غير مجاب عليها"}. هل أنت متأكد من رغبتك في تسليم الامتحان؟`);
       if (!confirmSubmit) return;
+    }
+
+    if (invalidParagraphsCount > 0 && e) {
+      const confirmInvalid = confirm(`⚠️ تنبيه: لديك سؤال مقالي (Paragraph) عدد كلماته لا يقع في النطاق المطلوب (150-180 كلمة). تسليمه الآن سيحتسب الإجابة غير صحيحة ولن يفتح المحاضرة التالية. هل تريد تسليم الامتحان بالتأكيد؟`);
+      if (!confirmInvalid) return;
     }
 
     try {
       setIsSubmitting(true);
+
+      // Flush any pending paragraph saves before submitting
+      for (const q of questions) {
+        if (q.type === "paragraph" && paragraphAnswers[q.id] !== undefined) {
+          await saveAnswer(attempt.id, q.id, null, paragraphAnswers[q.id]);
+        }
+      }
+
       const result = await submitQuizAttempt(attempt.id);
       setSubmittedResult(result.attempt);
       
@@ -483,6 +555,7 @@ export default function StudentQuizPage() {
                       setSubmittedResult(null);
                       setAttempt(null);
                       setSelectedAnswers({});
+                      setParagraphAnswers({});
                       loadQuizAndAttempt();
                     }
                   }}
@@ -523,18 +596,37 @@ export default function StudentQuizPage() {
               </div>
 
               {quiz.questions.map((q: any, idx: number) => {
+                const isParagraph = q.type === "paragraph";
                 const studentAns = selectedAnswers[q.id];
-                const isCorrect = studentAns === q.correct_option;
+                const studentText = paragraphAnswers[q.id] || "";
+                const wordCount = countWords(studentText);
+                const minWords = q.min_words || 150;
+                const maxWords = q.max_words || 180;
+                const isParagraphCorrect = wordCount >= minWords && wordCount <= maxWords;
+                const isMcqCorrect = studentAns === q.correct_option;
+                const isCorrect = isParagraph ? isParagraphCorrect : isMcqCorrect;
                 
                 return (
                   <div key={q.id} className="bg-white p-6 rounded-3xl border shadow-sm space-y-4">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
-                        <span className="bg-purple-50 text-[#7D79F1] px-3 py-1 rounded-full text-xs font-bold">السؤال {idx + 1}</span>
+                        {isParagraph ? (
+                          <span className="bg-amber-50 text-amber-900 border border-amber-200 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
+                            <FileText size={13} />
+                            سؤال مقالي (Paragraph) #{idx + 1}
+                          </span>
+                        ) : (
+                          <span className="bg-purple-50 text-[#7D79F1] px-3 py-1 rounded-full text-xs font-bold">السؤال {idx + 1}</span>
+                        )}
                         {q.passage_title && (
                           <span className="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1">
                             <BookOpen size={12} />
                             {q.passage_title}
+                          </span>
+                        )}
+                        {isParagraph && (
+                          <span className="bg-purple-50 text-[#7D79F1] border border-purple-200 px-2.5 py-0.5 rounded-full text-xs font-semibold">
+                            المطلوب: {minWords} - {maxWords} كلمة
                           </span>
                         )}
                       </div>
@@ -542,7 +634,9 @@ export default function StudentQuizPage() {
                         isCorrect ? "bg-green-50 text-green-600 border border-green-200" : "bg-red-50 text-red-500 border border-red-200"
                       }`}>
                         {isCorrect ? <CheckCircle size={14} /> : <XCircle size={14} />}
-                        {isCorrect ? "إجابة صحيحة" : "إجابة خاطئة"}
+                        {isParagraph 
+                          ? (isCorrect ? `إجابة صحيحة (${wordCount} كلمة)` : `غير مطابقة للكلمات (${wordCount} كلمة)`) 
+                          : (isCorrect ? "إجابة صحيحة" : "إجابة خاطئة")}
                       </span>
                     </div>
 
@@ -568,42 +662,62 @@ export default function StudentQuizPage() {
                       )}
                     </div>
 
-                    {/* Choices correction grid */}
-                    <div className="grid md:grid-cols-2 gap-3 pt-2">
-                      {q.options?.map((opt: any) => {
-                        const isStudentChoice = studentAns === opt.option_letter;
-                        const isCorrectChoice = q.correct_option === opt.option_letter;
-                        
-                        let optBorderClass = "border-gray-100 bg-white";
-                        if (isCorrectChoice) {
-                          optBorderClass = "border-green-500 bg-green-50/30 text-green-800 font-bold";
-                        } else if (isStudentChoice && !isCorrectChoice) {
-                          optBorderClass = "border-red-400 bg-red-50/30 text-red-800";
-                        }
+                    {/* Paragraph Question Review */}
+                    {isParagraph ? (
+                      <div className="space-y-2 pt-2">
+                        <div className="flex items-center justify-between text-xs font-bold">
+                          <span className="text-gray-600">✍️ نص إجابتك المسلمة:</span>
+                          <span className={isCorrect ? "text-green-600" : "text-red-500"}>
+                            عدد الكلمات: {wordCount} كلمة {isCorrect ? "✓ (مطابق للشروط)" : `(المطلوب بين ${minWords} و ${maxWords} كلمة)`}
+                          </span>
+                        </div>
+                        <div 
+                          dir="auto"
+                          className={`p-4 rounded-2xl border text-sm leading-relaxed whitespace-pre-wrap font-sans ${
+                            isCorrect ? "bg-green-50/20 border-green-200 text-gray-800" : "bg-red-50/20 border-red-200 text-gray-800"
+                          }`}
+                        >
+                          {studentText ? studentText : <span className="text-gray-400 italic">لم يتم إدخال نص لهذا السؤال.</span>}
+                        </div>
+                      </div>
+                    ) : (
+                      /* MCQ Choices correction grid */
+                      <div className="grid md:grid-cols-2 gap-3 pt-2">
+                        {q.options?.map((opt: any) => {
+                          const isStudentChoice = studentAns === opt.option_letter;
+                          const isCorrectChoice = q.correct_option === opt.option_letter;
+                          
+                          let optBorderClass = "border-gray-100 bg-white";
+                          if (isCorrectChoice) {
+                            optBorderClass = "border-green-500 bg-green-50/30 text-green-800 font-bold";
+                          } else if (isStudentChoice && !isCorrectChoice) {
+                            optBorderClass = "border-red-400 bg-red-50/30 text-red-800";
+                          }
 
-                        return (
-                          <div key={opt.id} className={`p-4 rounded-2xl border transition text-sm flex flex-col justify-center gap-2 ${optBorderClass}`}>
-                            <div className="flex items-center gap-2">
-                              <span className={`w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-xs font-bold ${
-                                isCorrectChoice
-                                  ? "bg-green-600 text-white"
-                                  : isStudentChoice
-                                  ? "bg-red-500 text-white"
-                                  : "bg-gray-100 text-gray-500"
-                              }`}>
-                                {opt.option_letter}
-                              </span>
-                              {opt.option_text && <span>{opt.option_text}</span>}
-                            </div>
-                            {opt.option_image && (
-                              <div className="rounded-lg overflow-hidden border max-w-xs mt-1">
-                                <img src={opt.option_image} alt="Option Graphic" className="w-full object-contain max-h-40" />
+                          return (
+                            <div key={opt.id} className={`p-4 rounded-2xl border transition text-sm flex flex-col justify-center gap-2 ${optBorderClass}`}>
+                              <div className="flex items-center gap-2">
+                                <span className={`w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-xs font-bold ${
+                                  isCorrectChoice
+                                    ? "bg-green-600 text-white"
+                                    : isStudentChoice
+                                    ? "bg-red-500 text-white"
+                                    : "bg-gray-100 text-gray-500"
+                                }`}>
+                                  {opt.option_letter}
+                                </span>
+                                {opt.option_text && <span>{opt.option_text}</span>}
                               </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                              {opt.option_image && (
+                                <div className="rounded-lg overflow-hidden border max-w-xs mt-1">
+                                  <img src={opt.option_image} alt="Option Graphic" className="w-full object-contain max-h-40" />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -773,6 +887,14 @@ export default function StudentQuizPage() {
                   </div>
                 )}
 
+                {/* Paragraph indicator badge if paragraph question */}
+                {currentQuestion.type === "paragraph" && (
+                  <div className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-900 px-3 py-1 rounded-full text-xs font-bold border border-amber-200">
+                    <FileText size={13} className="text-amber-600" />
+                    <span>سؤال مقالي (Paragraph) — المطلوب: {currentQuestion.min_words || 150} إلى {currentQuestion.max_words || 180} كلمة</span>
+                  </div>
+                )}
+
                 {/* Question contents */}
                 <div className="space-y-3">
                   {currentQuestion.question_text && (
@@ -785,41 +907,122 @@ export default function StudentQuizPage() {
                   )}
                 </div>
 
-                {/* Shuffled Options list */}
-                <div className="grid md:grid-cols-2 gap-3 md:gap-4 pt-2">
-                  {(shuffledOptionsMap[currentQuestion.id] || []).map((opt: any) => {
-                    const isSelected = selectedAnswers[currentQuestion.id] === opt.option_letter;
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => handleOptionSelect(currentQuestion.id, opt.option_letter)}
-                        className={`w-full text-right p-4 md:p-5 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col gap-2 ${
-                          isSelected
-                            ? "border-[#7D79F1] bg-[#F3F2FF] shadow-sm scale-[0.99] font-bold text-[#2D2B7A]"
-                            : "border-gray-100 hover:border-gray-200 bg-white text-gray-700 hover:bg-gray-50/50"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-xs font-bold border transition ${
-                            isSelected
-                              ? "bg-[#7D79F1] text-white border-[#7D79F1]"
-                              : "bg-gray-50 text-gray-400 border-gray-100"
-                          }`}>
-                            {isSelected ? <Check size={14} /> : opt.option_letter}
-                          </span>
-                          {opt.option_text && <span className="text-sm font-medium">{opt.option_text}</span>}
-                        </div>
+                {/* Paragraph Input Area & Live Word Counter */}
+                {currentQuestion.type === "paragraph" ? (
+                  <div className="space-y-4 pt-2">
+                    {(() => {
+                      const text = paragraphAnswers[currentQuestion.id] || "";
+                      const feedback = getWordCountFeedback(
+                        text, 
+                        currentQuestion.min_words || 150, 
+                        currentQuestion.max_words || 180
+                      );
 
-                        {opt.option_image && (
-                          <div className="rounded-xl overflow-hidden border max-w-xs mt-2 self-start mr-10">
-                            <img src={opt.option_image} alt="Option Illustration" className="w-full object-contain max-h-36" />
+                      let badgeBg = "bg-purple-50 text-[#7D79F1] border-purple-200";
+                      let barColor = "bg-[#7D79F1]";
+                      if (feedback.status === "under") {
+                        badgeBg = "bg-amber-50 text-amber-900 border-amber-300";
+                        barColor = "bg-amber-500";
+                      } else if (feedback.status === "valid") {
+                        badgeBg = "bg-emerald-50 text-emerald-900 border-emerald-300 font-bold";
+                        barColor = "bg-emerald-500";
+                      } else if (feedback.status === "over") {
+                        badgeBg = "bg-red-50 text-red-900 border-red-300";
+                        barColor = "bg-red-500";
+                      }
+
+                      const percentToMin = Math.min(100, Math.round((feedback.count / feedback.minWords) * 100));
+
+                      return (
+                        <div className="space-y-3">
+                          {/* Live Counter Info Card */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 p-3.5 bg-gray-50/90 rounded-2xl border border-gray-200">
+                            <div className="flex items-center gap-2">
+                              <FileText size={18} className="text-[#7D79F1]" />
+                              <span className="text-xs font-black text-[#2D2B7A]">
+                                عداد الكلمات: {feedback.minWords} - {feedback.maxWords} كلمة
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-3.5 py-1 rounded-full text-xs border font-extrabold ${badgeBg}`}>
+                                {feedback.count} / {feedback.minWords}-{feedback.maxWords} كلمة
+                              </span>
+                            </div>
                           </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+
+                          {/* Dynamic Feedback Banner */}
+                          <div className={`p-3.5 rounded-2xl border text-xs font-bold flex items-center justify-between gap-2 transition-all duration-200 ${badgeBg}`}>
+                            <span>{feedback.message}</span>
+                            {feedback.isValid ? (
+                              <CheckCircle size={18} className="text-emerald-600 shrink-0" />
+                            ) : feedback.status === "over" ? (
+                              <AlertTriangle size={18} className="text-red-500 shrink-0" />
+                            ) : null}
+                          </div>
+
+                          {/* Progress Bar */}
+                          <div className="w-full bg-gray-150 h-2 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full transition-all duration-300 ${barColor}`}
+                              style={{ width: `${feedback.count > feedback.maxWords ? 100 : percentToMin}%` }}
+                            />
+                          </div>
+
+                          {/* Textarea Input */}
+                          <div className="space-y-1.5 pt-2">
+                            <label className="block text-xs font-bold text-gray-600">
+                              اكتب المقال المطلوب هنا (Text Area):
+                            </label>
+                            <textarea
+                              rows={9}
+                              dir="auto"
+                              value={text}
+                              onChange={(e) => handleParagraphChange(currentQuestion.id, e.target.value)}
+                              placeholder="ابدأ بكتابة إجابتك هنا باللغة الإنجليزية أو العربية... سيتم حفظ النص تلقائياً ومطابقة عدد الكلمات المطلوبة."
+                              className="w-full p-4 rounded-2xl border-2 border-gray-200 outline-none text-gray-800 focus:border-[#7D79F1] text-sm md:text-base leading-relaxed whitespace-pre-wrap font-sans bg-white shadow-xs focus:ring-4 focus:ring-[#7D79F1]/10 transition"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  /* Shuffled Options list for MCQ */
+                  <div className="grid md:grid-cols-2 gap-3 md:gap-4 pt-2">
+                    {(shuffledOptionsMap[currentQuestion.id] || []).map((opt: any) => {
+                      const isSelected = selectedAnswers[currentQuestion.id] === opt.option_letter;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => handleOptionSelect(currentQuestion.id, opt.option_letter)}
+                          className={`w-full text-right p-4 md:p-5 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col gap-2 ${
+                            isSelected
+                              ? "border-[#7D79F1] bg-[#F3F2FF] shadow-sm scale-[0.99] font-bold text-[#2D2B7A]"
+                              : "border-gray-100 hover:border-gray-200 bg-white text-gray-700 hover:bg-gray-50/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-xs font-bold border transition ${
+                              isSelected
+                                ? "bg-[#7D79F1] text-white border-[#7D79F1]"
+                                : "bg-gray-50 text-gray-400 border-gray-100"
+                            }`}>
+                              {isSelected ? <Check size={14} /> : opt.option_letter}
+                            </span>
+                            {opt.option_text && <span className="text-sm font-medium">{opt.option_text}</span>}
+                          </div>
+
+                          {opt.option_image && (
+                            <div className="rounded-xl overflow-hidden border max-w-xs mt-2 self-start mr-10">
+                              <img src={opt.option_image} alt="Option Illustration" className="w-full object-contain max-h-36" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
               </div>
 

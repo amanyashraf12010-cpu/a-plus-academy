@@ -77,6 +77,9 @@ function ExamsPageContent() {
   const [showQModal, setShowQModal] = useState(false);
   const [qModalMode, setQModalMode] = useState<"add" | "edit">("add");
   const [selectedQId, setSelectedQId] = useState<string | null>(null);
+  const [qType, setQType] = useState<"mcq" | "paragraph">("mcq");
+  const [minWords, setMinWords] = useState<number>(150);
+  const [maxWords, setMaxWords] = useState<number>(180);
   const [qText, setQText] = useState("");
   const [qImageUrl, setQImageUrl] = useState("");
   const [qImageFile, setQImageFile] = useState<File | null>(null);
@@ -399,9 +402,12 @@ function ExamsPageContent() {
   }
 
   // Open Q Modal in Add mode
-  function openAddQModal() {
+  function openAddQModal(type: "mcq" | "paragraph" = "mcq") {
     setQModalMode("add");
     setSelectedQId(null);
+    setQType(type);
+    setMinWords(150);
+    setMaxWords(180);
     setQText("");
     setQImageUrl("");
     setQImageFile(null);
@@ -419,10 +425,13 @@ function ExamsPageContent() {
   function openEditQModal(q: any) {
     setQModalMode("edit");
     setSelectedQId(q.id);
+    setQType(q.type || "mcq");
+    setMinWords(typeof q.min_words === "number" ? q.min_words : 150);
+    setMaxWords(typeof q.max_words === "number" ? q.max_words : 180);
     setQText(q.question_text || "");
     setQImageUrl(q.question_image || "");
     setQImageFile(null);
-    setCorrectOption(q.correct_option);
+    setCorrectOption(q.correct_option || "A");
 
     const optA = q.options?.find((o: any) => o.option_letter === "A");
     const optB = q.options?.find((o: any) => o.option_letter === "B");
@@ -447,6 +456,13 @@ function ExamsPageContent() {
       return;
     }
 
+    if (qType === "paragraph") {
+      if (minWords <= 0 || maxWords <= 0 || minWords > maxWords) {
+        alert("يرجى التأكد من أن الحد الأدنى والحد الأقصى لعدد الكلمات صحيحين (الحد الأدنى أصغر من أو يساوي الحد الأقصى).");
+        return;
+      }
+    }
+
     try {
       setIsSavingQ(true);
 
@@ -458,24 +474,29 @@ function ExamsPageContent() {
       let finalOptDUrl = optDImageUrl;
 
       if (qImageFile) finalQImageUrl = await uploadQuizImage(qImageFile);
-      if (optAImageFile) finalOptAUrl = await uploadQuizImage(optAImageFile);
-      if (optBImageFile) finalOptBUrl = await uploadQuizImage(optBImageFile);
-      if (optCImageFile) finalOptCUrl = await uploadQuizImage(optCImageFile);
-      if (optDImageFile) finalOptDUrl = await uploadQuizImage(optDImageFile);
+      if (qType === "mcq") {
+        if (optAImageFile) finalOptAUrl = await uploadQuizImage(optAImageFile);
+        if (optBImageFile) finalOptBUrl = await uploadQuizImage(optBImageFile);
+        if (optCImageFile) finalOptCUrl = await uploadQuizImage(optCImageFile);
+        if (optDImageFile) finalOptDUrl = await uploadQuizImage(optDImageFile);
+      }
 
       const qPayload = {
         id: selectedQId || undefined,
+        type: qType,
+        min_words: qType === "paragraph" ? minWords : null,
+        max_words: qType === "paragraph" ? maxWords : null,
         question_text: qText.trim(),
         question_image: finalQImageUrl,
-        correct_option: correctOption
+        correct_option: qType === "paragraph" ? null : correctOption
       };
 
-      const optsPayload = [
+      const optsPayload = qType === "mcq" ? [
         { option_letter: "A" as const, option_text: optAText.trim(), option_image: finalOptAUrl },
         { option_letter: "B" as const, option_text: optBText.trim(), option_image: finalOptBUrl },
         { option_letter: "C" as const, option_text: optCText.trim(), option_image: finalOptCUrl },
         { option_letter: "D" as const, option_text: optDText.trim(), option_image: finalOptDUrl },
-      ];
+      ] : [];
 
       await saveQuestion(quiz.id, qPayload, optsPayload);
       alert("تم حفظ السؤال بنجاح.");
@@ -1026,24 +1047,33 @@ function ExamsPageContent() {
                         📖 إضافة قطعة قراءة
                       </button>
                       <button
-                        onClick={openAddQModal}
+                        onClick={() => openAddQModal("paragraph")}
+                        className="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <FileText size={15} />
+                        📝 إضافة سؤال مقالي (Paragraph)
+                      </button>
+                      <button
+                        onClick={() => openAddQModal("mcq")}
                         className="bg-green-600 hover:bg-green-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
                       >
                         <Plus size={15} />
-                        إضافة سؤال عادي (MCQ)
+                        + إضافة سؤال عادي (MCQ)
                       </button>
                     </div>
                   </div>
 
                   {questions.length === 0 ? (
                     <div className="bg-white rounded-3xl p-12 border text-center text-gray-400 font-medium">
-                      لا توجد أسئلة مضافة في هذا الامتحان حالياً. اضغط "إضافة سؤال عادي" أو "إضافة قطعة قراءة" للبدء.
+                      لا توجد أسئلة مضافة في هذا الامتحان حالياً. اضغط "إضافة سؤال عادي" أو "إضافة سؤال مقالي" أو "إضافة قطعة قراءة" للبدء.
                     </div>
                   ) : (
                     <div className="space-y-6">
                       {groupedItems.map((group, groupIdx) => {
                         if (group.type === "single") {
                           const q = group.question;
+                          const isParagraph = q.type === "paragraph";
+
                           return (
                             <div key={q.id} className="bg-white p-6 rounded-3xl border shadow-sm space-y-4 relative group hover:border-[#7D79F1]/40 transition">
                               {/* Actions */}
@@ -1064,13 +1094,26 @@ function ExamsPageContent() {
                                 </button>
                               </div>
 
-                              <div className="flex items-center gap-2">
-                                <span className="bg-purple-50 text-[#7D79F1] px-3 py-1 rounded-full text-xs font-bold">
-                                  سؤال اختياري #{groupIdx + 1}
-                                </span>
-                                <span className="bg-green-50 text-green-600 border border-green-200 px-3 py-1 rounded-full text-xs font-bold">
-                                  الإجابة الصحيحة: {q.correct_option}
-                                </span>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {isParagraph ? (
+                                  <>
+                                    <span className="bg-amber-50 text-amber-900 border border-amber-200 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
+                                      📝 سؤال مقالي (Paragraph) #{groupIdx + 1}
+                                    </span>
+                                    <span className="bg-purple-50 text-[#7D79F1] border border-purple-200 px-3 py-1 rounded-full text-xs font-bold">
+                                      الكلمات المطلوبة: {q.min_words || 150} - {q.max_words || 180} كلمة
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="bg-purple-50 text-[#7D79F1] px-3 py-1 rounded-full text-xs font-bold">
+                                      سؤال اختياري #{groupIdx + 1}
+                                    </span>
+                                    <span className="bg-green-50 text-green-600 border border-green-200 px-3 py-1 rounded-full text-xs font-bold">
+                                      الإجابة الصحيحة: {q.correct_option}
+                                    </span>
+                                  </>
+                                )}
                               </div>
 
                               <div className="space-y-3 pr-1">
@@ -1082,36 +1125,48 @@ function ExamsPageContent() {
                                 )}
                               </div>
 
-                              {/* Options grid display */}
-                              <div className="grid md:grid-cols-2 gap-3 pr-1 pt-2">
-                                {q.options?.map((opt: any) => {
-                                  const isCorrect = q.correct_option === opt.option_letter;
-                                  return (
-                                    <div 
-                                      key={opt.id} 
-                                      className={`p-3.5 rounded-2xl border text-sm flex flex-col gap-2 ${
-                                        isCorrect 
-                                          ? "border-green-300 bg-green-50/20 text-green-800 font-bold" 
-                                          : "border-gray-100 bg-gray-50/30 text-gray-600"
-                                      }`}
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <span className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold ${
-                                          isCorrect ? "bg-green-600 text-white" : "bg-gray-200 text-gray-500"
-                                        }`}>
-                                          {opt.option_letter}
-                                        </span>
-                                        {opt.option_text && <span>{opt.option_text}</span>}
-                                      </div>
-                                      {opt.option_image && (
-                                        <div className="rounded-lg overflow-hidden border max-w-xs mt-1">
-                                          <img src={opt.option_image} alt="Option Graphic" className="w-full object-contain max-h-32" />
+                              {/* Paragraph preview placeholder if paragraph */}
+                              {isParagraph ? (
+                                <div className="bg-amber-50/40 border border-dashed border-amber-200 rounded-2xl p-4 text-xs text-gray-600 space-y-1">
+                                  <p className="font-bold text-amber-900 flex items-center gap-1.5">
+                                    <span>✍️ مساحة كتابة الطالب (Student Text Area)</span>
+                                  </p>
+                                  <p className="text-gray-500">
+                                    يكتب الطالب إجابته في صندوق نصي وتتحقق المنصة تلقائياً من عدد الكلمات المكتوبة ({q.min_words || 150} إلى {q.max_words || 180} كلمة) لفتح المحاضرة التالية.
+                                  </p>
+                                </div>
+                              ) : (
+                                /* Options grid display */
+                                <div className="grid md:grid-cols-2 gap-3 pr-1 pt-2">
+                                  {q.options?.map((opt: any) => {
+                                    const isCorrect = q.correct_option === opt.option_letter;
+                                    return (
+                                      <div 
+                                        key={opt.id} 
+                                        className={`p-3.5 rounded-2xl border text-sm flex flex-col gap-2 ${
+                                          isCorrect 
+                                            ? "border-green-300 bg-green-50/20 text-green-800 font-bold" 
+                                            : "border-gray-100 bg-gray-50/30 text-gray-600"
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <span className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold ${
+                                            isCorrect ? "bg-green-600 text-white" : "bg-gray-200 text-gray-500"
+                                          }`}>
+                                            {opt.option_letter}
+                                          </span>
+                                          {opt.option_text && <span>{opt.option_text}</span>}
                                         </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                                        {opt.option_image && (
+                                          <div className="rounded-lg overflow-hidden border max-w-xs mt-1">
+                                            <img src={opt.option_image} alt="Option Graphic" className="w-full object-contain max-h-32" />
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
 
                             </div>
                           );
@@ -1318,7 +1373,7 @@ function ExamsPageContent() {
 
       </div>
 
-      {/* QUESTION MODAL (Add / Edit Question and 4 choices with Image Upload) */}
+      {/* QUESTION MODAL (Add / Edit Question and choices / paragraph with Image Upload) */}
       {showQModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
@@ -1326,7 +1381,9 @@ function ExamsPageContent() {
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b">
               <h2 className="text-lg font-extrabold text-[#2D2B7A]">
-                {qModalMode === "add" ? "➕ إضافة سؤال جديد" : "📝 تعديل السؤال"}
+                {qModalMode === "add" 
+                  ? (qType === "paragraph" ? "📝 إضافة سؤال مقالي (Paragraph)" : "➕ إضافة سؤال عادي (MCQ)") 
+                  : (qType === "paragraph" ? "📝 تعديل سؤال المقال (Paragraph)" : "📝 تعديل السؤال (MCQ)")}
               </h2>
               <button
                 onClick={() => setShowQModal(false)}
@@ -1339,13 +1396,81 @@ function ExamsPageContent() {
             {/* Form */}
             <form onSubmit={handleSaveQuestion} className="p-6 space-y-6">
               
+              {/* Question Type Toggle */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-gray-500">نوع السؤال</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setQType("mcq")}
+                    className={`p-3 rounded-2xl border text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                      qType === "mcq"
+                        ? "border-[#7D79F1] bg-purple-50/60 text-[#2D2B7A] shadow-xs"
+                        : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span>🔘 اختيار من متعدد (MCQ)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQType("paragraph")}
+                    className={`p-3 rounded-2xl border text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                      qType === "paragraph"
+                        ? "border-amber-500 bg-amber-50/60 text-amber-900 shadow-xs"
+                        : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span>📝 سؤال مقالي / برجراف (Paragraph)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Paragraph Word Limits Configuration */}
+              {qType === "paragraph" && (
+                <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-2xl space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
+                    <FileText size={16} className="text-amber-600" />
+                    <span>إعدادات عدد الكلمات المطلوبة للمقال:</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">الحد الأدنى للكلمات (Min Words)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        required
+                        className="w-full px-3.5 py-2.5 rounded-xl border outline-none text-xs font-bold text-[#2D2B7A] bg-white focus:border-[#7D79F1]"
+                        value={minWords}
+                        onChange={(e) => setMinWords(parseInt(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">الحد الأقصى للكلمات (Max Words)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        required
+                        className="w-full px-3.5 py-2.5 rounded-xl border outline-none text-xs font-bold text-[#2D2B7A] bg-white focus:border-[#7D79F1]"
+                        value={maxWords}
+                        onChange={(e) => setMaxWords(parseInt(e.target.value) || 0)}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-amber-800/80 leading-relaxed">
+                    💡 سيكتب الطالب إجابته في Textarea مخصصة وسيقوم النظام بالتحقق فورياً وسيرفرياً من عدد الكلمات ({minWords} إلى {maxWords} كلمة) لاحتساب الإجابة صحيحة وفتح المحاضرة التالية.
+                  </p>
+                </div>
+              )}
+
               {/* Question text & image */}
               <div className="space-y-3">
-                <label className="block text-xs font-bold text-gray-500">نص السؤال</label>
+                <label className="block text-xs font-bold text-gray-500">
+                  {qType === "paragraph" ? "نص رأس الموضوع أو توجيهات المقال (Prompt / Instructions) *" : "نص السؤال *"}
+                </label>
                 <textarea
-                  rows={2}
-                  className="w-full px-4 py-3 rounded-xl border outline-none text-[#2D2B7A] focus:border-[#7D79F1] text-sm font-medium"
-                  placeholder="اكتب صيغة السؤال هنا..."
+                  rows={qType === "paragraph" ? 4 : 2}
+                  className="w-full px-4 py-3 rounded-xl border outline-none text-[#2D2B7A] focus:border-[#7D79F1] text-sm font-medium leading-relaxed"
+                  placeholder={qType === "paragraph" ? "مثال: اكتب برجراف يحتوي على 150 إلى 180 كلمة عن أهمية الطاقة المتجددة..." : "اكتب صيغة السؤال هنا..."}
                   value={qText}
                   onChange={(e) => setQText(e.target.value)}
                 />
@@ -1375,133 +1500,138 @@ function ExamsPageContent() {
                 </div>
               </div>
 
-              {/* Choices: A, B, C, D */}
-              <div className="space-y-4 border-t pt-4">
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">الاختيارات الأربعة</h3>
-                
-                <div className="grid md:grid-cols-2 gap-4">
-                  
-                  {/* Option A */}
-                  <div className="p-4 border rounded-2xl bg-gray-50/50 space-y-3">
-                    <label className="block text-xs font-extrabold text-[#7D79F1]">اختيار A</label>
-                    <input
-                      type="text"
-                      placeholder="نص الاختيار A"
-                      className="w-full px-3 py-2 rounded-lg border outline-none text-xs text-[#2D2B7A]"
-                      value={optAText}
-                      onChange={(e) => setOptAText(e.target.value)}
-                    />
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="text-[10px] text-gray-400 flex-1 border p-1 rounded-lg"
-                        onChange={(e) => setOptAImageFile(e.target.files?.[0] || null)}
-                      />
-                      {optAImageUrl && (
-                        <div className="w-8 h-8 rounded-lg border overflow-hidden shrink-0 relative">
-                          <img src={optAImageUrl} className="w-full h-full object-cover" />
-                          <button type="button" onClick={() => setOptAImageUrl("")} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><X size={8} /></button>
+              {/* Choices & Correct Answer for MCQ only */}
+              {qType === "mcq" && (
+                <>
+                  {/* Choices: A, B, C, D */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">الاختيارات الأربعة</h3>
+                    
+                    <div className="grid md:grid-cols-2 gap-4">
+                      
+                      {/* Option A */}
+                      <div className="p-4 border rounded-2xl bg-gray-50/50 space-y-3">
+                        <label className="block text-xs font-extrabold text-[#7D79F1]">اختيار A</label>
+                        <input
+                          type="text"
+                          placeholder="نص الاختيار A"
+                          className="w-full px-3 py-2 rounded-lg border outline-none text-xs text-[#2D2B7A]"
+                          value={optAText}
+                          onChange={(e) => setOptAText(e.target.value)}
+                        />
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="text-[10px] text-gray-400 flex-1 border p-1 rounded-lg"
+                            onChange={(e) => setOptAImageFile(e.target.files?.[0] || null)}
+                          />
+                          {optAImageUrl && (
+                            <div className="w-8 h-8 rounded-lg border overflow-hidden shrink-0 relative">
+                              <img src={optAImageUrl} className="w-full h-full object-cover" />
+                              <button type="button" onClick={() => setOptAImageUrl("")} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><X size={8} /></button>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
+
+                      {/* Option B */}
+                      <div className="p-4 border rounded-2xl bg-gray-50/50 space-y-3">
+                        <label className="block text-xs font-extrabold text-[#7D79F1]">اختيار B</label>
+                        <input
+                          type="text"
+                          placeholder="نص الاختيار B"
+                          className="w-full px-3 py-2 rounded-lg border outline-none text-xs text-[#2D2B7A]"
+                          value={optBText}
+                          onChange={(e) => setOptBText(e.target.value)}
+                        />
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="text-[10px] text-gray-400 flex-1 border p-1 rounded-lg"
+                            onChange={(e) => setOptBImageFile(e.target.files?.[0] || null)}
+                          />
+                          {optBImageUrl && (
+                            <div className="w-8 h-8 rounded-lg border overflow-hidden shrink-0 relative">
+                              <img src={optBImageUrl} className="w-full h-full object-cover" />
+                              <button type="button" onClick={() => setOptBImageUrl("")} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><X size={8} /></button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Option C */}
+                      <div className="p-4 border rounded-2xl bg-gray-50/50 space-y-3">
+                        <label className="block text-xs font-extrabold text-[#7D79F1]">اختيار C</label>
+                        <input
+                          type="text"
+                          placeholder="نص الاختيار C"
+                          className="w-full px-3 py-2 rounded-lg border outline-none text-xs text-[#2D2B7A]"
+                          value={optCText}
+                          onChange={(e) => setOptCText(e.target.value)}
+                        />
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="text-[10px] text-gray-400 flex-1 border p-1 rounded-lg"
+                            onChange={(e) => setOptCImageFile(e.target.files?.[0] || null)}
+                          />
+                          {optCImageUrl && (
+                            <div className="w-8 h-8 rounded-lg border overflow-hidden shrink-0 relative">
+                              <img src={optCImageUrl} className="w-full h-full object-cover" />
+                              <button type="button" onClick={() => setOptCImageUrl("")} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><X size={8} /></button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Option D */}
+                      <div className="p-4 border rounded-2xl bg-gray-50/50 space-y-3">
+                        <label className="block text-xs font-extrabold text-[#7D79F1]">اختيار D</label>
+                        <input
+                          type="text"
+                          placeholder="نص الاختيار D"
+                          className="w-full px-3 py-2 rounded-lg border outline-none text-xs text-[#2D2B7A]"
+                          value={optDText}
+                          onChange={(e) => setOptDText(e.target.value)}
+                        />
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="text-[10px] text-gray-400 flex-1 border p-1 rounded-lg"
+                            onChange={(e) => setOptDImageFile(e.target.files?.[0] || null)}
+                          />
+                          {optDImageUrl && (
+                            <div className="w-8 h-8 rounded-lg border overflow-hidden shrink-0 relative">
+                              <img src={optDImageUrl} className="w-full h-full object-cover" />
+                              <button type="button" onClick={() => setOptDImageUrl("")} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><X size={8} /></button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
                     </div>
                   </div>
 
-                  {/* Option B */}
-                  <div className="p-4 border rounded-2xl bg-gray-50/50 space-y-3">
-                    <label className="block text-xs font-extrabold text-[#7D79F1]">اختيار B</label>
-                    <input
-                      type="text"
-                      placeholder="نص الاختيار B"
-                      className="w-full px-3 py-2 rounded-lg border outline-none text-xs text-[#2D2B7A]"
-                      value={optBText}
-                      onChange={(e) => setOptBText(e.target.value)}
-                    />
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="text-[10px] text-gray-400 flex-1 border p-1 rounded-lg"
-                        onChange={(e) => setOptBImageFile(e.target.files?.[0] || null)}
-                      />
-                      {optBImageUrl && (
-                        <div className="w-8 h-8 rounded-lg border overflow-hidden shrink-0 relative">
-                          <img src={optBImageUrl} className="w-full h-full object-cover" />
-                          <button type="button" onClick={() => setOptBImageUrl("")} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><X size={8} /></button>
-                        </div>
-                      )}
-                    </div>
+                  {/* Correct Answer Selection */}
+                  <div className="border-t pt-4">
+                    <label className="block text-xs font-bold text-gray-500 mb-1.5">تحديد الاختيار الصحيح</label>
+                    <select
+                      className="w-full px-4 py-2.5 rounded-xl border outline-none text-[#2D2B7A] font-bold text-sm bg-white cursor-pointer focus:border-[#7D79F1]"
+                      value={correctOption}
+                      onChange={(e) => setCorrectOption(e.target.value as any)}
+                    >
+                      <option value="A">الاختيار A هو الإجابة الصحيحة</option>
+                      <option value="B">الاختيار B هو الإجابة الصحيحة</option>
+                      <option value="C">الاختيار C هو الإجابة الصحيحة</option>
+                      <option value="D">الاختيار D هو الإجابة الصحيحة</option>
+                    </select>
                   </div>
-
-                  {/* Option C */}
-                  <div className="p-4 border rounded-2xl bg-gray-50/50 space-y-3">
-                    <label className="block text-xs font-extrabold text-[#7D79F1]">اختيار C</label>
-                    <input
-                      type="text"
-                      placeholder="نص الاختيار C"
-                      className="w-full px-3 py-2 rounded-lg border outline-none text-xs text-[#2D2B7A]"
-                      value={optCText}
-                      onChange={(e) => setOptCText(e.target.value)}
-                    />
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="text-[10px] text-gray-400 flex-1 border p-1 rounded-lg"
-                        onChange={(e) => setOptCImageFile(e.target.files?.[0] || null)}
-                      />
-                      {optCImageUrl && (
-                        <div className="w-8 h-8 rounded-lg border overflow-hidden shrink-0 relative">
-                          <img src={optCImageUrl} className="w-full h-full object-cover" />
-                          <button type="button" onClick={() => setOptCImageUrl("")} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><X size={8} /></button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Option D */}
-                  <div className="p-4 border rounded-2xl bg-gray-50/50 space-y-3">
-                    <label className="block text-xs font-extrabold text-[#7D79F1]">اختيار D</label>
-                    <input
-                      type="text"
-                      placeholder="نص الاختيار D"
-                      className="w-full px-3 py-2 rounded-lg border outline-none text-xs text-[#2D2B7A]"
-                      value={optDText}
-                      onChange={(e) => setOptDText(e.target.value)}
-                    />
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="text-[10px] text-gray-400 flex-1 border p-1 rounded-lg"
-                        onChange={(e) => setOptDImageFile(e.target.files?.[0] || null)}
-                      />
-                      {optDImageUrl && (
-                        <div className="w-8 h-8 rounded-lg border overflow-hidden shrink-0 relative">
-                          <img src={optDImageUrl} className="w-full h-full object-cover" />
-                          <button type="button" onClick={() => setOptDImageUrl("")} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5"><X size={8} /></button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
-              {/* Correct Answer Selection */}
-              <div className="border-t pt-4">
-                <label className="block text-xs font-bold text-gray-500 mb-1.5">تحديد الاختيار الصحيح</label>
-                <select
-                  className="w-full px-4 py-2.5 rounded-xl border outline-none text-[#2D2B7A] font-bold text-sm bg-white cursor-pointer focus:border-[#7D79F1]"
-                  value={correctOption}
-                  onChange={(e) => setCorrectOption(e.target.value as any)}
-                >
-                  <option value="A">الاختيار A هو الإجابة الصحيحة</option>
-                  <option value="B">الاختيار B هو الإجابة الصحيحة</option>
-                  <option value="C">الاختيار C هو الإجابة الصحيحة</option>
-                  <option value="D">الاختيار D هو الإجابة الصحيحة</option>
-                </select>
-              </div>
+                </>
+              )}
 
               {/* Action buttons */}
               <div className="flex gap-3 pt-4 border-t">
