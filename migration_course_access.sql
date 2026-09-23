@@ -146,3 +146,31 @@ BEGIN
   RETURN v_video_url;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 6. Update course_stats view to accurately count students from course_access and subscriptions
+CREATE OR REPLACE VIEW public.course_stats AS
+WITH active_enrolled AS (
+  -- Active course_access
+  SELECT course_id, student_id AS user_id
+  FROM public.course_access
+  WHERE status = 'active'
+  UNION
+  -- Approved subscriptions that are not explicitly revoked in course_access
+  SELECT s.course_id, s.user_id
+  FROM public.subscriptions s
+  WHERE s.status = 'approved'
+    AND NOT EXISTS (
+      SELECT 1 FROM public.course_access ca
+      WHERE ca.course_id = s.course_id
+        AND ca.student_id = s.user_id
+        AND ca.status = 'revoked'
+    )
+)
+SELECT 
+  c.id AS course_id,
+  COUNT(DISTINCT ae.user_id) AS student_count
+FROM public.courses c
+LEFT JOIN active_enrolled ae ON ae.course_id = c.id
+GROUP BY c.id;
+
+GRANT SELECT ON public.course_stats TO anon, authenticated;

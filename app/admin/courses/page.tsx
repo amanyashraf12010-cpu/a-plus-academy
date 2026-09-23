@@ -112,7 +112,7 @@ export default function AdminCoursesPage() {
                 <div className="flex flex-wrap gap-4 mt-4 pt-3 border-t text-xs text-gray-500">
                   <span>📚 المادة: {course.subject}</span>
                   <span>🎓 الصف: {course.grade}</span>
-                  <span>👥 الطلاب المشتركين: <strong className="text-[#7D79F1] font-bold">{course.subscriptions ? course.subscriptions.filter((s: any) => s.status === "approved").length : 0}</strong></span>
+                  <span>👥 الطلاب المشتركين: <strong className="text-[#7D79F1] font-bold">{course.enrolled_students_count ?? (course.subscriptions ? course.subscriptions.filter((s: any) => s.status === "approved").length : 0)}</strong></span>
                 </div>
               </div>
 

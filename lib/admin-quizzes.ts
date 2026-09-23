@@ -460,22 +460,53 @@ export async function bulkImportQuestions(
 export async function getCourseStudentPerformance(courseId: string) {
   const supabase = createClient();
 
-  // 1. Get all students subscribed to this course
-  const { data: subscriptions, error: subError } = await supabase
-    .from("subscriptions")
-    .select(`
-      user_id,
-      status,
-      profiles:user_id (id, full_name, email, phone, grade)
-    `)
-    .eq("course_id", courseId)
-    .eq("status", "approved");
+  // 1. Get all students subscribed or granted access to this course
+  const [{ data: subscriptions, error: subError }, { data: courseAccessList, error: caError }] = await Promise.all([
+    supabase
+      .from("subscriptions")
+      .select(`
+        user_id,
+        status,
+        profiles:user_id (id, full_name, email, phone, grade)
+      `)
+      .eq("course_id", courseId)
+      .eq("status", "approved"),
+    supabase
+      .from("course_access")
+      .select(`
+        student_id,
+        status,
+        profiles:student_id (id, full_name, email, phone, grade)
+      `)
+      .eq("course_id", courseId)
+  ]);
 
   if (subError) throw subError;
+  if (caError) {
+    console.warn("Error fetching course_access in getCourseStudentPerformance:", caError);
+  }
 
-  const students = (subscriptions || [])
-    .map((sub: any) => sub.profiles)
-    .filter(Boolean);
+  const studentMap = new Map<string, any>();
+  const revokedSet = new Set<string>();
+
+  (courseAccessList || []).forEach((ca: any) => {
+    if (ca.status === "revoked" && ca.student_id) {
+      revokedSet.add(ca.student_id);
+    } else if (ca.status === "active" && ca.profiles) {
+      studentMap.set(ca.profiles.id, ca.profiles);
+    }
+  });
+
+  (subscriptions || []).forEach((sub: any) => {
+    if (sub.profiles && !revokedSet.has(sub.profiles.id)) {
+      studentMap.set(sub.profiles.id, sub.profiles);
+    }
+  });
+
+  // Remove any revoked student that might have been added
+  revokedSet.forEach((id) => studentMap.delete(id));
+
+  const students = Array.from(studentMap.values());
 
   if (students.length === 0) return [];
 

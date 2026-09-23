@@ -362,11 +362,26 @@ using (bucket_id = 'videos' and public.is_admin());
 -- =========================================================================
 
 create or replace view public.course_stats as
+with active_enrolled as (
+  select course_id, student_id as user_id
+  from public.course_access
+  where status = 'active'
+  union
+  select s.course_id, s.user_id
+  from public.subscriptions s
+  where s.status = 'approved'
+    and not exists (
+      select 1 from public.course_access ca
+      where ca.course_id = s.course_id
+        and ca.student_id = s.user_id
+        and ca.status = 'revoked'
+    )
+)
 select 
   c.id as course_id,
-  count(s.id) as student_count
+  count(distinct ae.user_id) as student_count
 from public.courses c
-left join public.subscriptions s on s.course_id = c.id and s.status = 'approved'
+left join active_enrolled ae on ae.course_id = c.id
 group by c.id;
 
 grant select on public.course_stats to anon, authenticated;

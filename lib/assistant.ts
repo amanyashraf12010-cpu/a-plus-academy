@@ -57,19 +57,41 @@ export async function getAssistantHomeStats() {
   }
 
   // 2. Total Approved Students
-  const { data: subscriptions, error: subsErr } = await supabase
-    .from("subscriptions")
-    .select("user_id")
-    .in("course_id", courseIds)
-    .eq("status", "approved");
+  const [{ data: subscriptions, error: subsErr }, { data: courseAccessList, error: caErr }] = await Promise.all([
+    supabase
+      .from("subscriptions")
+      .select("user_id, course_id")
+      .in("course_id", courseIds)
+      .eq("status", "approved"),
+    supabase
+      .from("course_access")
+      .select("student_id, course_id, status")
+      .in("course_id", courseIds)
+  ]);
 
   if (subsErr) throw subsErr;
+  if (caErr) console.warn("Error fetching course_access in getAssistantHomeStats:", caErr);
 
-  const uniqueStudents = new Set((subscriptions || []).map((s: any) => s.user_id));
+  const activeStudents = new Set<string>();
+  const revokedPairs = new Set<string>();
+
+  (courseAccessList || []).forEach((ca: any) => {
+    if (ca.status === "revoked") {
+      revokedPairs.add(`${ca.student_id}_${ca.course_id}`);
+    } else if (ca.status === "active" && ca.student_id) {
+      activeStudents.add(ca.student_id);
+    }
+  });
+
+  (subscriptions || []).forEach((s: any) => {
+    if (s.user_id && !revokedPairs.has(`${s.user_id}_${s.course_id}`)) {
+      activeStudents.add(s.user_id);
+    }
+  });
 
   return {
     coursesCount: courses?.length || 0,
-    studentsCount: uniqueStudents.size,
+    studentsCount: activeStudents.size,
   };
 }
 
@@ -163,27 +185,69 @@ export async function getAssistantStudents(): Promise<AssistantStudentItem[]> {
   const courseIds = (teacherCourses || []).map((c: any) => c.id);
   if (courseIds.length === 0) return [];
 
-  // 2. Fetch approved subscriptions with profiles & courses
-  const { data: subscriptions, error: sErr } = await supabase
-    .from("subscriptions")
-    .select(`
-      user_id,
-      course_id,
-      created_at,
-      profiles:user_id (id, full_name, phone, parent_phone, school, governorate, grade),
-      courses:course_id (id, title)
-    `)
-    .in("course_id", courseIds)
-    .eq("status", "approved")
-    .order("created_at", { ascending: false });
+  // 2. Fetch approved subscriptions & course accesses with profiles & courses
+  const [{ data: subscriptions, error: sErr }, { data: courseAccessList, error: caErr }] = await Promise.all([
+    supabase
+      .from("subscriptions")
+      .select(`
+        user_id,
+        course_id,
+        created_at,
+        profiles:user_id (id, full_name, phone, parent_phone, school, governorate, grade),
+        courses:course_id (id, title)
+      `)
+      .in("course_id", courseIds)
+      .eq("status", "approved")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("course_access")
+      .select(`
+        student_id,
+        course_id,
+        status,
+        created_at,
+        profiles:student_id (id, full_name, phone, parent_phone, school, governorate, grade),
+        courses:course_id (id, title)
+      `)
+      .in("course_id", courseIds)
+  ]);
 
   if (sErr) throw sErr;
-  if (!subscriptions || subscriptions.length === 0) return [];
+  if (caErr) console.warn("Error fetching course_access in getAssistantStudents:", caErr);
 
   // 3. Group by student
   const studentMap = new Map<string, AssistantStudentItem>();
+  const revokedPairs = new Set<string>();
 
-  for (const sub of subscriptions as any[]) {
+  (courseAccessList || []).forEach((ca: any) => {
+    if (ca.status === "revoked") {
+      revokedPairs.add(`${ca.student_id}_${ca.course_id}`);
+    } else if (ca.status === "active" && ca.profiles?.id) {
+      const student = ca.profiles;
+      if (!studentMap.has(student.id)) {
+        studentMap.set(student.id, {
+          id: student.id,
+          fullName: student.full_name || "طالب بدون اسم",
+          phone: student.phone || "غير مسجل",
+          parentPhone: student.parent_phone || "غير مسجل",
+          school: student.school || "",
+          governorate: student.governorate || "",
+          grade: student.grade || "",
+          enrolledCourses: [],
+        });
+      }
+      const current = studentMap.get(student.id)!;
+      if (ca.courses && !current.enrolledCourses.some((c) => c.id === ca.courses.id)) {
+        current.enrolledCourses.push({
+          id: ca.courses.id,
+          title: ca.courses.title,
+        });
+      }
+    }
+  });
+
+  for (const sub of (subscriptions || []) as any[]) {
+    if (revokedPairs.has(`${sub.user_id}_${sub.course_id}`)) continue;
     const student = sub.profiles;
     if (!student || !student.id) continue;
 
@@ -233,26 +297,53 @@ export async function getAssistantStudentDetails(studentId: string) {
   }
 
   // 2. Fetch approved courses for this student that belong to this teacher
-  let coursesQuery = supabase
-    .from("subscriptions")
-    .select(`
-      course_id,
-      courses:course_id (id, title, teacher_id, grade, subject)
-    `)
-    .eq("user_id", studentId)
-    .eq("status", "approved");
+  const [{ data: subs, error: subsErr }, { data: courseAccesses, error: caErr }] = await Promise.all([
+    supabase
+      .from("subscriptions")
+      .select(`
+        course_id,
+        courses:course_id (id, title, teacher_id, grade, subject)
+      `)
+      .eq("user_id", studentId)
+      .eq("status", "approved"),
+    supabase
+      .from("course_access")
+      .select(`
+        course_id,
+        status,
+        courses:course_id (id, title, teacher_id, grade, subject)
+      `)
+      .eq("student_id", studentId)
+  ]);
 
-  const { data: subs, error: subsErr } = await coursesQuery;
   if (subsErr) throw subsErr;
+  if (caErr) console.warn("Error fetching course_access in getAssistantStudentDetails:", caErr);
 
-  let enrolledTeacherCourses: any[] = [];
-  (subs || []).forEach((s: any) => {
-    if (s.courses) {
-      if (profile.role === "admin" || !teacherId || s.courses.teacher_id === teacherId) {
-        enrolledTeacherCourses.push(s.courses);
+  const coursesMap = new Map<string, any>();
+  const revokedCourseIds = new Set<string>();
+
+  (courseAccesses || []).forEach((ca: any) => {
+    if (ca.status === "revoked") {
+      revokedCourseIds.add(ca.course_id);
+    } else if (ca.status === "active" && ca.courses) {
+      if (profile.role === "admin" || !teacherId || ca.courses.teacher_id === teacherId) {
+        coursesMap.set(ca.courses.id, ca.courses);
       }
     }
   });
+
+  (subs || []).forEach((s: any) => {
+    if (s.courses && !revokedCourseIds.has(s.courses.id)) {
+      if (profile.role === "admin" || !teacherId || s.courses.teacher_id === teacherId) {
+        coursesMap.set(s.courses.id, s.courses);
+      }
+    }
+  });
+
+  // Remove any revoked courses
+  revokedCourseIds.forEach((cid) => coursesMap.delete(cid));
+
+  const enrolledTeacherCourses = Array.from(coursesMap.values());
 
   if (profile.role !== "admin" && teacherId && enrolledTeacherCourses.length === 0) {
     throw new Error("هذا الطالب غير مشترك في أي كورس من كورسات المدرس الخاص بك.");

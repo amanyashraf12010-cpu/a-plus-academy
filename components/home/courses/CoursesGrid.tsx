@@ -18,18 +18,32 @@ export default function CoursesGrid({ activeTab }: Props) {
       setLoading(true);
       const supabase = createClient();
 
-      // Fetch user approved subscriptions if logged in
+      // Fetch user approved subscriptions & active course_access if logged in
       const { data: { user } } = await supabase.auth.getUser();
       const subSet = new Set<string>();
       if (user) {
-        const { data: userSubs } = await supabase
-          .from("subscriptions")
-          .select("course_id")
-          .eq("user_id", user.id)
-          .eq("status", "approved");
+        const [{ data: userSubs }, { data: userAccess }] = await Promise.all([
+          supabase
+            .from("subscriptions")
+            .select("course_id")
+            .eq("user_id", user.id)
+            .eq("status", "approved"),
+          supabase
+            .from("course_access")
+            .select("course_id, status")
+            .eq("student_id", user.id)
+        ]);
 
         userSubs?.forEach((sub: any) => {
           subSet.add(sub.course_id);
+        });
+
+        userAccess?.forEach((acc: any) => {
+          if (acc.status === "active") {
+            subSet.add(acc.course_id);
+          } else if (acc.status === "revoked") {
+            subSet.delete(acc.course_id);
+          }
         });
       }
       setSubscribedIds(subSet);

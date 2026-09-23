@@ -45,11 +45,30 @@ export default function ProfilePage() {
 
       if (profileError) throw profileError;
 
-      const { count } = await supabase
-        .from("subscriptions")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("status", "approved");
+      const [{ data: subList }, { data: accessList }] = await Promise.all([
+        supabase
+          .from("subscriptions")
+          .select("course_id")
+          .eq("user_id", user.id)
+          .eq("status", "approved"),
+        supabase
+          .from("course_access")
+          .select("course_id, status")
+          .eq("student_id", user.id)
+      ]);
+
+      const enrolledSet = new Set<string>();
+      (accessList || []).forEach((acc: any) => {
+        if (acc.status === "active" && acc.course_id) {
+          enrolledSet.add(acc.course_id);
+        }
+      });
+      (subList || []).forEach((sub: any) => {
+        const isRevoked = (accessList || []).some((acc: any) => acc.course_id === sub.course_id && acc.status === "revoked");
+        if (!isRevoked && sub.course_id) {
+          enrolledSet.add(sub.course_id);
+        }
+      });
 
       const mapSystemLabel = (sys: string, gr: string) => {
         const isPrep = gr === "prep3";
@@ -65,7 +84,7 @@ export default function ProfilePage() {
         name: profileData.full_name,
         email: profileData.email || user.email,
         phone: profileData.phone,
-        courses: count || 0,
+        courses: enrolledSet.size,
         grade: profileData.grade || "غير محدد",
         education_system: mapSystemLabel(profileData.education_system, profileData.grade),
         track: profileData.track || "غير محدد",

@@ -221,11 +221,34 @@ export async function getCourses() {
 
   const { data, error } = await supabase
     .from("courses")
-    .select("*, teachers(name), subscriptions(status)")
+    .select("*, teachers(name), subscriptions(user_id, status), course_access(student_id, status)")
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  return data;
+
+  return (data || []).map((course: any) => {
+    const activeStudentIds = new Set<string>();
+    const revokedStudentIds = new Set<string>();
+
+    (course.course_access || []).forEach((ca: any) => {
+      if (ca.status === "active" && ca.student_id) {
+        activeStudentIds.add(ca.student_id);
+      } else if (ca.status === "revoked" && ca.student_id) {
+        revokedStudentIds.add(ca.student_id);
+      }
+    });
+
+    (course.subscriptions || []).forEach((sub: any) => {
+      if (sub.status === "approved" && sub.user_id && !revokedStudentIds.has(sub.user_id)) {
+        activeStudentIds.add(sub.user_id);
+      }
+    });
+
+    return {
+      ...course,
+      enrolled_students_count: activeStudentIds.size,
+    };
+  });
 }
 
 export async function toggleCourseVisibility(id: string, isVisible: boolean) {
