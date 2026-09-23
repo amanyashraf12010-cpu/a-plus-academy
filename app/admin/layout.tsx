@@ -85,7 +85,7 @@ export default function AdminLayout({
 
           <Link href="/admin/course-access" className={getLinkClass("/admin/course-access")}>
             <ShieldCheck size={20} />
-            صلاحيات الكورسات
+            اشتراكات الطلاب
           </Link>
 
           <Link href="/admin/payments" className={getLinkClass("/admin/payments")}>

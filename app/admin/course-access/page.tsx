@@ -296,10 +296,10 @@ export default function CourseAccessManagementPage() {
             </div>
             <div>
               <h1 className="text-3xl font-extrabold text-[#2D2B7A]">
-                إدارة صلاحيات الكورسات
+                إدارة اشتراكات الطلاب
               </h1>
               <p className="text-gray-500 text-sm mt-1">
-                التحكم اليدوي المباشر في صلاحيات وصول الطلاب للكورسات (منح، إلغاء، ونقل) دون الحاجة لمدفوعات
+                إضافة، إلغاء، وتبديل اشتراكات الكورسات للطلاب بسهولة وبشكل فوري
               </p>
             </div>
           </div>
@@ -316,7 +316,7 @@ export default function CourseAccessManagementPage() {
             className="px-5 py-3 bg-[#7D79F1] hover:bg-[#655EF0] text-white rounded-xl font-bold transition shadow-sm hover:shadow flex items-center gap-2 text-sm cursor-pointer"
           >
             <Plus size={18} />
-            منح صلاحية كورس جديد
+            إضافة كورس لطالب
           </button>
           
           <button

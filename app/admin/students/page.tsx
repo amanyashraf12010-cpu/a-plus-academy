@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getStudents, approveStudent, rejectStudent, resetStudentVideoProgress } from "@/lib/admin";
-import { Search, Check, Trash2, Phone, User, GraduationCap, MapPin, Eye, School, Mail, ShieldCheck } from "lucide-react";
+import { getStudents, approveStudent, rejectStudent, resetStudentVideoProgress, getCourses } from "@/lib/admin";
+import { grantCourseAccess, revokeCourseAccess, transferCourseAccess } from "@/lib/course-access";
+import { Search, Check, Trash2, Phone, User, GraduationCap, MapPin, Eye, School, Mail, ShieldCheck, Plus, ArrowRightLeft, X, Loader2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
 function mapGradeToArabic(grade: string) {
@@ -24,11 +25,20 @@ function mapGradeToArabic(grade: string) {
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<any[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
+  const [allCourses, setAllCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [gradeFilter, setGradeFilter] = useState("");
   const [approvalFilter, setApprovalFilter] = useState("all");
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+
+  // Student Course Actions State
+  const [showAddCourse, setShowAddCourse] = useState(false);
+  const [selectedNewCourseId, setSelectedNewCourseId] = useState("");
+  const [addingCourse, setAddingCourse] = useState(false);
+  const [transferringCourseId, setTransferringCourseId] = useState<string | null>(null);
+  const [selectedTransferTargetId, setSelectedTransferTargetId] = useState("");
+  const [transferSubmitting, setTransferSubmitting] = useState(false);
 
   const [studentPerformance, setStudentPerformance] = useState<any[]>([]);
   const [loadingPerformance, setLoadingPerformance] = useState(false);
@@ -189,7 +199,14 @@ export default function AdminStudentsPage() {
     }
   }, [selectedStudent]);
 
-  const supabaseAdmin = createClient(); // Keep local client configuration compatible
+  async function loadCoursesList() {
+    try {
+      const data = await getCourses();
+      setAllCourses(data || []);
+    } catch (e) {
+      console.error("Error loading courses:", e);
+    }
+  }
 
   async function loadStudents() {
     try {
@@ -206,7 +223,65 @@ export default function AdminStudentsPage() {
 
   useEffect(() => {
     loadStudents();
+    loadCoursesList();
   }, []);
+
+  async function handleAddCourseToStudent() {
+    if (!selectedStudent) return;
+    if (!selectedNewCourseId) {
+      alert("يرجى اختيار الكورس أولاً.");
+      return;
+    }
+
+    try {
+      setAddingCourse(true);
+      await grantCourseAccess(selectedStudent.id, selectedNewCourseId, "manual");
+      alert("✅ تم تفعيل واشتراك الطالب في الكورس بنجاح!");
+      setShowAddCourse(false);
+      setSelectedNewCourseId("");
+      loadStudentPerformanceData(selectedStudent.id);
+    } catch (err: any) {
+      alert("❌ فشل إضافة الكورس: " + err.message);
+    } finally {
+      setAddingCourse(false);
+    }
+  }
+
+  async function handleCancelCourseSubscription(courseId: string, courseTitle: string) {
+    if (!selectedStudent) return;
+    if (!confirm(`هل أنت متأكد من إلغاء اشتراك الطالب "${selectedStudent.full_name}" في كورس "${courseTitle}"؟ سيفقد الطالب إمكانية فتح المحاضرات والامتحانات فوراً مع الحفاظ على درجاته ومحاولاته.`)) {
+      return;
+    }
+
+    try {
+      await revokeCourseAccess(selectedStudent.id, courseId);
+      alert("✅ تم إلغاء اشتراك الطالب من هذا الكورس بنجاح.");
+      loadStudentPerformanceData(selectedStudent.id);
+    } catch (err: any) {
+      alert("❌ فشل إلغاء الاشتراك: " + err.message);
+    }
+  }
+
+  async function handleTransferCourse(fromCourseId: string) {
+    if (!selectedStudent) return;
+    if (!selectedTransferTargetId) {
+      alert("يرجى اختيار الكورس الجديد المراد التحويل إليه.");
+      return;
+    }
+
+    try {
+      setTransferSubmitting(true);
+      await transferCourseAccess(selectedStudent.id, fromCourseId, selectedTransferTargetId);
+      alert("✅ تم تحويل اشتراك الطالب للكورس الجديد بنجاح!");
+      setTransferringCourseId(null);
+      setSelectedTransferTargetId("");
+      loadStudentPerformanceData(selectedStudent.id);
+    } catch (err: any) {
+      alert("❌ فشل نقل الكورس: " + err.message);
+    } finally {
+      setTransferSubmitting(false);
+    }
+  }
 
   // Filter students based on search and filters
   useEffect(() => {
@@ -452,92 +527,199 @@ export default function AdminStudentsPage() {
                 </div>
 
                 <div className="border-t pt-4 mt-4 space-y-4">
-                  <h4 className="font-extrabold text-[#2D2B7A] text-sm">📖 الكورسات ومتابعة الأداء</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-extrabold text-[#2D2B7A] text-sm">📖 الكورسات المشترك بها</h4>
+                    <button
+                      onClick={() => setShowAddCourse(prev => !prev)}
+                      className="px-3 py-1.5 bg-[#7D79F1] hover:bg-[#655EF0] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <Plus size={14} />
+                      إضافة كورس
+                    </button>
+                  </div>
 
-                  {loadingPerformance ? (
-                    <div className="text-center py-4 text-xs text-gray-400">جاري تحميل تقارير التقدم...</div>
-                  ) : studentPerformance.length === 0 ? (
-                    <p className="text-xs text-gray-400 text-center">الطالب غير مشترك في أي كورس بعد.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {studentPerformance.map((courseItem: any) => (
-                        <div key={courseItem.courseId} className="bg-gray-50 p-3.5 rounded-2xl border text-xs space-y-2">
-                          <div className="flex justify-between items-center font-bold text-[#2D2B7A]">
-                            <span className="line-clamp-1">{courseItem.courseTitle}</span>
-                            <span className="bg-purple-100 text-[#7D79F1] px-2 py-0.5 rounded text-[10px]">{courseItem.progress}%</span>
-                          </div>
-                          
-                          {/* Progress bar */}
-                          <div className="w-full bg-gray-250 h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-[#7D79F1] h-full rounded-full" style={{ width: `${courseItem.progress}%` }} />
-                          </div>
+                  {/* Add Course Inline Selector */}
+                  {showAddCourse && (
+                    <div className="p-3.5 bg-[#F3F2FF] border border-[#7D79F1]/30 rounded-2xl space-y-2.5 animate-in fade-in duration-150">
+                      <p className="text-xs font-bold text-[#2D2B7A]">اختر الكورس لتفعيله للطالب فوراً:</p>
+                      <select
+                        className="w-full p-2.5 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-[#2D2B7A] outline-none focus:border-[#7D79F1] cursor-pointer"
+                        value={selectedNewCourseId}
+                        onChange={(e) => setSelectedNewCourseId(e.target.value)}
+                      >
+                        <option value="">-- اختر الكورس --</option>
+                        {allCourses.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.title} {c.teachers?.name ? `(${c.teachers.name})` : ""}
+                          </option>
+                        ))}
+                      </select>
 
-                          {/* Lectures Progress */}
-                          {courseItem.lessonStats?.length > 0 && (
-                            <div className="pt-2 border-t border-gray-200/50 space-y-1.5">
-                              <p className="text-[10px] text-gray-400 font-bold flex items-center gap-1">🎥 تقدم مشاهدة المحاضرات:</p>
-                              {courseItem.lessonStats.map((ls: any) => (
-                                <div key={ls.id} className="flex justify-between items-center text-[10px] text-gray-600 bg-white/70 p-1.5 rounded border border-gray-150 gap-2">
-                                  <span className="font-semibold line-clamp-1 flex-1 text-right">{ls.title}</span>
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    <span className={`font-bold text-left ${ls.viewsCount > 0 ? "text-[#7D79F1]" : "text-gray-400"}`}>
-                                      {ls.viewsCount > 0 ? `شوهد: ${ls.viewsCount} / 4 - مرات` : "لم يُشاهد بعد"}
-                                    </span>
-                                    {ls.viewsCount > 0 && (
-                                      <button
-                                        onClick={async () => {
-                                          if (confirm(`هل أنت متأكد من تصفير وإعادة تعيين مشاهدات الطالب لهذا الدرس؟`)) {
-                                            try {
-                                              await resetStudentVideoProgress(selectedStudent.id, ls.id);
-                                              alert("تم تصفير عدد المشاهدات بنجاح.");
-                                              loadStudentPerformanceData(selectedStudent.id);
-                                            } catch (err: any) {
-                                              alert("فشل إعادة التعيين: " + err.message);
-                                            }
-                                          }
-                                        }}
-                                        className="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 rounded border border-red-200 bg-red-50 hover:bg-red-100 transition cursor-pointer text-[9px]"
-                                        title="تصفير المشاهدات"
-                                      >
-                                        تصفير 🔄
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Quiz stats list */}
-                          {courseItem.quizStats?.length > 0 ? (
-                            <div className="pt-2 border-t border-gray-200/50 space-y-1.5">
-                              <p className="text-[10px] text-gray-400 font-bold">📝 أداء الامتحانات والواجبات:</p>
-                              {courseItem.quizStats.map((qs: any) => (
-                                <div key={qs.id} className="flex justify-between text-[11px] text-gray-500">
-                                  <span>{qs.type === "final" ? "🏆 الامتحان النهائي" : `📝 ${qs.title}`}</span>
-                                  <span className={qs.highestScore !== null ? (qs.passed ? "text-green-600 font-bold" : "text-red-500") : "text-gray-400"}>
-                                    {qs.highestScore !== null ? `${qs.highestScore}% (محاولات: ${qs.attemptsCount})` : "لم يحل بعد"}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            (!courseItem.lessonStats || courseItem.lessonStats.length === 0) && (
-                              <p className="text-[10px] text-gray-400">لا توجد محاضرات أو امتحانات مضافة لهذا الكورس بعد 📂</p>
-                            )
-                          )}
-                        </div>
-                      ))}
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={handleAddCourseToStudent}
+                          disabled={addingCourse || !selectedNewCourseId}
+                          className="flex-1 py-2 bg-[#7D79F1] hover:bg-[#655EF0] disabled:opacity-50 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          {addingCourse ? <Loader2 size={13} className="animate-spin" /> : "تفعيل الاشتراك للطالب ✅"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowAddCourse(false);
+                            setSelectedNewCourseId("");
+                          }}
+                          className="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-xl text-xs transition cursor-pointer"
+                        >
+                          إلغاء
+                        </button>
+                      </div>
                     </div>
                   )}
 
-                  <Link
-                    href={`/admin/course-access`}
-                    className="w-full py-2.5 px-3 bg-[#F3F2FF] hover:bg-[#E9E7FF] text-[#7D79F1] font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition mt-3"
-                  >
-                    <ShieldCheck size={16} />
-                    إدارة ومنح صلاحيات الكورسات لهذا الطالب
-                  </Link>
+                  {loadingPerformance ? (
+                    <div className="text-center py-6 text-xs text-gray-400 flex items-center justify-center gap-2">
+                      <Loader2 size={15} className="animate-spin text-[#7D79F1]" />
+                      جاري تحميل بيانات الكورسات...
+                    </div>
+                  ) : studentPerformance.length === 0 ? (
+                    <div className="text-center py-6 bg-gray-50 rounded-2xl border border-dashed border-gray-250 p-4 space-y-1.5">
+                      <p className="text-xs text-gray-600 font-bold">الطالب غير مشترك في أي كورس حالياً.</p>
+                      <p className="text-[11px] text-gray-400">يمكنك الضغط على زر "إضافة كورس" بالأعلى لتفعيل أي كورس له مباشرة.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {studentPerformance.map((courseItem: any) => {
+                        const isTransferringThis = transferringCourseId === courseItem.courseId;
+
+                        return (
+                          <div key={courseItem.courseId} className="bg-gray-50 p-3.5 rounded-2xl border text-xs space-y-2.5">
+                            
+                            {/* Course Title and Progress */}
+                            <div className="flex justify-between items-start gap-2">
+                              <span className="font-bold text-[#2D2B7A] text-xs line-clamp-1">{courseItem.courseTitle}</span>
+                              <span className="bg-purple-100 text-[#7D79F1] px-2 py-0.5 rounded text-[10px] font-bold shrink-0">
+                                {courseItem.progress}%
+                              </span>
+                            </div>
+
+                            {/* Direct Action Buttons: Transfer & Cancel Subscription */}
+                            <div className="flex items-center gap-2 pt-1 border-t border-gray-200/60">
+                              <button
+                                onClick={() => {
+                                  setTransferringCourseId(isTransferringThis ? null : courseItem.courseId);
+                                  setSelectedTransferTargetId("");
+                                }}
+                                className="flex-1 py-1.5 px-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg text-[10px] transition flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                <ArrowRightLeft size={12} />
+                                تبديل بكورس آخر
+                              </button>
+                              
+                              <button
+                                onClick={() => handleCancelCourseSubscription(courseItem.courseId, courseItem.courseTitle)}
+                                className="flex-1 py-1.5 px-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-lg text-[10px] transition flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                <Trash2 size={12} />
+                                إلغاء الاشتراك
+                              </button>
+                            </div>
+
+                            {/* Inline Transfer Form */}
+                            {isTransferringThis && (
+                              <div className="p-2.5 bg-blue-50/80 border border-blue-200 rounded-xl space-y-2 animate-in fade-in duration-150">
+                                <p className="text-[10px] font-bold text-blue-900">اختر الكورس البديل للتحويل إليه فوراً:</p>
+                                <select
+                                  className="w-full p-2 bg-white border border-blue-200 rounded-lg text-xs font-semibold text-[#2D2B7A] outline-none cursor-pointer"
+                                  value={selectedTransferTargetId}
+                                  onChange={(e) => setSelectedTransferTargetId(e.target.value)}
+                                >
+                                  <option value="">-- اختر الكورس الجديد --</option>
+                                  {allCourses
+                                    .filter((c) => c.id !== courseItem.courseId)
+                                    .map((c) => (
+                                      <option key={c.id} value={c.id}>
+                                        {c.title}
+                                      </option>
+                                    ))}
+                                </select>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleTransferCourse(courseItem.courseId)}
+                                    disabled={transferSubmitting || !selectedTransferTargetId}
+                                    className="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-lg text-[10px] transition flex items-center justify-center gap-1 cursor-pointer"
+                                  >
+                                    {transferSubmitting ? <Loader2 size={11} className="animate-spin" /> : "تأكيد التبديل 🔄"}
+                                  </button>
+                                  <button
+                                    onClick={() => setTransferringCourseId(null)}
+                                    className="px-2.5 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-lg text-[10px] cursor-pointer"
+                                  >
+                                    إلغاء
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Progress bar */}
+                            <div className="w-full bg-gray-250 h-1.5 rounded-full overflow-hidden">
+                              <div className="bg-[#7D79F1] h-full rounded-full" style={{ width: `${courseItem.progress}%` }} />
+                            </div>
+
+                            {/* Lectures Progress */}
+                            {courseItem.lessonStats?.length > 0 && (
+                              <div className="pt-2 border-t border-gray-200/50 space-y-1.5">
+                                <p className="text-[10px] text-gray-400 font-bold flex items-center gap-1">🎥 تقدم مشاهدة المحاضرات:</p>
+                                {courseItem.lessonStats.map((ls: any) => (
+                                  <div key={ls.id} className="flex justify-between items-center text-[10px] text-gray-600 bg-white/70 p-1.5 rounded border border-gray-150 gap-2">
+                                    <span className="font-semibold line-clamp-1 flex-1 text-right">{ls.title}</span>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <span className={`font-bold text-left ${ls.viewsCount > 0 ? "text-[#7D79F1]" : "text-gray-400"}`}>
+                                        {ls.viewsCount > 0 ? `شوهد: ${ls.viewsCount} / 4 - مرات` : "لم يُشاهد بعد"}
+                                      </span>
+                                      {ls.viewsCount > 0 && (
+                                        <button
+                                          onClick={async () => {
+                                            if (confirm(`هل أنت متأكد من تصفير وإعادة تعيين مشاهدات الطالب لهذا الدرس؟`)) {
+                                              try {
+                                                await resetStudentVideoProgress(selectedStudent.id, ls.id);
+                                                alert("تم تصفير عدد المشاهدات بنجاح.");
+                                                loadStudentPerformanceData(selectedStudent.id);
+                                              } catch (err: any) {
+                                                alert("فشل إعادة التعيين: " + err.message);
+                                              }
+                                            }
+                                          }}
+                                          className="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 rounded border border-red-200 bg-red-50 hover:bg-red-100 transition cursor-pointer text-[9px]"
+                                          title="تصفير المشاهدات"
+                                        >
+                                          تصفير 🔄
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Quiz stats list */}
+                            {courseItem.quizStats?.length > 0 && (
+                              <div className="pt-2 border-t border-gray-200/50 space-y-1.5">
+                                <p className="text-[10px] text-gray-400 font-bold">📝 أداء الامتحانات والواجبات:</p>
+                                {courseItem.quizStats.map((qs: any) => (
+                                  <div key={qs.id} className="flex justify-between text-[11px] text-gray-500">
+                                    <span>{qs.type === "final" ? "🏆 الامتحان النهائي" : `📝 ${qs.title}`}</span>
+                                    <span className={qs.highestScore !== null ? (qs.passed ? "text-green-600 font-bold" : "text-red-500") : "text-gray-400"}>
+                                      {qs.highestScore !== null ? `${qs.highestScore}% (محاولات: ${qs.attemptsCount})` : "لم يحل بعد"}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-3 border-t pt-4 mt-4">

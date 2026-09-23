@@ -251,20 +251,32 @@ export async function revokeCourseAccess(studentId: string, courseId: string) {
 
   const { data, error } = await supabase
     .from("course_access")
-    .update({
+    .upsert({
+      student_id: studentId,
+      course_id: courseId,
       status: "revoked",
+      access_type: "manual",
       revoked_by: user.id,
       revoked_at: now,
       updated_at: now,
-    })
-    .eq("student_id", studentId)
-    .eq("course_id", courseId)
+    }, { onConflict: "student_id,course_id" })
     .select()
     .maybeSingle();
 
   if (error) {
     console.error("Error revoking course access:", error.message);
     throw error;
+  }
+
+  // Also update subscriptions status if any exists
+  try {
+    await supabase
+      .from("subscriptions")
+      .update({ status: "rejected" })
+      .eq("user_id", studentId)
+      .eq("course_id", courseId);
+  } catch (subErr) {
+    console.warn("Could not update subscription status on revoke:", subErr);
   }
 
   return data;
@@ -280,7 +292,7 @@ export async function transferCourseAccess(
   toCourseId: string
 ) {
   if (fromCourseId === toCourseId) {
-    throw new Error("لا يمكن نقل الصلاحية إلى نفس الكورس.");
+    throw new Error("لا يمكن نقل الاشتراك إلى نفس الكورس.");
   }
 
   const supabase = createClient();
@@ -292,19 +304,28 @@ export async function transferCourseAccess(
   // 1. Revoke access from current course
   const { error: revokeError } = await supabase
     .from("course_access")
-    .update({
+    .upsert({
+      student_id: studentId,
+      course_id: fromCourseId,
       status: "revoked",
+      access_type: "transfer",
       revoked_by: user.id,
       revoked_at: now,
       updated_at: now,
-    })
-    .eq("student_id", studentId)
-    .eq("course_id", fromCourseId);
+    }, { onConflict: "student_id,course_id" });
 
   if (revokeError) {
     console.error("Error revoking previous course during transfer:", revokeError.message);
     throw revokeError;
   }
+
+  try {
+    await supabase
+      .from("subscriptions")
+      .update({ status: "rejected" })
+      .eq("user_id", studentId)
+      .eq("course_id", fromCourseId);
+  } catch (e) {}
 
   // 2. Grant access to new course with type = transfer
   const { data: grantData, error: grantError } = await supabase
