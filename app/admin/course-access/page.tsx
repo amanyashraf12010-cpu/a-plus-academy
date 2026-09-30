@@ -9,8 +9,13 @@ import {
   revokeCourseAccess, 
   transferCourseAccess, 
   getCourseAccessStats,
+  getLessonsForCourse,
+  grantMultipleLessonsAccess,
+  getStudentLessonAccesses,
+  revokeLessonAccess,
   CourseAccessItem,
-  StudentProfile 
+  StudentProfile,
+  LessonAccessItem
 } from "@/lib/course-access";
 import { getCourses } from "@/lib/admin";
 import { 
@@ -33,7 +38,9 @@ import {
   GraduationCap,
   Sparkles,
   Layers,
-  KeyRound
+  KeyRound,
+  Unlock,
+  Lock
 } from "lucide-react";
 
 function mapGradeToArabic(grade: string) {
@@ -89,6 +96,7 @@ export default function CourseAccessManagementPage() {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedStudentProfile, setSelectedStudentProfile] = useState<StudentProfile | null>(null);
   const [studentHistory, setStudentHistory] = useState<CourseAccessItem[]>([]);
+  const [studentLessonHistory, setStudentLessonHistory] = useState<LessonAccessItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Grant Modal
@@ -98,6 +106,10 @@ export default function CourseAccessManagementPage() {
   const [searchingStudents, setSearchingStudents] = useState(false);
   const [selectedGrantStudent, setSelectedGrantStudent] = useState<StudentProfile | null>(null);
   const [selectedGrantCourseId, setSelectedGrantCourseId] = useState("");
+  const [grantScope, setGrantScope] = useState<"full" | "lessons">("full");
+  const [grantCourseLessons, setGrantCourseLessons] = useState<any[]>([]);
+  const [loadingGrantLessons, setLoadingGrantLessons] = useState(false);
+  const [grantSelectedLessonIds, setGrantSelectedLessonIds] = useState<string[]>([]);
   const [selectedGrantAccessType, setSelectedGrantAccessType] = useState<"manual" | "free">("manual");
   const [grantSubmitting, setGrantSubmitting] = useState(false);
 
@@ -156,12 +168,47 @@ export default function CourseAccessManagementPage() {
     setSelectedStudentProfile(student);
     try {
       setLoadingHistory(true);
-      const history = await getStudentCourseAccesses(student.id);
+      const [history, lessonHistory] = await Promise.all([
+        getStudentCourseAccesses(student.id),
+        getStudentLessonAccesses(student.id)
+      ]);
       setStudentHistory(history);
+      setStudentLessonHistory(lessonHistory);
     } catch (error) {
       console.error("Error loading student access history:", error);
     } finally {
       setLoadingHistory(false);
+    }
+  }
+
+  async function handleGrantCourseSelect(courseId: string) {
+    setSelectedGrantCourseId(courseId);
+    setGrantSelectedLessonIds([]);
+    if (!courseId) {
+      setGrantCourseLessons([]);
+      return;
+    }
+    try {
+      setLoadingGrantLessons(true);
+      const lessons = await getLessonsForCourse(courseId);
+      setGrantCourseLessons(lessons || []);
+    } catch (e) {
+      console.error("Error loading lessons in grant modal:", e);
+    } finally {
+      setLoadingGrantLessons(false);
+    }
+  }
+
+  async function handleRevokeLessonInHistory(studentId: string, lessonId: string) {
+    if (!confirm("هل أنت متأكد من إلغاء صلاحية هذه الحصة للطالب؟")) return;
+    try {
+      await revokeLessonAccess(studentId, lessonId);
+      alert("تم إلغاء صلاحية الحصة بنجاح.");
+      if (selectedStudentProfile) {
+        loadStudentHistory(selectedStudentProfile);
+      }
+    } catch (err: any) {
+      alert("فشل إلغاء صلاحية الحصة: " + err.message);
     }
   }
 
@@ -199,13 +246,27 @@ export default function CourseAccessManagementPage() {
       return;
     }
 
+    if (grantScope === "lessons" && grantSelectedLessonIds.length === 0) {
+      alert("يرجى اختيار حصة واحدة على الأقل لمنح الطالب صلاحية الوصول إليها.");
+      return;
+    }
+
     try {
       setGrantSubmitting(true);
-      await grantCourseAccess(selectedGrantStudent.id, selectedGrantCourseId, selectedGrantAccessType);
-      alert("✅ تم منح صلاحية الوصول للكورس بنجاح!");
+      if (grantScope === "full") {
+        await grantCourseAccess(selectedGrantStudent.id, selectedGrantCourseId, selectedGrantAccessType);
+        alert("✅ تم منح صلاحية الوصول للكورس بالكامل بنجاح!");
+      } else {
+        await grantMultipleLessonsAccess(selectedGrantStudent.id, selectedGrantCourseId, grantSelectedLessonIds);
+        alert(`✅ تم منح صلاحية الوصول إلى (${grantSelectedLessonIds.length}) حصة بنجاح!`);
+      }
+
       setShowGrantModal(false);
       setSelectedGrantStudent(null);
       setSelectedGrantCourseId("");
+      setGrantSelectedLessonIds([]);
+      setGrantCourseLessons([]);
+      setGrantScope("full");
       setGrantSearchQuery("");
       loadData();
       if (selectedStudentProfile?.id === selectedGrantStudent.id) {
@@ -685,94 +746,123 @@ export default function CourseAccessManagementPage() {
                 منح كورس جديد لهذا الطالب
               </button>
 
-              {/* Courses History List */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold text-[#2D2B7A] flex items-center gap-1.5">
-                  <BookOpen size={14} className="text-gray-400" />
-                  الكورسات الممنوحة والسابقة:
-                </h4>
+              {/* Courses & Lessons History List */}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-xs font-bold text-[#2D2B7A] flex items-center gap-1.5 mb-2">
+                    <BookOpen size={14} className="text-gray-400" />
+                    الكورسات الممنوحة:
+                  </h4>
 
-                {loadingHistory ? (
-                  <div className="text-center py-6 text-xs text-gray-400 flex items-center justify-center gap-2">
-                    <Loader2 size={16} className="animate-spin text-[#7D79F1]" />
-                    جاري جلب سجل الكورسات...
-                  </div>
-                ) : studentHistory.length === 0 ? (
-                  <p className="text-xs text-gray-400 text-center py-4 bg-gray-50 rounded-xl border">
-                    لا توجد صلاحيات مسجلة لهذا الطالب بعد.
-                  </p>
-                ) : (
-                  <div className="space-y-2.5">
-                    {studentHistory.map((item) => {
-                      const isActive = item.status === "active";
-                      return (
-                        <div
-                          key={item.id}
-                          className={`p-3.5 rounded-xl border text-xs space-y-2 transition ${
-                            isActive
-                              ? "bg-emerald-50/40 border-emerald-200"
-                              : "bg-red-50/30 border-red-200 opacity-80"
-                          }`}
-                        >
-                          <div className="flex justify-between items-start gap-2">
-                            <span className="font-bold text-[#2D2B7A] line-clamp-1">
-                              {item.courses?.title}
-                            </span>
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
-                                isActive
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-red-100 text-red-600"
-                              }`}
-                            >
-                              {isActive ? "مفعل" : "ملغى"}
-                            </span>
-                          </div>
-
-                          <div className="flex justify-between items-center text-[10px] text-gray-500 pt-1 border-t border-gray-200/50">
-                            <span>النوع: <strong>{item.access_type}</strong></span>
-                            <span>{formatDate(item.granted_at)}</span>
-                          </div>
-
-                          {/* Actions inside sidebar */}
-                          <div className="flex gap-2 pt-1">
-                            {isActive ? (
-                              <>
-                                <button
-                                  onClick={() => {
-                                    setTransferItem(item);
-                                    setSelectedTargetCourseId("");
-                                    setShowTransferModal(true);
-                                  }}
-                                  className="flex-1 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1"
-                                >
-                                  <ArrowRightLeft size={12} />
-                                  نقل
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setRevokeItem(item);
-                                    setShowRevokeModal(true);
-                                  }}
-                                  className="flex-1 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1"
-                                >
-                                  <Ban size={12} />
-                                  إلغاء
-                                </button>
-                              </>
-                            ) : (
-                              <button
-                                onClick={() => handleReactivateAccess(item)}
-                                className="w-full py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1"
+                  {loadingHistory ? (
+                    <div className="text-center py-4 text-xs text-gray-400 flex items-center justify-center gap-2">
+                      <Loader2 size={15} className="animate-spin text-[#7D79F1]" />
+                      جاري جلب سجل الكورسات...
+                    </div>
+                  ) : studentHistory.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-3 bg-gray-50 rounded-xl border">
+                      لا توجد كورسات كاملة ممنوحة لهذا الطالب.
+                    </p>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {studentHistory.map((item) => {
+                        const isActive = item.status === "active";
+                        return (
+                          <div
+                            key={item.id}
+                            className={`p-3.5 rounded-xl border text-xs space-y-2 transition ${
+                              isActive
+                                ? "bg-emerald-50/40 border-emerald-200"
+                                : "bg-red-50/30 border-red-200 opacity-80"
+                            }`}
+                          >
+                            <div className="flex justify-between items-start gap-2">
+                              <span className="font-bold text-[#2D2B7A] line-clamp-1">
+                                {item.courses?.title}
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                                  isActive
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-red-100 text-red-600"
+                                }`}
                               >
-                                <CheckCircle2 size={12} />
-                                إعادة التفعيل
-                              </button>
-                            )}
+                                {isActive ? "مفعل" : "ملغى"}
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between items-center text-[10px] text-gray-500 pt-1 border-t border-gray-200/50">
+                              <span>النوع: <strong>{item.access_type}</strong></span>
+                              <span>{formatDate(item.granted_at)}</span>
+                            </div>
+
+                            {/* Actions inside sidebar */}
+                            <div className="flex gap-2 pt-1">
+                              {isActive ? (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      setTransferItem(item);
+                                      setSelectedTargetCourseId("");
+                                      setShowTransferModal(true);
+                                    }}
+                                    className="flex-1 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                                  >
+                                    <ArrowRightLeft size={12} />
+                                    نقل
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setRevokeItem(item);
+                                      setShowRevokeModal(true);
+                                    }}
+                                    className="flex-1 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                                  >
+                                    <Ban size={12} />
+                                    إلغاء
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() => handleReactivateAccess(item)}
+                                  className="w-full py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                                >
+                                  <CheckCircle2 size={12} />
+                                  إعادة التفعيل
+                                </button>
+                              )}
+                            </div>
                           </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Individual Lessons History */}
+                {studentLessonHistory.length > 0 && (
+                  <div className="pt-2 border-t border-gray-200/60">
+                    <h4 className="text-xs font-bold text-[#2D2B7A] flex items-center gap-1.5 mb-2">
+                      <Unlock size={14} className="text-[#7D79F1]" />
+                      الحصص الفردية المفتوحة ({studentLessonHistory.length} حصة):
+                    </h4>
+                    <div className="space-y-2">
+                      {studentLessonHistory.map((lh) => (
+                        <div key={lh.id} className="p-2.5 bg-purple-50/50 border border-purple-200 rounded-xl text-xs flex justify-between items-center gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-[#2D2B7A] truncate text-[11px]">{lh.lessons?.title || "حصة بدون اسم"}</p>
+                            <p className="text-[10px] text-gray-400 truncate">{lh.courses?.title}</p>
+                          </div>
+                          <button
+                            onClick={() => handleRevokeLessonInHistory(selectedStudentProfile!.id, lh.lesson_id)}
+                            className="text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded bg-red-50 hover:bg-red-100 border border-red-200 text-[10px] transition cursor-pointer shrink-0"
+                            title="إلغاء الحصة"
+                          >
+                            إلغاء ❌
+                          </button>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -793,14 +883,14 @@ export default function CourseAccessManagementPage() {
       {/* ========================================================================= */}
       {showGrantModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border space-y-6 animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border space-y-6 animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             
             <div className="flex justify-between items-center border-b pb-4">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 bg-purple-100 text-[#7D79F1] rounded-xl">
                   <Plus size={20} />
                 </div>
-                <h3 className="text-xl font-extrabold text-[#2D2B7A]">منح صلاحية كورس لطالب</h3>
+                <h3 className="text-xl font-extrabold text-[#2D2B7A]">منح صلاحية كورس أو حصص</h3>
               </div>
               <button
                 onClick={() => setShowGrantModal(false)}
@@ -827,7 +917,7 @@ export default function CourseAccessManagementPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedGrantStudent(null)}
-                      className="text-xs font-bold text-red-500 hover:text-red-700 p-1"
+                      className="text-xs font-bold text-red-500 hover:text-red-700 p-1 cursor-pointer"
                     >
                       تغيير
                     </button>
@@ -881,7 +971,7 @@ export default function CourseAccessManagementPage() {
                   required
                   className="w-full px-3.5 py-3 rounded-xl border border-gray-200 text-xs md:text-sm font-semibold text-[#2D2B7A] outline-none focus:border-[#7D79F1] bg-white cursor-pointer"
                   value={selectedGrantCourseId}
-                  onChange={(e) => setSelectedGrantCourseId(e.target.value)}
+                  onChange={(e) => handleGrantCourseSelect(e.target.value)}
                 >
                   <option value="">-- اختر الكورس --</option>
                   {allCourses.map((c) => (
@@ -892,10 +982,106 @@ export default function CourseAccessManagementPage() {
                 </select>
               </div>
 
-              {/* Step 3: Access Type */}
+              {/* Step 3: Scope Selection (Full Course vs Specific Lessons) */}
+              {selectedGrantCourseId && (
+                <div className="space-y-2.5 pt-1">
+                  <label className="text-xs font-bold text-gray-700">
+                    3. نطاق الصلاحية <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setGrantScope("full")}
+                      className={`p-2.5 rounded-xl text-xs font-bold border transition text-center cursor-pointer ${
+                        grantScope === "full"
+                          ? "bg-[#7D79F1] text-white border-[#7D79F1] shadow-xs"
+                          : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                      }`}
+                    >
+                      🟢 الكورس بالكامل
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGrantScope("lessons")}
+                      className={`p-2.5 rounded-xl text-xs font-bold border transition text-center cursor-pointer ${
+                        grantScope === "lessons"
+                          ? "bg-[#7D79F1] text-white border-[#7D79F1] shadow-xs"
+                          : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                      }`}
+                    >
+                      🟣 حصص محددة فقط
+                    </button>
+                  </div>
+
+                  {grantScope === "lessons" && (
+                    <div className="space-y-2 bg-gray-50 p-3.5 rounded-xl border border-gray-200">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-gray-700">حدد الحصص المطلوبة:</span>
+                        <div className="flex gap-2 text-[11px]">
+                          <button
+                            type="button"
+                            onClick={() => setGrantSelectedLessonIds(grantCourseLessons.map((l: any) => l.id))}
+                            className="text-[#7D79F1] font-bold hover:underline cursor-pointer"
+                          >
+                            تحديد الكل
+                          </button>
+                          <span className="text-gray-300">•</span>
+                          <button
+                            type="button"
+                            onClick={() => setGrantSelectedLessonIds([])}
+                            className="text-gray-500 font-bold hover:underline cursor-pointer"
+                          >
+                            إلغاء التحديد
+                          </button>
+                        </div>
+                      </div>
+
+                      {loadingGrantLessons ? (
+                        <div className="text-center py-4 text-xs text-gray-400 flex items-center justify-center gap-1.5">
+                          <Loader2 size={13} className="animate-spin text-[#7D79F1]" />
+                          جاري تحميل الحصص...
+                        </div>
+                      ) : grantCourseLessons.length === 0 ? (
+                        <p className="text-xs text-amber-600 text-center py-2">لا توجد حصص في هذا الكورس.</p>
+                      ) : (
+                        <div className="max-h-48 overflow-y-auto space-y-1 pr-1 divide-y divide-gray-100 bg-white rounded-lg p-2 border">
+                          {grantCourseLessons.map((l: any, idx: number) => {
+                            const isChecked = grantSelectedLessonIds.includes(l.id);
+                            return (
+                              <label
+                                key={l.id}
+                                className={`flex items-center gap-2.5 p-2 rounded-lg text-xs cursor-pointer transition ${
+                                  isChecked ? "bg-purple-50 text-[#2D2B7A] font-bold" : "hover:bg-gray-50 text-gray-600"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setGrantSelectedLessonIds((prev) => [...prev, l.id]);
+                                    } else {
+                                      setGrantSelectedLessonIds((prev) => prev.filter((id) => id !== l.id));
+                                    }
+                                  }}
+                                  className="rounded text-[#7D79F1] focus:ring-[#7D79F1]"
+                                />
+                                <span className="text-[10px] text-gray-400 font-mono">#{idx + 1}</span>
+                                <span className="flex-1 line-clamp-1">{l.title}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Step 4: Access Type */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-gray-700">
-                  3. نوع المنح
+                  {selectedGrantCourseId ? "4. نوع المنح" : "3. نوع المنح"}
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <label className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer text-xs font-bold transition ${
@@ -936,8 +1122,8 @@ export default function CourseAccessManagementPage() {
               <div className="flex gap-3 pt-4 border-t">
                 <button
                   type="submit"
-                  disabled={grantSubmitting}
-                  className="flex-1 py-3 px-4 bg-[#7D79F1] hover:bg-[#655EF0] text-white rounded-xl font-bold transition text-xs md:text-sm flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                  disabled={grantSubmitting || !selectedGrantCourseId || (grantScope === "lessons" && grantSelectedLessonIds.length === 0)}
+                  className="flex-1 py-3 px-4 bg-[#7D79F1] hover:bg-[#655EF0] disabled:opacity-50 text-white rounded-xl font-bold transition text-xs md:text-sm flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                 >
                   {grantSubmitting ? (
                     <>

@@ -391,3 +391,188 @@ export async function getCourseAccessStats() {
     manual,
   };
 }
+
+// =========================================================================
+// 8. Individual Lesson Access Management (صلاحيات الحصص الفردية)
+// =========================================================================
+
+export interface LessonAccessItem {
+  id: string;
+  user_id: string;
+  course_id: string;
+  lesson_id: string;
+  created_at: string;
+  lessons?: {
+    id: string;
+    title: string;
+    order: number;
+    price?: number;
+    duration?: string;
+  };
+  courses?: {
+    id: string;
+    title: string;
+  };
+}
+
+export async function getLessonsForCourse(courseId: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("lessons")
+    .select("id, title, order, price, duration, publish_at")
+    .eq("course_id", courseId)
+    .order("order", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching lessons for course:", error.message);
+    throw error;
+  }
+
+  return data || [];
+}
+
+export async function grantLessonAccess(
+  studentId: string,
+  courseId: string,
+  lessonId: string
+) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("lesson_access")
+    .upsert(
+      {
+        user_id: studentId,
+        course_id: courseId,
+        lesson_id: lessonId,
+      },
+      { onConflict: "user_id,lesson_id" }
+    )
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error granting lesson access:", error.message);
+    throw error;
+  }
+
+  // If there is any pending subscription record for this lesson, approve it
+  try {
+    await supabase
+      .from("subscriptions")
+      .update({ status: "approved" })
+      .eq("user_id", studentId)
+      .eq("course_id", courseId)
+      .eq("lesson_id", lessonId);
+  } catch (subErr) {
+    console.warn("Could not sync pending subscription on grantLessonAccess:", subErr);
+  }
+
+  return data;
+}
+
+export async function grantMultipleLessonsAccess(
+  studentId: string,
+  courseId: string,
+  lessonIds: string[]
+) {
+  if (!lessonIds || lessonIds.length === 0) return [];
+  const supabase = createClient();
+
+  const rows = lessonIds.map((lessonId) => ({
+    user_id: studentId,
+    course_id: courseId,
+    lesson_id: lessonId,
+  }));
+
+  const { data, error } = await supabase
+    .from("lesson_access")
+    .upsert(rows, { onConflict: "user_id,lesson_id" })
+    .select();
+
+  if (error) {
+    console.error("Error granting multiple lesson accesses:", error.message);
+    throw error;
+  }
+
+  // Update any pending subscriptions for these lessons
+  try {
+    await supabase
+      .from("subscriptions")
+      .update({ status: "approved" })
+      .eq("user_id", studentId)
+      .eq("course_id", courseId)
+      .in("lesson_id", lessonIds);
+  } catch (subErr) {
+    console.warn("Could not sync pending subscriptions on grantMultipleLessonsAccess:", subErr);
+  }
+
+  return data || [];
+}
+
+export async function revokeLessonAccess(studentId: string, lessonId: string) {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("lesson_access")
+    .delete()
+    .eq("user_id", studentId)
+    .eq("lesson_id", lessonId);
+
+  if (error) {
+    console.error("Error revoking lesson access:", error.message);
+    throw error;
+  }
+
+  // Also reject any single lesson subscription
+  try {
+    await supabase
+      .from("subscriptions")
+      .update({ status: "rejected" })
+      .eq("user_id", studentId)
+      .eq("lesson_id", lessonId);
+  } catch (subErr) {
+    console.warn("Could not sync rejected subscription on revokeLessonAccess:", subErr);
+  }
+
+  return { success: true };
+}
+
+export async function getStudentLessonAccesses(studentId: string, courseId?: string) {
+  const supabase = createClient();
+
+  let query = supabase
+    .from("lesson_access")
+    .select(`
+      id,
+      user_id,
+      course_id,
+      lesson_id,
+      created_at,
+      lessons:lesson_id (
+        id,
+        title,
+        order,
+        price,
+        duration
+      ),
+      courses:course_id (
+        id,
+        title
+      )
+    `)
+    .eq("user_id", studentId)
+    .order("created_at", { ascending: false });
+
+  if (courseId) {
+    query = query.eq("course_id", courseId);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("Error fetching student lesson accesses:", error.message);
+    throw error;
+  }
+
+  return (data || []) as LessonAccessItem[];
+}
