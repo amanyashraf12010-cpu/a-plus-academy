@@ -12,8 +12,9 @@ import {
   grantLessonAccess, 
   revokeLessonAccess 
 } from "@/lib/course-access";
-import { Search, Check, Trash2, Phone, User, GraduationCap, MapPin, Eye, School, Mail, ShieldCheck, Plus, ArrowRightLeft, X, Loader2, Lock, Unlock, PlayCircle } from "lucide-react";
+import { Search, Check, Trash2, Phone, User, GraduationCap, MapPin, Eye, School, Mail, ShieldCheck, Plus, ArrowRightLeft, X, Loader2, Lock, Unlock, PlayCircle, FileSpreadsheet } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import StudentExportModal from "@/components/admin/StudentExportModal";
 
 function mapGradeToArabic(grade: string) {
   switch (grade) {
@@ -39,6 +40,7 @@ export default function AdminStudentsPage() {
   const [gradeFilter, setGradeFilter] = useState("");
   const [approvalFilter, setApprovalFilter] = useState("all");
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // Student Course & Lesson Actions State
   const [showAddCourse, setShowAddCourse] = useState(false);
@@ -492,11 +494,19 @@ export default function AdminStudentsPage() {
     <div className="space-y-8" dir="rtl">
       
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-[#2D2B7A]">👨‍🎓 إدارة الطلاب</h1>
-          <p className="text-gray-500 mt-2">عرض وتفعيل وحذف حسابات الطلاب المسجلين في المنصة</p>
+          <p className="text-gray-500 mt-2">عرض وتفعيل وحذف حسابات الطلاب وإدارة الصلاحيات وتصدير التقارير</p>
         </div>
+        
+        <button
+          onClick={() => setShowExportModal(true)}
+          className="flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-extrabold shadow-md hover:shadow-lg hover:shadow-emerald-600/25 transition active:scale-95 text-sm"
+        >
+          <FileSpreadsheet size={20} className="text-emerald-200" />
+          <span>تصدير بيانات الطلاب (.xlsx)</span>
+        </button>
       </div>
 
       {/* Filters & Search */}
@@ -1058,6 +1068,17 @@ export default function AdminStudentsPage() {
         </div>
 
       </div>
+
+      {/* Export Students Modal */}
+      {showExportModal && (
+        <StudentExportModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          allStudents={students}
+          currentFilteredStudents={filteredStudents}
+          allCourses={allCourses}
+        />
+      )}
 
     </div>
   );
