@@ -20,6 +20,286 @@ export async function getAdminQuizzesForCourse(courseId: string) {
   return data || [];
 }
 
+export async function getAdminFinalExamsForCourse(courseId: string) {
+  const supabase = createClient();
+
+  // 1. Fetch all final exams for this course
+  const { data: exams, error } = await supabase
+    .from("quizzes")
+    .select("*, questions(id)")
+    .eq("course_id", courseId)
+    .eq("type", "final")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("فشل جلب الامتحانات النهائية للكورس:", error.message);
+    throw error;
+  }
+
+  const examList = exams || [];
+  if (examList.length === 0) return [];
+
+  // 2. Fetch attempts counts for all these exams
+  const examIds = examList.map((e: any) => e.id);
+  const { data: attempts, error: attErr } = await supabase
+    .from("student_quiz_attempts")
+    .select("quiz_id, user_id, score, status")
+    .in("quiz_id", examIds)
+    .eq("status", "submitted");
+
+  if (attErr) console.warn("Error fetching attempts count for final exams:", attErr);
+
+  const attemptsByExamMap = new Map<string, any[]>();
+  (attempts || []).forEach((att: any) => {
+    if (!attemptsByExamMap.has(att.quiz_id)) {
+      attemptsByExamMap.set(att.quiz_id, []);
+    }
+    attemptsByExamMap.get(att.quiz_id)!.push(att);
+  });
+
+  return examList.map((exam: any) => {
+    const examAttempts = attemptsByExamMap.get(exam.id) || [];
+    const uniqueStudents = new Set(examAttempts.map((a: any) => a.user_id));
+    const passedAttempts = examAttempts.filter((a: any) => Number(a.score) >= exam.passing_score);
+    const questionsCount = Array.isArray(exam.questions) ? exam.questions.length : 0;
+
+    return {
+      ...exam,
+      questionsCount,
+      totalAttempts: examAttempts.length,
+      participatingStudentsCount: uniqueStudents.size,
+      passedCount: passedAttempts.length,
+    };
+  });
+}
+
+export async function checkQuizHasAttempts(quizId: string) {
+  const supabase = createClient();
+  const { count, error } = await supabase
+    .from("student_quiz_attempts")
+    .select("id", { count: "exact", head: true })
+    .eq("quiz_id", quizId)
+    .eq("status", "submitted");
+
+  if (error) {
+    console.error("Error checking quiz attempts:", error);
+    return { hasAttempts: false, count: 0 };
+  }
+  return { hasAttempts: (count || 0) > 0, count: count || 0 };
+}
+
+export async function duplicateQuiz(quizId: string, customTitle?: string) {
+  const supabase = createClient();
+
+  // 1. Fetch original quiz with all its questions and options
+  const { data: originalQuiz, error: fetchErr } = await supabase
+    .from("quizzes")
+    .select("*, questions(*, options(*))")
+    .eq("id", quizId)
+    .single();
+
+  if (fetchErr || !originalQuiz) {
+    throw new Error("لم يتم العثور على الامتحان المطلوب تكراره.");
+  }
+
+  // 2. Create the new Quiz record (Draft by default)
+  const newTitle = customTitle?.trim() || `${originalQuiz.title} (نسخة جديدة)`;
+  const { data: newQuiz, error: createErr } = await supabase
+    .from("quizzes")
+    .insert([
+      {
+        course_id: originalQuiz.course_id,
+        lesson_id: null, // Multiple final exams are course-level
+        title: newTitle,
+        type: originalQuiz.type,
+        passing_score: originalQuiz.passing_score,
+        duration: originalQuiz.duration,
+        start_time: originalQuiz.start_time,
+        end_time: originalQuiz.end_time,
+        is_active: false, // Created as Draft so the teacher/admin can review
+        show_solutions: originalQuiz.show_solutions ?? false,
+      }
+    ])
+    .select()
+    .single();
+
+  if (createErr || !newQuiz) {
+    throw new Error("فشل إنشاء نسخة الامتحان: " + createErr?.message);
+  }
+
+  // 3. Clone questions & options with fresh unique IDs
+  const rawQuestions = originalQuiz.questions || [];
+  if (rawQuestions.length > 0) {
+    const passageMap = new Map<string, string>();
+
+    // Sort original questions by order_num/created_at
+    const sortedQuestions = [...rawQuestions].sort((a: any, b: any) => {
+      const ordA = a.order_num ?? 0;
+      const ordB = b.order_num ?? 0;
+      return ordA - ordB;
+    });
+
+    for (const q of sortedQuestions) {
+      let newPassageId = null;
+      if (q.passage_id) {
+        if (!passageMap.has(q.passage_id)) {
+          passageMap.set(q.passage_id, `passage_${Date.now()}_${Math.random().toString(36).substring(7)}`);
+        }
+        newPassageId = passageMap.get(q.passage_id);
+      }
+
+      const qPayload: any = {
+        quiz_id: newQuiz.id,
+        question_text: q.question_text,
+        question_image: q.question_image,
+        correct_option: q.correct_option || "A",
+        order_num: q.order_num,
+        type: q.type || "mcq",
+        min_words: q.min_words,
+        max_words: q.max_words,
+        passage_id: newPassageId,
+        passage_text: q.passage_text,
+      };
+
+      const { data: newQ, error: qErr } = await supabase
+        .from("questions")
+        .insert([qPayload])
+        .select()
+        .single();
+
+      if (!qErr && newQ && Array.isArray(q.options) && q.options.length > 0) {
+        const optionsPayload = q.options.map((opt: any) => ({
+          question_id: newQ.id,
+          option_letter: opt.option_letter,
+          option_text: opt.option_text,
+          option_image: opt.option_image,
+        }));
+        await supabase.from("options").insert(optionsPayload);
+      }
+    }
+  }
+
+  return newQuiz;
+}
+
+export async function getSingleQuizResultsReport(quizId: string) {
+  const supabase = createClient();
+
+  // 1. Fetch Quiz Details
+  const { data: quiz, error: quizError } = await supabase
+    .from("quizzes")
+    .select("*, questions(id), courses(id, title)")
+    .eq("id", quizId)
+    .single();
+
+  if (quizError || !quiz) {
+    throw new Error("لم يتم العثور على بيانات الامتحان.");
+  }
+
+  // 2. Fetch all submitted attempts for this quiz
+  const { data: attempts, error: attError } = await supabase
+    .from("student_quiz_attempts")
+    .select(`
+      id,
+      user_id,
+      quiz_id,
+      score,
+      correct_count,
+      total_questions,
+      status,
+      started_at,
+      submitted_at,
+      created_at,
+      profiles:user_id (id, full_name, email, phone, parent_phone, governorate, grade, school)
+    `)
+    .eq("quiz_id", quizId)
+    .eq("status", "submitted")
+    .order("submitted_at", { ascending: false });
+
+  if (attError) throw attError;
+
+  const rawAttempts = attempts || [];
+  const passingScore = Number(quiz.passing_score) || 50;
+
+  // 3. Group attempts by student
+  const studentMap = new Map<string, {
+    student: any;
+    attemptsCount: number;
+    bestScore: number;
+    latestScore: number;
+    bestCorrectCount: number;
+    totalQuestions: number;
+    isPassed: boolean;
+    latestSubmittedAt: string | null;
+    attemptsList: any[];
+  }>();
+
+  rawAttempts.forEach((att: any) => {
+    const student = att.profiles || {
+      id: att.user_id,
+      full_name: "طالب غير مسجل",
+      phone: "—",
+      email: "—"
+    };
+
+    const sId = att.user_id;
+    const scoreNum = Number(att.score) || 0;
+
+    if (!studentMap.has(sId)) {
+      studentMap.set(sId, {
+        student,
+        attemptsCount: 0,
+        bestScore: scoreNum,
+        latestScore: scoreNum,
+        bestCorrectCount: att.correct_count || 0,
+        totalQuestions: att.total_questions || 0,
+        isPassed: scoreNum >= passingScore,
+        latestSubmittedAt: att.submitted_at || att.created_at,
+        attemptsList: [],
+      });
+    }
+
+    const current = studentMap.get(sId)!;
+    current.attemptsCount += 1;
+    current.attemptsList.push(att);
+
+    if (scoreNum > current.bestScore) {
+      current.bestScore = scoreNum;
+      current.bestCorrectCount = att.correct_count || 0;
+      current.totalQuestions = att.total_questions || current.totalQuestions;
+    }
+
+    if (current.bestScore >= passingScore) {
+      current.isPassed = true;
+    }
+  });
+
+  const studentsList = Array.from(studentMap.values()).sort((a, b) => b.bestScore - a.bestScore);
+
+  // 4. Calculate Aggregate Summary KPIs
+  const totalParticipants = studentsList.length;
+  const passedStudents = studentsList.filter((s) => s.isPassed);
+  const failedStudents = studentsList.filter((s) => !s.isPassed);
+  const totalScoreSum = studentsList.reduce((acc, s) => acc + s.bestScore, 0);
+  const averageScore = totalParticipants > 0 ? Math.round(totalScoreSum / totalParticipants) : 0;
+  const passRate = totalParticipants > 0 ? Math.round((passedStudents.length / totalParticipants) * 100) : 0;
+
+  return {
+    quiz,
+    totalQuestions: Array.isArray(quiz.questions) ? quiz.questions.length : 0,
+    passingScore,
+    kpis: {
+      totalParticipants,
+      totalAttempts: rawAttempts.length,
+      passedCount: passedStudents.length,
+      failedCount: failedStudents.length,
+      averageScore,
+      passRate,
+    },
+    students: studentsList,
+  };
+}
+
 export async function saveQuiz(quiz: {
   id?: string;
   course_id: string;
@@ -32,6 +312,7 @@ export async function saveQuiz(quiz: {
   end_time?: string | null;
   is_active: boolean;
   show_solutions?: boolean;
+  description?: string | null;
 }) {
   const supabase = createClient();
 
@@ -47,6 +328,7 @@ export async function saveQuiz(quiz: {
   const extendedPayload: any = {
     ...basePayload,
     show_solutions: quiz.show_solutions ?? false,
+    description: quiz.description || null,
   };
 
   if (quiz.id) {
@@ -120,6 +402,22 @@ export async function toggleQuizSolutions(quizId: string, showSolutions: boolean
   return data;
 }
 
+export async function toggleQuizActive(quizId: string, isActive: boolean) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("quizzes")
+    .update({ is_active: isActive })
+    .eq("id", quizId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("فشل تعديل حالة تفعيل الامتحان:", error.message);
+    throw error;
+  }
+  return data;
+}
+
 export async function deleteQuiz(quizId: string) {
   const supabase = createClient();
   const { error } = await supabase.from("quizzes").delete().eq("id", quizId);
@@ -155,8 +453,8 @@ export async function saveQuestion(
   question: {
     id?: string;
     type?: "mcq" | "paragraph";
-    question_text?: string;
-    question_image?: string;
+    question_text?: string | null;
+    question_image?: string | null;
     correct_option?: "A" | "B" | "C" | "D" | null;
     min_words?: number | null;
     max_words?: number | null;
@@ -167,8 +465,8 @@ export async function saveQuestion(
   },
   options: Array<{
     option_letter: "A" | "B" | "C" | "D";
-    option_text?: string;
-    option_image?: string;
+    option_text?: string | null;
+    option_image?: string | null;
   }> = []
 ) {
   const supabase = createClient();
@@ -590,42 +888,59 @@ export async function getCourseStudentPerformance(courseId: string) {
       ? Math.round((completedLessons / lessonQuizzes.length) * 100)
       : 100; // if no homework quizzes, they have 100% course video access progress
 
-    // Final exam stats
-    let finalExamResult = null;
-    if (finalExams.length > 0) {
-      const fq = finalExams[0];
+    // Final exams stats (all final exams for this course)
+    const finalExamsResults = finalExams.map((fq: any) => {
       const key = `${std.id}_${fq.id}`;
       const userFinalAttempts = attemptsMap.get(key) || [];
-      
-      if (userFinalAttempts.length > 0) {
+      const attemptsCount = userFinalAttempts.length;
+
+      if (attemptsCount > 0) {
         const lastAtt = userFinalAttempts[0];
-        finalExamResult = {
+        const highestScore = Math.max(...userFinalAttempts.map((a: any) => Number(a.score)));
+        const passed = userFinalAttempts.some((a: any) => Number(a.score) >= fq.passing_score);
+
+        return {
           quizId: fq.id,
           quizTitle: fq.title,
           status: "submitted",
           score: lastAtt.score,
+          highestScore,
+          passed,
+          attemptsCount,
           correctCount: lastAtt.correct_count,
           totalQuestions: lastAtt.total_questions,
-          submittedAt: lastAtt.submitted_at
+          submittedAt: lastAtt.submitted_at,
+          attempts: userFinalAttempts.map((a: any) => ({
+            score: a.score,
+            correctCount: a.correct_count,
+            totalQuestions: a.total_questions,
+            submittedAt: a.submitted_at,
+          }))
         };
       } else {
-        // Check if there are in_progress attempts
-        finalExamResult = {
+        return {
           quizId: fq.id,
           quizTitle: fq.title,
           status: "not_started",
           score: null,
+          highestScore: null,
+          passed: false,
+          attemptsCount: 0,
           correctCount: null,
           totalQuestions: null,
-          submittedAt: null
+          submittedAt: null,
+          attempts: []
         };
       }
-    }
+    });
+
+    const finalExamResult = finalExamsResults.length > 0 ? finalExamsResults[0] : null;
 
     return {
       student: std,
       progress,
       quizzesResult,
+      finalExamsResults,
       finalExamResult
     };
   });

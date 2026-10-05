@@ -984,115 +984,125 @@ export default function LearnPage() {
                   })}
                 </div>
 
-                {/* Final Exam Section */}
-                {progressInfo?.finalExam && (() => {
-                  const finalExam = progressInfo.finalExam;
-                  const now = new Date();
-                  const isUpcoming = finalExam.startTime && new Date(finalExam.startTime) > now;
-                  const isExpired = finalExam.endTime && new Date(finalExam.endTime) < now;
-                  const isSubmitted = finalExam.status === "submitted";
-                  const isOpen = !isUpcoming && !isExpired;
-
-                  return (
-                    <div className="mt-6 border-t pt-6">
-                      <div className="p-5 rounded-2xl border bg-gradient-to-br from-indigo-50/50 to-purple-50/50 border-[#E8E5FF] transition">
-                        <div className="flex items-center justify-between mb-3">
-                          <h3 className="font-extrabold text-[#2D2B7A] text-sm flex items-center gap-1.5">
-                            🏆 الامتحان الشامل النهائي
-                          </h3>
-                          {isSubmitted ? (
-                            <span className="bg-green-50 text-green-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-green-200">
-                              تم التسليم
-                            </span>
-                          ) : isUpcoming ? (
-                            <span className="bg-amber-50 text-amber-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-amber-200">
-                              ⏳ سيبدأ قريباً
-                            </span>
-                          ) : isExpired ? (
-                            <span className="bg-red-50 text-red-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-red-200">
-                              منتهي
-                            </span>
-                          ) : (
-                            <span className="bg-purple-100 text-[#7D79F1] px-2.5 py-0.5 rounded-full text-[10px] font-bold animate-pulse">
-                              متاح الآن
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="text-xs text-gray-500 leading-relaxed mb-4">
-                          {isSubmitted
-                            ? "لقد قمت بتسليم الامتحان الشامل. يمكنك الضغط لمراجعة درجتك وإجاباتك."
-                            : isUpcoming
-                            ? "الامتحان مجدول وسيفتح تلقائياً في الموعد المحدد أدناه."
-                            : isExpired
-                            ? "انتهت الفترة المحددة لإجراء هذا الامتحان الشامل."
-                            : "الامتحان الشامل متاح لك الآن للحل. اضغط على الزر أدناه لبدء الامتحان قبل انتهاء الموعد."}
-                        </p>
-
-                        {isSubmitted ? (
-                          <div className="bg-white p-3.5 rounded-xl border border-gray-100 mb-4 text-xs font-semibold text-[#2D2B7A] space-y-2 shadow-sm">
-                            <div className="flex justify-between">
-                              <span>حالة تسليم الامتحان:</span>
-                              <span className="text-green-600">تم التسليم بنجاح ✓</span>
-                            </div>
-                            <div className="flex justify-between border-t pt-2">
-                              <span>درجة الامتحان:</span>
-                              <span className="text-[#7D79F1] font-bold text-sm">{finalExam.score}%</span>
-                            </div>
-                          </div>
-                        ) : isUpcoming ? (
-                          <div className="bg-amber-50 text-amber-800 p-3 rounded-xl border border-amber-200 text-xs font-semibold mb-4 text-center leading-relaxed">
-                            ⏳ سيبدأ الامتحان في:<br />
-                            <strong className="text-amber-900">{new Date(finalExam.startTime).toLocaleString("ar-EG")}</strong>
-                          </div>
-                        ) : isExpired ? (
-                          <div className="bg-red-50 text-red-800 p-3 rounded-xl border border-red-200 text-xs font-semibold mb-4 text-center leading-relaxed">
-                            ❌ انتهى موعد الامتحان في:<br />
-                            <strong className="text-red-900">{new Date(finalExam.endTime).toLocaleString("ar-EG")}</strong>
-                          </div>
-                        ) : (
-                          finalExam.endTime && (
-                            <div className="bg-purple-50 text-[#2D2B7A] p-3 rounded-xl border border-purple-200 text-xs font-semibold mb-4 text-center">
-                              ⏱️ متاح حتى: {new Date(finalExam.endTime).toLocaleString("ar-EG")}
-                            </div>
-                          )
-                        )}
-
-                        <div className="space-y-2">
-                          {isSubmitted ? (
-                            <Link
-                              href={`/learn/${courseId}/quiz/${finalExam.id}`}
-                              className="w-full bg-white hover:bg-gray-50 border border-gray-200 text-[#7D79F1] text-center py-3 rounded-xl text-xs font-bold block transition shadow-sm"
-                            >
-                              مراجعة الامتحان وتصحيح الإجابات
-                            </Link>
-                          ) : isOpen ? (
-                            <Link
-                              href={`/learn/${courseId}/quiz/${finalExam.id}`}
-                              className="w-full bg-[#7D79F1] hover:bg-[#655EF0] text-white text-center py-3 rounded-xl text-xs font-bold block transition shadow-md hover:shadow-lg cursor-pointer"
-                            >
-                              بدء الامتحان النهائي الشامل 🚀
-                            </Link>
-                          ) : isUpcoming ? (
-                            <button
-                              disabled
-                              className="w-full bg-gray-100 text-gray-400 text-center py-3 rounded-xl text-xs font-bold block cursor-not-allowed border border-gray-200"
-                            >
-                              الامتحان لم يبدأ بعد
-                            </button>
-                          ) : (
-                            <button
-                              disabled
-                              className="w-full bg-gray-100 text-gray-400 text-center py-3 rounded-xl text-xs font-bold block cursor-not-allowed border border-gray-200"
-                            >
-                              انتهت فترة الامتحان
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                {/* Final Exams Section */}
+                {((progressInfo?.finalExams && progressInfo.finalExams.length > 0) || progressInfo?.finalExam) && (
+                  <div className="mt-6 border-t pt-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-extrabold text-[#2D2B7A] text-sm flex items-center gap-1.5">
+                        🏆 الامتحانات النهائية الشاملة
+                      </h3>
+                      <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2.5 py-0.5 rounded-full">
+                        {(progressInfo.finalExams || [progressInfo.finalExam]).length} امتحان
+                      </span>
                     </div>
-                  );
-                })()}
+
+                    <div className="space-y-3">
+                      {(progressInfo.finalExams && progressInfo.finalExams.length > 0
+                        ? progressInfo.finalExams
+                        : [progressInfo.finalExam]
+                      ).map((finalExam: any) => {
+                        if (!finalExam) return null;
+                        const now = new Date();
+                        const isUpcoming = finalExam.startTime && new Date(finalExam.startTime) > now;
+                        const isExpired = finalExam.endTime && new Date(finalExam.endTime) < now;
+                        const isSubmitted = finalExam.status === "submitted";
+                        const isOpen = !isUpcoming && !isExpired;
+
+                        return (
+                          <div
+                            key={finalExam.id}
+                            className="p-4 rounded-2xl border bg-gradient-to-br from-indigo-50/40 via-purple-50/30 to-white border-[#E8E5FF] transition shadow-sm space-y-3"
+                          >
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-extrabold text-[#2D2B7A] text-xs">
+                                {finalExam.title || "الامتحان النهائي الشامل"}
+                              </h4>
+                              {isSubmitted ? (
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                  finalExam.isPassed
+                                    ? "bg-green-50 text-green-700 border-green-200"
+                                    : "bg-red-50 text-red-700 border-red-200"
+                                }`}>
+                                  {finalExam.isPassed ? "تم الاجتياز ✓" : "لم يتم الاجتياز"}
+                                </span>
+                              ) : isUpcoming ? (
+                                <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-amber-200">
+                                  ⏳ قريباً
+                                </span>
+                              ) : isExpired ? (
+                                <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-red-200">
+                                  منتهي
+                                </span>
+                              ) : (
+                                <span className="bg-purple-100 text-[#7D79F1] px-2 py-0.5 rounded-full text-[10px] font-bold animate-pulse">
+                                  متاح للحل
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 text-[11px] text-gray-500">
+                              {finalExam.duration && <span>⏱️ المدة: {finalExam.duration} دقيقة</span>}
+                              {finalExam.passingScore && <span>🎯 درجة النجاح: {finalExam.passingScore}%</span>}
+                            </div>
+
+                            {isSubmitted ? (
+                              <div className="bg-white p-2.5 rounded-xl border border-gray-100 text-xs font-semibold text-[#2D2B7A] flex justify-between items-center shadow-xs">
+                                <span>درجة الامتحان:</span>
+                                <span className="text-[#7D79F1] font-bold text-sm">{finalExam.score}%</span>
+                              </div>
+                            ) : isUpcoming ? (
+                              <div className="bg-amber-50 text-amber-800 p-2.5 rounded-xl border border-amber-200 text-[11px] font-semibold text-center">
+                                ⏳ سيبدأ في: <strong>{new Date(finalExam.startTime).toLocaleString("ar-EG")}</strong>
+                              </div>
+                            ) : isExpired ? (
+                              <div className="bg-red-50 text-red-800 p-2.5 rounded-xl border border-red-200 text-[11px] font-semibold text-center">
+                                ❌ انتهى في: <strong>{new Date(finalExam.endTime).toLocaleString("ar-EG")}</strong>
+                              </div>
+                            ) : (
+                              finalExam.endTime && (
+                                <div className="bg-purple-50 text-[#2D2B7A] p-2 rounded-xl border border-purple-200 text-[11px] font-semibold text-center">
+                                  ⏱️ متاح حتى: {new Date(finalExam.endTime).toLocaleString("ar-EG")}
+                                </div>
+                              )
+                            )}
+
+                            <div>
+                              {isSubmitted ? (
+                                <Link
+                                  href={`/learn/${courseId}/quiz/${finalExam.id}`}
+                                  className="w-full bg-white hover:bg-gray-50 border border-gray-200 text-[#7D79F1] text-center py-2.5 rounded-xl text-xs font-bold block transition shadow-sm"
+                                >
+                                  مراجعة الامتحان وتصحيح الإجابات
+                                </Link>
+                              ) : isOpen ? (
+                                <Link
+                                  href={`/learn/${courseId}/quiz/${finalExam.id}`}
+                                  className="w-full bg-[#7D79F1] hover:bg-[#655EF0] text-white text-center py-2.5 rounded-xl text-xs font-bold block transition shadow-md hover:shadow-lg cursor-pointer"
+                                >
+                                  بدء الامتحان 🚀
+                                </Link>
+                              ) : isUpcoming ? (
+                                <button
+                                  disabled
+                                  className="w-full bg-gray-100 text-gray-400 text-center py-2.5 rounded-xl text-xs font-bold block cursor-not-allowed border border-gray-200"
+                                >
+                                  الامتحان لم يبدأ بعد
+                                </button>
+                              ) : (
+                                <button
+                                  disabled
+                                  className="w-full bg-gray-100 text-gray-400 text-center py-2.5 rounded-xl text-xs font-bold block cursor-not-allowed border border-gray-200"
+                                >
+                                  انتهت فترة الامتحان
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
               </div>
             </div>

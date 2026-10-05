@@ -22,6 +22,24 @@ export async function getQuizForLesson(lessonId: string) {
   return data;
 }
 
+export async function getFinalExamsForCourse(courseId: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("quizzes")
+    .select("*, questions(*, options(*))")
+    .eq("course_id", courseId)
+    .eq("type", "final")
+    .eq("is_active", true)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("خطأ أثناء جلب الامتحانات الشاملة:", error.message);
+    throw error;
+  }
+  return data || [];
+}
+
 export async function getFinalExamForCourse(courseId: string) {
   const supabase = createClient();
 
@@ -31,6 +49,8 @@ export async function getFinalExamForCourse(courseId: string) {
     .eq("course_id", courseId)
     .eq("type", "final")
     .eq("is_active", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
 
   if (error) {
@@ -355,21 +375,22 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
       .map((vp: any) => vp.lesson_id)
   );
 
-  // 2. Fetch all quizzes for these lessons + final exam
+  // 2. Fetch all quizzes for these lessons + all final exams
   const { data: quizzes, error: quizzesError } = await supabase
     .from("quizzes")
-    .select("id, lesson_id, type, passing_score")
+    .select("id, lesson_id, type, passing_score, title, duration, start_time, end_time, is_active, show_solutions, questions(id)")
     .eq("course_id", courseId)
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .order("created_at", { ascending: true });
 
   if (quizzesError) throw quizzesError;
 
   const quizByLessonMap = new Map<string, any>();
-  let finalExam: any = null;
+  const rawFinalExams: any[] = [];
 
   (quizzes || []).forEach((q: any) => {
     if (q.type === "final") {
-      finalExam = q;
+      rawFinalExams.push(q);
     } else if (q.lesson_id) {
       quizByLessonMap.set(q.lesson_id, q);
     }
@@ -492,41 +513,44 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
   }).length;
   const courseProgress = lessons.length > 0 ? Math.round((completedLessons / lessons.length) * 100) : 0;
 
-  // 6. Check if final exam is unlocked (governed strictly by scheduled timeline, independent of lecture/quiz completion)
+  // 6. Calculate details for all Final Exams of this Course
   const finalExamUnlocked = true;
 
-  // Fetch final exam status
-  let finalExamStatus = "not_started";
-  let finalExamScore: number | null = null;
-  let finalExamId: string | null = null;
-  let finalDuration: number | null = null;
-  let finalStartTime: string | null = null;
-  let finalEndTime: string | null = null;
+  const finalExamsList = rawFinalExams.map((fe: any) => {
+    const feAtts = attemptsByQuizMap.get(fe.id) || [];
+    const hasSubmitted = feAtts.length > 0;
+    const highestScore = hasSubmitted ? Math.max(...feAtts.map((a: any) => Number(a.score))) : null;
+    const isPassed = highestScore !== null ? highestScore >= (fe.passing_score || 50) : false;
+    const totalQuestions = Array.isArray(fe.questions) ? fe.questions.length : undefined;
 
-  if (finalExam) {
-    finalExamId = finalExam.id;
-    finalDuration = finalExam.duration;
-    finalStartTime = finalExam.start_time;
-    finalEndTime = finalExam.end_time;
-    const finalAtts = attemptsByQuizMap.get(finalExam.id) || [];
-    if (finalAtts.length > 0) {
-      finalExamStatus = "submitted";
-      finalExamScore = finalAtts[0].score; // Final exam is single attempt, so we grab the first one
-    }
-  }
+    return {
+      id: fe.id,
+      title: fe.title || "الامتحان النهائي الشامل",
+      status: hasSubmitted ? "submitted" : "not_started",
+      score: highestScore,
+      duration: fe.duration,
+      startTime: fe.start_time,
+      endTime: fe.end_time,
+      passingScore: fe.passing_score || 50,
+      showSolutions: Boolean(fe.show_solutions),
+      totalQuestions,
+      attemptsCount: feAtts.length,
+      isPassed,
+      attempts: feAtts.map((a: any) => ({
+        id: a.id,
+        score: a.score,
+        correctCount: a.correct_count,
+        totalQuestions: a.total_questions,
+        submittedAt: a.submitted_at,
+      }))
+    };
+  });
 
   return {
     lessons: lessonsWithLockState,
     courseProgress,
     finalExamUnlocked,
-    finalExam: finalExam ? {
-      id: finalExamId,
-      status: finalExamStatus,
-      score: finalExamScore,
-      duration: finalDuration,
-      startTime: finalStartTime,
-      endTime: finalEndTime,
-      passingScore: finalExam.passing_score
-    } : null
+    finalExams: finalExamsList,
+    finalExam: finalExamsList.length > 0 ? finalExamsList[0] : null
   };
 }

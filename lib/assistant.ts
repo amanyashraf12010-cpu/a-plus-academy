@@ -390,6 +390,22 @@ export interface StudentCourseProgressData {
     startTime?: string;
     endTime?: string;
   } | null;
+  finalExams?: Array<{
+    id: string;
+    title: string;
+    hasFinalExam: boolean;
+    isSubmitted: boolean;
+    isPassed: boolean;
+    score?: number;
+    scoreText: string;
+    correctCount?: number;
+    totalQuestions?: number;
+    passingScore?: number;
+    submittedAt?: string;
+    duration?: number;
+    startTime?: string;
+    endTime?: string;
+  }>;
 }
 
 export async function getAssistantStudentCourseProgress(
@@ -545,11 +561,9 @@ export async function getAssistantStudentCourseProgress(
     };
   });
 
-  // 9. Build Final Exam Data
-  const rawFinalQuiz = quizList.find((q: any) => q.type === "final");
-  let finalExamData: StudentCourseProgressData["finalExam"] = null;
-
-  if (rawFinalQuiz) {
+  // 9. Build Final Exam Data (Supports Multiple Final Exams)
+  const rawFinalQuizzes = quizList.filter((q: any) => q.type === "final");
+  const finalExamsList: NonNullable<StudentCourseProgressData["finalExams"]> = rawFinalQuizzes.map((rawFinalQuiz: any) => {
     const att = attemptsMap.get(rawFinalQuiz.id);
     let isSubmitted = false;
     let score: number | undefined = undefined;
@@ -575,7 +589,7 @@ export async function getAssistantStudentCourseProgress(
       }
     }
 
-    finalExamData = {
+    return {
       id: rawFinalQuiz.id,
       title: rawFinalQuiz.title || "الامتحان النهائي الشامل",
       hasFinalExam: true,
@@ -591,12 +605,15 @@ export async function getAssistantStudentCourseProgress(
       startTime: rawFinalQuiz.start_time,
       endTime: rawFinalQuiz.end_time,
     };
-  }
+  });
+
+  const finalExamData = finalExamsList.length > 0 ? finalExamsList[0] : null;
 
   return {
     videos,
     homeworks,
     finalExam: finalExamData,
+    finalExams: finalExamsList,
   };
 }
 

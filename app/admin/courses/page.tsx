@@ -130,7 +130,7 @@ export default function AdminCoursesPage() {
                   href={`/admin/courses/exams?courseId=${course.id}`}
                   className="flex-1 py-2 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition rounded-xl font-bold text-xs flex items-center justify-center gap-1.5"
                 >
-                  🏆 الامتحان النهائي
+                  🏆 الامتحانات النهائية
                 </a>
 
                 <button
