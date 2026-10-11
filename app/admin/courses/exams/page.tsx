@@ -1322,7 +1322,7 @@ function ExamsPageContent() {
                 placeholder="ابحث بالاسم، الهاتف، المحافظة..."
                 value={resultsSearchTerm}
                 onChange={(e) => setResultsSearchTerm(e.target.value)}
-                className="w-full pl-4 pr-10 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold outline-none focus:border-[#7D79F1]"
+                className="w-full pl-4 pr-10 py-2.5 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 text-sm font-bold outline-none focus:border-[#7D79F1]"
               />
               <Search className="absolute right-3 top-3 text-gray-400" size={16} />
             </div>
@@ -1506,11 +1506,11 @@ function ExamsPageContent() {
 
               <form onSubmit={handleSaveQuiz} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1.5">عنوان الامتحان</label>
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">عنوان الامتحان</label>
                   <input
                     type="text"
                     required
-                    className="w-full px-4 py-2.5 rounded-xl border outline-none text-[#2D2B7A] focus:border-[#7D79F1] text-sm font-medium"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 focus:border-[#7D79F1] outline-none text-sm font-bold"
                     value={quizTitle}
                     onChange={(e) => setQuizTitle(e.target.value)}
                   />
@@ -1518,10 +1518,10 @@ function ExamsPageContent() {
 
                 {!lessonId && (
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1.5">وصف الامتحان (اختياري)</label>
+                    <label className="block text-xs font-bold text-gray-800 mb-1.5">وصف الامتحان (اختياري)</label>
                     <textarea
                       rows={2}
-                      className="w-full px-4 py-2 rounded-xl border outline-none text-[#2D2B7A] focus:border-[#7D79F1] text-xs font-medium resize-none"
+                      className="w-full px-4 py-2 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 focus:border-[#7D79F1] outline-none text-xs font-semibold resize-none"
                       value={quizDescription}
                       onChange={(e) => setQuizDescription(e.target.value)}
                       placeholder="وصف مختصر لمحتوى الامتحان..."
@@ -1531,24 +1531,24 @@ function ExamsPageContent() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1.5">درجة النجاح (%)</label>
+                    <label className="block text-xs font-bold text-gray-800 mb-1.5">درجة النجاح (%)</label>
                     <input
                       type="number"
                       required
                       min={0}
                       max={100}
-                      className="w-full px-4 py-2.5 rounded-xl border outline-none text-[#2D2B7A] focus:border-[#7D79F1] text-sm font-semibold"
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 focus:border-[#7D79F1] outline-none text-sm font-bold"
                       value={passingScore}
                       onChange={(e) => setPassingScore(Number(e.target.value))}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-1.5">المؤقت (بالدقائق)</label>
+                    <label className="block text-xs font-bold text-gray-800 mb-1.5">المؤقت (بالدقائق)</label>
                     <input
                       type="number"
                       placeholder="بدون مؤقت"
-                      className="w-full px-4 py-2.5 rounded-xl border outline-none text-[#2D2B7A] focus:border-[#7D79F1] text-sm font-semibold"
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 focus:border-[#7D79F1] outline-none text-sm font-bold"
                       value={duration}
                       onChange={(e) => setDuration(e.target.value)}
                     />
@@ -1559,19 +1559,19 @@ function ExamsPageContent() {
                 {!lessonId && (
                   <div className="grid grid-cols-2 gap-4 pt-2">
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1.5">تاريخ البداية (اختياري)</label>
+                      <label className="block text-xs font-bold text-gray-800 mb-1.5">تاريخ البداية (اختياري)</label>
                       <input
                         type="datetime-local"
-                        className="w-full px-3 py-2 rounded-xl border outline-none text-[#2D2B7A] focus:border-[#7D79F1] text-xs font-medium"
+                        className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-white text-slate-900 focus:border-[#7D79F1] outline-none text-xs font-semibold"
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-500 mb-1.5">تاريخ النهاية (اختياري)</label>
+                      <label className="block text-xs font-bold text-gray-800 mb-1.5">تاريخ النهاية (اختياري)</label>
                       <input
                         type="datetime-local"
-                        className="w-full px-3 py-2 rounded-xl border outline-none text-[#2D2B7A] focus:border-[#7D79F1] text-xs font-medium"
+                        className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-white text-slate-900 focus:border-[#7D79F1] outline-none text-xs font-semibold"
                         value={endTime}
                         onChange={(e) => setEndTime(e.target.value)}
                       />
@@ -1944,31 +1944,31 @@ function ExamsPageContent() {
 
             <form onSubmit={handleCreateNewExam} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">اسم الامتحان *</label>
+                <label className="block text-xs font-bold text-gray-800 mb-1">اسم الامتحان *</label>
                 <input
                   type="text"
                   required
                   value={newExamTitle}
                   onChange={(e) => setNewExamTitle(e.target.value)}
                   placeholder="مثال: الامتحان النهائي الشامل 1"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm font-semibold focus:border-[#7D79F1]"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 outline-none text-sm font-bold focus:border-[#7D79F1]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">وصف الامتحان (اختياري)</label>
+                <label className="block text-xs font-bold text-gray-800 mb-1">وصف الامتحان (اختياري)</label>
                 <textarea
                   rows={2}
                   value={newExamDescription}
                   onChange={(e) => setNewExamDescription(e.target.value)}
                   placeholder="ملاحظات أو توجيهات حول الامتحان..."
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 outline-none text-xs font-semibold focus:border-[#7D79F1] resize-none"
+                  className="w-full px-4 py-2 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 outline-none text-xs font-bold focus:border-[#7D79F1] resize-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">درجة النجاح (%)</label>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">درجة النجاح (%)</label>
                   <input
                     type="number"
                     min={0}
@@ -1976,41 +1976,41 @@ function ExamsPageContent() {
                     required
                     value={newExamPassingScore}
                     onChange={(e) => setNewExamPassingScore(Number(e.target.value))}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 outline-none text-sm font-semibold focus:border-[#7D79F1]"
+                    className="w-full px-4 py-2 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 outline-none text-sm font-bold focus:border-[#7D79F1]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">المدة (بالدقائق)</label>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">المدة (بالدقائق)</label>
                   <input
                     type="number"
                     min={1}
                     placeholder="بدون وقت محدد"
                     value={newExamDuration}
                     onChange={(e) => setNewExamDuration(e.target.value)}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-200 outline-none text-sm font-semibold focus:border-[#7D79F1]"
+                    className="w-full px-4 py-2 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 outline-none text-sm font-bold focus:border-[#7D79F1]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">تاريخ البدء (اختياري)</label>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">تاريخ البدء (اختياري)</label>
                   <input
                     type="datetime-local"
                     value={newExamStartTime}
                     onChange={(e) => setNewExamStartTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 outline-none text-xs font-semibold focus:border-[#7D79F1]"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-white text-slate-900 outline-none text-xs font-bold focus:border-[#7D79F1]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">تاريخ الانتهاء (اختياري)</label>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">تاريخ الانتهاء (اختياري)</label>
                   <input
                     type="datetime-local"
                     value={newExamEndTime}
                     onChange={(e) => setNewExamEndTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 outline-none text-xs font-semibold focus:border-[#7D79F1]"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-300 bg-white text-slate-900 outline-none text-xs font-bold focus:border-[#7D79F1]"
                   />
                 </div>
               </div>
@@ -2150,7 +2150,7 @@ function ExamsPageContent() {
                   value={qText}
                   onChange={(e) => setQText(e.target.value)}
                   placeholder="اكتب نص السؤال هنا..."
-                  className="w-full p-3 rounded-xl border border-gray-200 text-sm font-semibold outline-none focus:border-[#7D79F1] resize-none"
+                  className="w-full p-3 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 text-sm font-bold outline-none focus:border-[#7D79F1] resize-none"
                 />
               </div>
 
@@ -2160,7 +2160,7 @@ function ExamsPageContent() {
                   type="file"
                   accept="image/*"
                   onChange={(e) => setQImageFile(e.target.files?.[0] || null)}
-                  className="w-full text-xs"
+                  className="w-full text-xs text-slate-700 font-semibold file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-purple-50 file:text-[#7D79F1] hover:file:bg-purple-100"
                 />
               </div>
 
@@ -2172,7 +2172,7 @@ function ExamsPageContent() {
                       type="number"
                       value={minWords}
                       onChange={(e) => setMinWords(Number(e.target.value))}
-                      className="w-full p-2 bg-white rounded-xl border text-sm font-bold"
+                      className="w-full p-2 bg-white rounded-xl border border-amber-300 text-sm font-bold text-slate-900"
                     />
                   </div>
                   <div>
@@ -2181,7 +2181,7 @@ function ExamsPageContent() {
                       type="number"
                       value={maxWords}
                       onChange={(e) => setMaxWords(Number(e.target.value))}
-                      className="w-full p-2 bg-white rounded-xl border text-sm font-bold"
+                      className="w-full p-2 bg-white rounded-xl border border-amber-300 text-sm font-bold text-slate-900"
                     />
                   </div>
                 </div>
@@ -2211,13 +2211,13 @@ function ExamsPageContent() {
                         placeholder={`نص الاختيار (${item.letter})`}
                         value={item.val}
                         onChange={(e) => item.setVal(e.target.value)}
-                        className="flex-1 p-2 rounded-lg border bg-white text-xs font-semibold outline-none focus:border-[#7D79F1]"
+                        className="flex-1 p-2 rounded-lg border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 text-xs font-bold outline-none focus:border-[#7D79F1]"
                       />
                       <input
                         type="file"
                         accept="image/*"
                         onChange={(e) => item.setFile(e.target.files?.[0] || null)}
-                        className="text-[10px] w-28 shrink-0"
+                        className="text-[10px] w-28 shrink-0 text-slate-600 font-semibold file:mr-1 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-gray-100 file:text-gray-700"
                       />
                     </div>
                   ))}
@@ -2264,25 +2264,25 @@ function ExamsPageContent() {
 
             <form onSubmit={handleSavePassageGroup} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">عنوان القطعة (اختياري)</label>
+                <label className="block text-xs font-bold text-gray-800 mb-1">عنوان القطعة (اختياري)</label>
                 <input
                   type="text"
                   value={passageTitle}
                   onChange={(e) => setPassageTitle(e.target.value)}
                   placeholder="مثال: Reading Comprehension 1"
-                  className="w-full p-2.5 rounded-xl border text-sm font-semibold outline-none focus:border-[#7D79F1]"
+                  className="w-full p-2.5 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 text-sm font-bold outline-none focus:border-[#7D79F1]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">نص القطعة الكامل *</label>
+                <label className="block text-xs font-bold text-gray-800 mb-1">نص القطعة الكامل *</label>
                 <textarea
                   rows={6}
                   required
                   value={passageText}
                   onChange={(e) => setPassageText(e.target.value)}
                   placeholder="اكتب أو الصق نص القطعة هنا..."
-                  className="w-full p-3 rounded-xl border text-xs font-medium outline-none focus:border-[#7D79F1] whitespace-pre-wrap leading-relaxed"
+                  className="w-full p-3 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 text-xs font-semibold outline-none focus:border-[#7D79F1] whitespace-pre-wrap leading-relaxed"
                 />
               </div>
 
@@ -2320,7 +2320,7 @@ function ExamsPageContent() {
                       placeholder="نص السؤال..."
                       value={pqText}
                       onChange={(e) => setPqText(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border bg-white text-xs font-semibold outline-none"
+                      className="w-full p-2.5 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 text-xs font-bold outline-none focus:border-[#7D79F1]"
                     />
 
                     <div className="grid grid-cols-2 gap-2">
@@ -2344,7 +2344,7 @@ function ExamsPageContent() {
                             placeholder={`اختيار ${item.letter}`}
                             value={item.val}
                             onChange={(e) => item.setVal(e.target.value)}
-                            className="w-full text-xs outline-none"
+                            className="w-full text-xs text-slate-900 font-bold outline-none placeholder:text-gray-400"
                           />
                         </div>
                       ))}
@@ -2430,11 +2430,11 @@ function ExamsPageContent() {
             <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">اختر الكورس المصدر</label>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">اختر الكورس المصدر</label>
                   <select
                     value={selectedImportCourseId}
                     onChange={(e) => handleImportCourseChange(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border text-xs font-semibold outline-none focus:border-[#7D79F1]"
+                    className="w-full p-2.5 rounded-xl border border-gray-300 bg-white text-slate-900 text-xs font-bold outline-none focus:border-[#7D79F1]"
                   >
                     <option value="">-- حدد الكورس --</option>
                     {importCourses.map((c) => (
@@ -2444,12 +2444,12 @@ function ExamsPageContent() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">اختر الامتحان المصدر</label>
+                  <label className="block text-xs font-bold text-gray-800 mb-1">اختر الامتحان المصدر</label>
                   <select
                     value={selectedImportQuizId}
                     onChange={(e) => handleImportQuizChange(e.target.value)}
                     disabled={!selectedImportCourseId}
-                    className="w-full p-2.5 rounded-xl border text-xs font-semibold outline-none focus:border-[#7D79F1] disabled:opacity-50"
+                    className="w-full p-2.5 rounded-xl border border-gray-300 bg-white text-slate-900 text-xs font-bold outline-none focus:border-[#7D79F1] disabled:opacity-50"
                   >
                     <option value="">-- حدد الامتحان --</option>
                     {importQuizzes.map((q) => (
