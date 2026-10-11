@@ -3,6 +3,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -11,17 +12,20 @@
   --font-sans: 'Zain', Arial, Helvetica, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html, body {
+  color-scheme: light !important;
+  background-color: #ffffff;
+  color: #171717;
+  font-family: 'Zain', Arial, Helvetica, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: 'Zain', Arial, Helvetica, sans-serif;
+input, textarea, select {
+  color: #0f172a !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #64748b !important;
+  opacity: 1 !important;
 }
 
 /* Custom premium pulse animation for Continue Learning button */

@@ -1922,8 +1922,8 @@ function ExamsPageContent() {
       {/* MODAL 1: Add New Final Exam Modal                                         */}
       {/* ========================================================================= */}
       {showAddExamModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto" dir="rtl">
-          <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border overflow-hidden animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto" dir="rtl" style={{ colorScheme: "light" }}>
+          <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in-95" style={{ colorScheme: "light" }}>
             <div className="bg-gradient-to-r from-[#2D2B7A] to-[#7D79F1] p-6 text-white flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
@@ -1944,25 +1944,27 @@ function ExamsPageContent() {
 
             <form onSubmit={handleCreateNewExam} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
               <div>
-                <label className="block text-xs font-bold text-gray-800 mb-1">اسم الامتحان *</label>
+                <label className="block text-xs font-black text-slate-900 mb-1.5">اسم الامتحان *</label>
                 <input
                   type="text"
                   required
                   value={newExamTitle}
                   onChange={(e) => setNewExamTitle(e.target.value)}
                   placeholder="مثال: الامتحان النهائي الشامل 1"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 outline-none text-sm font-bold focus:border-[#7D79F1]"
+                  style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-slate-950 placeholder:text-gray-500 outline-none text-sm font-bold focus:border-[#7D79F1]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-800 mb-1">وصف الامتحان (اختياري)</label>
+                <label className="block text-xs font-black text-slate-900 mb-1.5">وصف الامتحان (اختياري)</label>
                 <textarea
                   rows={2}
                   value={newExamDescription}
                   onChange={(e) => setNewExamDescription(e.target.value)}
                   placeholder="ملاحظات أو توجيهات حول الامتحان..."
-                  className="w-full px-4 py-2 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 outline-none text-xs font-bold focus:border-[#7D79F1] resize-none"
+                  style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+                  className="w-full px-4 py-2 rounded-xl border border-gray-300 bg-white text-slate-950 placeholder:text-gray-500 outline-none text-xs font-bold focus:border-[#7D79F1] resize-none"
                 />
               </div>
 
@@ -2107,8 +2109,8 @@ function ExamsPageContent() {
       {/* ========================================================================= */}
       {/* MCQ / Paragraph Question Modal */}
       {showQModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto" dir="rtl">
-          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border overflow-hidden animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto" dir="rtl" style={{ colorScheme: "light" }}>
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in" style={{ colorScheme: "light" }}>
             <div className="bg-[#2D2B7A] p-5 text-white flex justify-between items-center">
               <h3 className="font-black text-base">
                 {qModalMode === "add" ? (qType === "paragraph" ? "إضافة سؤال مقالي جديد" : "إضافة سؤال اختيار من متعدد") : "تعديل السؤال"}
@@ -2120,13 +2122,13 @@ function ExamsPageContent() {
 
             <form onSubmit={handleSaveQuestion} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">نوع السؤال</label>
+                <label className="block text-xs font-black text-slate-900 mb-1.5">نوع السؤال</label>
                 <div className="flex gap-3">
                   <button
                     type="button"
                     onClick={() => setQType("mcq")}
-                    className={`flex-1 py-2 rounded-xl text-xs font-bold border transition ${
-                      qType === "mcq" ? "bg-[#7D79F1] text-white border-[#7D79F1]" : "bg-white text-gray-700 border-gray-200"
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                      qType === "mcq" ? "bg-[#7D79F1] text-white border-[#7D79F1] shadow-xs" : "bg-white text-slate-800 border-gray-300"
                     }`}
                   >
                     اختيار من متعدد (MCQ)
@@ -2134,8 +2136,8 @@ function ExamsPageContent() {
                   <button
                     type="button"
                     onClick={() => setQType("paragraph")}
-                    className={`flex-1 py-2 rounded-xl text-xs font-bold border transition ${
-                      qType === "paragraph" ? "bg-[#7D79F1] text-white border-[#7D79F1]" : "bg-white text-gray-700 border-gray-200"
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                      qType === "paragraph" ? "bg-[#7D79F1] text-white border-[#7D79F1] shadow-xs" : "bg-white text-slate-800 border-gray-300"
                     }`}
                   >
                     سؤال مقالي (Paragraph)
@@ -2144,57 +2146,61 @@ function ExamsPageContent() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">نص السؤال</label>
+                <label className="block text-xs font-black text-slate-900 mb-1.5">نص السؤال</label>
                 <textarea
                   rows={3}
                   value={qText}
                   onChange={(e) => setQText(e.target.value)}
                   placeholder="اكتب نص السؤال هنا..."
-                  className="w-full p-3 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 text-sm font-bold outline-none focus:border-[#7D79F1] resize-none"
+                  style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+                  className="w-full p-3.5 rounded-xl border-2 border-gray-300 bg-white text-slate-950 placeholder:text-gray-500 text-sm font-bold outline-none focus:border-[#7D79F1] resize-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">صورة السؤال (اختياري)</label>
+                <label className="block text-xs font-black text-slate-900 mb-1.5">صورة السؤال (اختياري)</label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => setQImageFile(e.target.files?.[0] || null)}
-                  className="w-full text-xs text-slate-700 font-semibold file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-purple-50 file:text-[#7D79F1] hover:file:bg-purple-100"
+                  style={{ color: "#1e293b" }}
+                  className="w-full text-xs text-slate-800 font-bold file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-[#7D79F1]/10 file:text-[#2D2B7A] hover:file:bg-[#7D79F1]/20 cursor-pointer"
                 />
               </div>
 
               {qType === "paragraph" ? (
                 <div className="grid grid-cols-2 gap-4 p-4 bg-amber-50 rounded-2xl border border-amber-200">
                   <div>
-                    <label className="block text-xs font-bold text-amber-900 mb-1">الحد الأدنى للكلمات</label>
+                    <label className="block text-xs font-black text-amber-950 mb-1">الحد الأدنى للكلمات</label>
                     <input
                       type="number"
                       value={minWords}
                       onChange={(e) => setMinWords(Number(e.target.value))}
-                      className="w-full p-2 bg-white rounded-xl border border-amber-300 text-sm font-bold text-slate-900"
+                      style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+                      className="w-full p-2.5 bg-white rounded-xl border border-amber-300 text-sm font-black text-slate-950 outline-none focus:border-[#7D79F1]"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-amber-900 mb-1">الحد الأقصى للكلمات</label>
+                    <label className="block text-xs font-black text-amber-950 mb-1">الحد الأقصى للكلمات</label>
                     <input
                       type="number"
                       value={maxWords}
                       onChange={(e) => setMaxWords(Number(e.target.value))}
-                      className="w-full p-2 bg-white rounded-xl border border-amber-300 text-sm font-bold text-slate-900"
+                      style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+                      className="w-full p-2.5 bg-white rounded-xl border border-amber-300 text-sm font-black text-slate-950 outline-none focus:border-[#7D79F1]"
                     />
                   </div>
                 </div>
               ) : (
                 <div className="space-y-3 pt-2">
-                  <label className="block text-xs font-bold text-gray-700">الخيارات الأربعة والإجابة الصحيحة</label>
+                  <label className="block text-xs font-black text-slate-900">الخيارات الأربعة والإجابة الصحيحة</label>
                   {[
                     { letter: "A" as const, val: optAText, setVal: setOptAText, setFile: setOptAImageFile },
                     { letter: "B" as const, val: optBText, setVal: setOptBText, setFile: setOptBImageFile },
                     { letter: "C" as const, val: optCText, setVal: setOptCText, setFile: setOptCImageFile },
                     { letter: "D" as const, val: optDText, setVal: setOptDText, setFile: setOptDImageFile },
                   ].map((item) => (
-                    <div key={item.letter} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border">
+                    <div key={item.letter} className="flex items-center gap-3 p-3 bg-gray-50/90 rounded-2xl border border-gray-200">
                       <input
                         type="radio"
                         name="correct_opt"
@@ -2203,7 +2209,7 @@ function ExamsPageContent() {
                         className="accent-green-600 w-4 h-4 cursor-pointer"
                         title="تحديد كإجابة صحيحة"
                       />
-                      <span className="w-6 h-6 rounded-lg bg-[#2D2B7A] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                      <span className="w-7 h-7 rounded-lg bg-[#2D2B7A] text-white flex items-center justify-center font-black text-xs shrink-0 shadow-xs">
                         {item.letter}
                       </span>
                       <input
@@ -2211,13 +2217,15 @@ function ExamsPageContent() {
                         placeholder={`نص الاختيار (${item.letter})`}
                         value={item.val}
                         onChange={(e) => item.setVal(e.target.value)}
-                        className="flex-1 p-2 rounded-lg border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 text-xs font-bold outline-none focus:border-[#7D79F1]"
+                        style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+                        className="flex-1 p-2.5 rounded-xl border border-gray-300 bg-white text-slate-950 placeholder:text-gray-500 text-xs font-bold outline-none focus:border-[#7D79F1]"
                       />
                       <input
                         type="file"
                         accept="image/*"
                         onChange={(e) => item.setFile(e.target.files?.[0] || null)}
-                        className="text-[10px] w-28 shrink-0 text-slate-600 font-semibold file:mr-1 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-gray-100 file:text-gray-700"
+                        style={{ color: "#1e293b" }}
+                        className="text-[10px] w-28 shrink-0 text-slate-700 font-bold file:mr-1 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-black file:bg-[#7D79F1]/10 file:text-[#2D2B7A] hover:file:bg-[#7D79F1]/20 cursor-pointer"
                       />
                     </div>
                   ))}
@@ -2248,8 +2256,8 @@ function ExamsPageContent() {
 
       {/* Reading Passage Modal */}
       {showPassageModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto" dir="rtl">
-          <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl border overflow-hidden animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto" dir="rtl" style={{ colorScheme: "light" }}>
+          <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in" style={{ colorScheme: "light" }}>
             <div className="bg-gradient-to-r from-[#2D2B7A] to-indigo-700 p-5 text-white flex justify-between items-center">
               <div className="flex items-center gap-2.5">
                 <BookOpen size={20} />
@@ -2264,25 +2272,27 @@ function ExamsPageContent() {
 
             <form onSubmit={handleSavePassageGroup} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
               <div>
-                <label className="block text-xs font-bold text-gray-800 mb-1">عنوان القطعة (اختياري)</label>
+                <label className="block text-xs font-black text-slate-900 mb-1.5">عنوان القطعة (اختياري)</label>
                 <input
                   type="text"
                   value={passageTitle}
                   onChange={(e) => setPassageTitle(e.target.value)}
                   placeholder="مثال: Reading Comprehension 1"
-                  className="w-full p-2.5 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 text-sm font-bold outline-none focus:border-[#7D79F1]"
+                  style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+                  className="w-full p-2.5 rounded-xl border border-gray-300 bg-white text-slate-950 placeholder:text-gray-500 text-sm font-bold outline-none focus:border-[#7D79F1]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-800 mb-1">نص القطعة الكامل *</label>
+                <label className="block text-xs font-black text-slate-900 mb-1.5">نص القطعة الكامل *</label>
                 <textarea
                   rows={6}
                   required
                   value={passageText}
                   onChange={(e) => setPassageText(e.target.value)}
                   placeholder="اكتب أو الصق نص القطعة هنا..."
-                  className="w-full p-3 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 text-xs font-semibold outline-none focus:border-[#7D79F1] whitespace-pre-wrap leading-relaxed"
+                  style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+                  className="w-full p-3.5 rounded-xl border-2 border-gray-300 bg-white text-slate-950 placeholder:text-gray-500 text-xs font-semibold outline-none focus:border-[#7D79F1] whitespace-pre-wrap leading-relaxed"
                 />
               </div>
 
@@ -2320,7 +2330,8 @@ function ExamsPageContent() {
                       placeholder="نص السؤال..."
                       value={pqText}
                       onChange={(e) => setPqText(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border border-gray-300 bg-white text-slate-900 placeholder:text-gray-400 text-xs font-bold outline-none focus:border-[#7D79F1]"
+                      style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+                      className="w-full p-2.5 rounded-xl border border-gray-300 bg-white text-slate-950 placeholder:text-gray-500 text-xs font-bold outline-none focus:border-[#7D79F1]"
                     />
 
                     <div className="grid grid-cols-2 gap-2">
@@ -2330,7 +2341,7 @@ function ExamsPageContent() {
                         { letter: "C" as const, val: pqOptCText, setVal: setPqOptCText },
                         { letter: "D" as const, val: pqOptDText, setVal: setPqOptDText },
                       ].map((item) => (
-                        <div key={item.letter} className="flex items-center gap-2 p-2 bg-white rounded-lg border">
+                        <div key={item.letter} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-300">
                           <input
                             type="radio"
                             name="pq_correct"
@@ -2344,7 +2355,8 @@ function ExamsPageContent() {
                             placeholder={`اختيار ${item.letter}`}
                             value={item.val}
                             onChange={(e) => item.setVal(e.target.value)}
-                            className="w-full text-xs text-slate-900 font-bold outline-none placeholder:text-gray-400"
+                            style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
+                            className="w-full text-xs text-slate-950 font-bold outline-none placeholder:text-gray-500"
                           />
                         </div>
                       ))}
