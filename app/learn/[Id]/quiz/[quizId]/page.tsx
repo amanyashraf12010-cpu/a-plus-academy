@@ -9,7 +9,8 @@ import {
   startQuizAttempt, 
   saveAnswer, 
   submitQuizAttempt,
-  getQuizAttempts
+  getQuizAttempts,
+  getQuizAttemptAllowance
 } from "@/lib/quizzes";
 import { countWords, getWordCountFeedback } from "@/lib/word-counter";
 import { 
@@ -72,6 +73,7 @@ export default function StudentQuizPage() {
   const [submittedResult, setSubmittedResult] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showMobilePassageModal, setShowMobilePassageModal] = useState(false);
+  const [canTakeNewAttempt, setCanTakeNewAttempt] = useState(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isSubmittingRef = useRef(false);
@@ -131,11 +133,22 @@ export default function StudentQuizPage() {
         }
       }
 
-      // 3. Fetch past attempts
+      // 3. Fetch past attempts & check attempt allowance
       const pastAttempts = await getQuizAttempts(user.id, quizData.id);
+      const allowance = await getQuizAttemptAllowance(quizData.id, user.id);
+      const extraAttempts = allowance?.extra_attempts || 0;
+      const maxAllowed = 1 + extraAttempts;
+
+      const submittedAttempts = pastAttempts.filter((att: any) => att.status === "submitted");
+      const activeAttempt = pastAttempts.find((att: any) => att.status === "in_progress");
+      const isReviewMode = typeof window !== "undefined" && window.location.search.includes("review=true");
+
+      const canTakeNew = submittedAttempts.length < maxAllowed || Boolean(activeAttempt);
+      setCanTakeNewAttempt(canTakeNew);
+
       const perfectAttempt = pastAttempts.find((att: any) => att.status === "submitted" && att.score === 100);
 
-      if (perfectAttempt) {
+      if (perfectAttempt && !canTakeNew) {
         setSubmittedResult(perfectAttempt);
         setAttempt(perfectAttempt);
 
@@ -175,19 +188,44 @@ export default function StudentQuizPage() {
         return;
       }
 
-      const activeAttempt = pastAttempts.find((att: any) => att.status === "in_progress");
-      const submittedAttempt = pastAttempts.find((att: any) => att.status === "submitted");
+      // For final exams: if student already submitted AND (cannot retake OR in review mode): show results!
+      if (quizData.type === "final" && submittedAttempts.length > 0 && (!canTakeNew || isReviewMode)) {
+        const latestOrBest = submittedAttempts[0];
+        setSubmittedResult(latestOrBest);
+        setAttempt(latestOrBest);
 
-      // For final exams: only 1 attempt is allowed! If they already submitted, show results!
-      if (quizData.type === "final" && submittedAttempt) {
-        setSubmittedResult(submittedAttempt);
-        setAttempt(submittedAttempt);
+        // Restore student answers for the submitted attempt so they can review
+        const { data: savedAnswers } = await supabase
+          .from("student_answers")
+          .select("*")
+          .eq("attempt_id", latestOrBest.id);
+
+        if (savedAnswers) {
+          const restoredAnswers: Record<string, string> = {};
+          const restoredParagraphs: Record<string, string> = {};
+          savedAnswers.forEach((ans: any) => {
+            if (ans.selected_option) restoredAnswers[ans.question_id] = ans.selected_option;
+            if (ans.answer_text) restoredParagraphs[ans.question_id] = ans.answer_text;
+          });
+          setSelectedAnswers(restoredAnswers);
+          setParagraphAnswers(restoredParagraphs);
+        }
+
+        const rawQuestions = quizData.questions || [];
+        const orderedQ = orderExamQuestions(rawQuestions);
+        setQuestions(orderedQ);
+
+        const optionsMap: Record<string, any[]> = {};
+        rawQuestions.forEach((q: any) => {
+          optionsMap[q.id] = shuffleArray(q.options || []);
+        });
+        setShuffledOptionsMap(optionsMap);
+
         setLoading(false);
         return;
       }
 
-      // If there is an active in-progress attempt:
-      // For final exam: if they already had an active attempt from before, leaving the page means it auto-closes!
+      // If starting or continuing an attempt:
       let currentAttempt = activeAttempt;
       if (!currentAttempt) {
         if (quizData.type === "final" && quizData.end_time && new Date(quizData.end_time) < new Date()) {
@@ -196,16 +234,37 @@ export default function StudentQuizPage() {
           return;
         }
         currentAttempt = await startQuizAttempt(quizData.id);
-      } else if (quizData.type === "final") {
-        try {
-          const result = await submitQuizAttempt(currentAttempt.id);
-          setSubmittedResult(result.attempt);
-          setAttempt(result.attempt);
-          setLoading(false);
-          alert("⚠️ تنبيه: لقد قمت بمغادرة صفحة الامتحان الشامل أثناء سريان الوقت سابقاً. تم إغلاق الامتحان وتسجيل إجاباتك تلقائياً.");
-          return;
-        } catch (e) {
-          console.error("Failed to auto-submit exited attempt:", e);
+      } else {
+        // If an active attempt exists, verify if it was fresh or pre-created by admin
+        const { data: savedAnswersCheck } = await supabase
+          .from("student_answers")
+          .select("id")
+          .eq("attempt_id", currentAttempt.id)
+          .limit(1);
+
+        if (!savedAnswersCheck || savedAnswersCheck.length === 0) {
+          // No answers yet, ensure started_at is fresh now
+          await supabase
+            .from("student_quiz_attempts")
+            .update({ started_at: new Date().toISOString() })
+            .eq("id", currentAttempt.id);
+          currentAttempt.started_at = new Date().toISOString();
+        } else if (quizData.type === "final" && quizData.duration) {
+          // If past attempt expired while away, auto submit
+          const timeLimitMs = quizData.duration * 60 * 1000;
+          const elapsedMs = Date.now() - new Date(currentAttempt.started_at).getTime();
+          if (elapsedMs >= timeLimitMs) {
+            try {
+              const result = await submitQuizAttempt(currentAttempt.id);
+              setSubmittedResult(result.attempt);
+              setAttempt(result.attempt);
+              setLoading(false);
+              alert("⚠️ تنبيه: لقد انتهى الوقت المحدد للمحاولة السابقة وتم تسجيلها تلقائياً.");
+              return;
+            } catch (e) {
+              console.error("Auto submit error:", e);
+            }
+          }
         }
       }
 
@@ -463,6 +522,37 @@ export default function StudentQuizPage() {
     }
   }
 
+  // Start new attempt when admin has granted an extra attempt
+  async function startNewFinalAttempt() {
+    try {
+      setLoading(true);
+      const newAtt = await startQuizAttempt(quiz.id);
+      setAttempt(newAtt);
+      setSubmittedResult(null);
+      setSelectedAnswers({});
+      setParagraphAnswers({});
+      setCurrentQIndex(0);
+
+      const rawQuestions = quiz.questions || [];
+      const orderedQ = orderExamQuestions(rawQuestions);
+      setQuestions(orderedQ);
+
+      const optionsMap: Record<string, any[]> = {};
+      rawQuestions.forEach((q: any) => {
+        optionsMap[q.id] = shuffleArray(q.options || []);
+      });
+      setShuffledOptionsMap(optionsMap);
+
+      if (quiz.duration) {
+        setTimeLeft(quiz.duration * 60);
+      }
+    } catch (err: any) {
+      alert(err.message || "فشل بدء المحاولة الجديدة.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F8F9FD]" dir="rtl">
@@ -541,13 +631,38 @@ export default function StudentQuizPage() {
               الأسئلة الصحيحة: <span className="font-bold text-[#2D2B7A]">{finalCorrect}</span> من أصل <span className="font-bold text-[#2D2B7A]">{finalTotal}</span> أسئلة.
             </p>
 
-            <div className="flex gap-4 pt-4 border-t">
+            {isFinalExam && canTakeNewAttempt && (
+              <div className="bg-emerald-50 border border-emerald-300 p-4 rounded-2xl text-emerald-900 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold shadow-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🎉</span>
+                  <span>تم منحك محاولة إضافية لدخول هذا الامتحان من قبل إدارة الأكاديمية!</span>
+                </div>
+                <button
+                  onClick={startNewFinalAttempt}
+                  className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-bold text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                >
+                  <Award size={15} />
+                  <span>بدء المحاولة الجديدة الآن 🚀</span>
+                </button>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-4 pt-4 border-t">
               <button
                 onClick={() => router.push(`/learn/${courseId}`)}
                 className="flex-1 py-3 bg-[#7D79F1] hover:bg-[#655EF0] text-white rounded-xl font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 العودة للمحاضرات
               </button>
+              {isFinalExam && canTakeNewAttempt && (
+                <button
+                  onClick={startNewFinalAttempt}
+                  className="py-3 px-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-bold transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer animate-pulse"
+                >
+                  <Award size={15} />
+                  بدء المحاولة الإضافية 🚀
+                </button>
+              )}
               {quiz.type === "quiz" && Number(finalScore) < 100 && (
                 <button
                   onClick={() => {

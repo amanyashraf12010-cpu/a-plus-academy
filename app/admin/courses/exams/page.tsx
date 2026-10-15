@@ -18,7 +18,9 @@ import {
   savePassageGroup,
   deletePassageGroup,
   bulkImportQuestions,
-  deleteQuiz
+  deleteQuiz,
+  grantStudentQuizExtraAttempt,
+  deleteStudentQuizAttempt
 } from "@/lib/admin-quizzes";
 import { 
   Plus, 
@@ -49,7 +51,8 @@ import {
   Layers,
   BarChart3,
   Calendar,
-  Filter
+  Filter,
+  RotateCcw
 } from "lucide-react";
 import Link from "next/link";
 
@@ -97,6 +100,8 @@ function ExamsPageContent() {
   const [resultsSearchTerm, setResultsSearchTerm] = useState("");
   const [resultsFilterStatus, setResultsFilterStatus] = useState<"all" | "passed" | "failed">("all");
   const [selectedStudentAttemptsModal, setSelectedStudentAttemptsModal] = useState<any | null>(null);
+  const [grantingAttemptStudentId, setGrantingAttemptStudentId] = useState<string | null>(null);
+  const [deletingAttemptId, setDeletingAttemptId] = useState<string | null>(null);
 
   // Import questions states
   const [showImportModal, setShowImportModal] = useState(false);
@@ -337,6 +342,62 @@ function ExamsPageContent() {
       alert("فشل تحميل تقرير نتائج الامتحان: " + err.message);
     } finally {
       setLoadingResults(false);
+    }
+  }
+
+  // Grant a student an extra attempt for the current exam
+  async function handleGrantExtraAttempt(studentId: string, studentName: string) {
+    if (!resultsReport?.quiz?.id) return;
+    const confirmed = window.confirm(
+      `هل أنت متأكد من رغبتك في منح الطالب "${studentName}" محاولة إضافية لدخول الامتحان؟\nسيتمكن الطالب فوراً من بدء محاولة جديدة.`
+    );
+    if (!confirmed) return;
+
+    try {
+      setGrantingAttemptStudentId(studentId);
+      await grantStudentQuizExtraAttempt(resultsReport.quiz.id, studentId);
+      const updatedReport = await getSingleQuizResultsReport(resultsReport.quiz.id);
+      setResultsReport(updatedReport);
+      
+      if (selectedStudentAttemptsModal && selectedStudentAttemptsModal.student?.id === studentId) {
+        const updatedStudent = updatedReport.students.find((s: any) => s.student.id === studentId);
+        if (updatedStudent) {
+          setSelectedStudentAttemptsModal(updatedStudent);
+        }
+      }
+      alert(`تم السماح للطالب "${studentName}" بمحاولة جديدة بنجاح! 🚀`);
+    } catch (err: any) {
+      alert("فشل منح المحاولة: " + err.message);
+    } finally {
+      setGrantingAttemptStudentId(null);
+    }
+  }
+
+  // Delete a specific student attempt
+  async function handleDeleteStudentAttempt(attemptId: string, studentId: string, studentName: string) {
+    if (!resultsReport?.quiz?.id) return;
+    const confirmed = window.confirm(
+      `هل أنت متأكد من حذف هذه المحاولة للطالب "${studentName}"؟\nتنبيه: سيتم مسح بيانات هذه المحاولة فقط.`
+    );
+    if (!confirmed) return;
+
+    try {
+      setDeletingAttemptId(attemptId);
+      await deleteStudentQuizAttempt(attemptId);
+      const updatedReport = await getSingleQuizResultsReport(resultsReport.quiz.id);
+      setResultsReport(updatedReport);
+      
+      const updatedStudent = updatedReport.students.find((s: any) => s.student.id === studentId);
+      if (updatedStudent) {
+        setSelectedStudentAttemptsModal(updatedStudent);
+      } else {
+        setSelectedStudentAttemptsModal(null);
+      }
+      alert("تم حذف المحاولة بنجاح.");
+    } catch (err: any) {
+      alert("فشل حذف المحاولة: " + err.message);
+    } finally {
+      setDeletingAttemptId(null);
     }
   }
 
@@ -1374,7 +1435,7 @@ function ExamsPageContent() {
                       <th className="p-4 text-center">النسبة</th>
                       <th className="p-4 text-center">الحالة</th>
                       <th className="p-4">تاريخ آخر تسليم</th>
-                      <th className="p-4 text-center">التفاصيل</th>
+                      <th className="p-4 text-center">إجراءات ومحاولات الطالب</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y text-xs text-gray-700">
@@ -1430,12 +1491,36 @@ function ExamsPageContent() {
                             : "—"}
                         </td>
                         <td className="p-4 text-center">
-                          <button
-                            onClick={() => setSelectedStudentAttemptsModal(item)}
-                            className="px-3 py-1.5 bg-purple-50 text-[#7D79F1] hover:bg-purple-100 rounded-xl font-bold transition text-xs"
-                          >
-                            استعراض ({item.attemptsList.length})
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleGrantExtraAttempt(item.student.id, item.student.full_name)}
+                              disabled={grantingAttemptStudentId === item.student.id}
+                              title="منح الطالب محاولة إضافية لدخول الامتحان"
+                              className={`px-3 py-1.5 rounded-xl font-bold transition text-xs flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-60 ${
+                                item.hasActiveAllowance
+                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                                  : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200"
+                              }`}
+                            >
+                              {grantingAttemptStudentId === item.student.id ? (
+                                <Loader2 size={13} className="animate-spin text-indigo-600" />
+                              ) : (
+                                <RotateCcw size={13} className={item.hasActiveAllowance ? "text-emerald-600" : "text-indigo-600"} />
+                              )}
+                              <span>
+                                {item.hasActiveAllowance ? "محاولة إضافية متاحة (+1)" : "السماح بمحاولة تانية"}
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setSelectedStudentAttemptsModal(item)}
+                              className="px-3 py-1.5 bg-purple-50 text-[#7D79F1] hover:bg-purple-100 rounded-xl font-bold transition text-xs cursor-pointer"
+                            >
+                              استعراض ({item.attemptsList.length})
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -2070,34 +2155,96 @@ function ExamsPageContent() {
             <div className="bg-[#2D2B7A] p-5 text-white flex justify-between items-center">
               <div>
                 <h3 className="font-black text-base">{selectedStudentAttemptsModal.student.full_name}</h3>
-                <p className="text-xs text-purple-200">سجل محاولات الامتحان الكامل</p>
+                <p className="text-xs text-purple-200">سجل محاولات الامتحان الكامل وإدارة الصلاحيات</p>
               </div>
               <button
                 onClick={() => setSelectedStudentAttemptsModal(null)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center"
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
             <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-              <div className="space-y-2.5">
-                {selectedStudentAttemptsModal.attemptsList.map((att: any, i: number) => (
-                  <div key={att.id || i} className="p-4 rounded-2xl border bg-gray-50 flex justify-between items-center">
-                    <div>
-                      <span className="font-bold text-xs text-[#2D2B7A] block">محاولة رقم {selectedStudentAttemptsModal.attemptsList.length - i}</span>
-                      <span className="text-[11px] text-gray-400">
-                        {att.submitted_at ? new Date(att.submitted_at).toLocaleString("ar-EG") : "—"}
-                      </span>
-                    </div>
-                    <div className="text-left">
-                      <span className="text-base font-black text-[#7D79F1] block">{att.score}%</span>
-                      {att.total_questions && (
-                        <span className="text-[10px] text-gray-500 font-bold">{att.correct_count} / {att.total_questions} صحيحة</span>
-                      )}
-                    </div>
+              {/* Quick Action in Modal: Grant Extra Attempt */}
+              <div className="p-3.5 bg-indigo-50/70 border border-indigo-100 rounded-2xl flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-xs font-bold text-indigo-950">إتاحة محاولة جديدة للطالب</div>
+                  <div className="text-[11px] text-indigo-600 font-medium">
+                    {selectedStudentAttemptsModal.hasActiveAllowance
+                      ? "الطالب يمتلك حالياً محاولة مفتوحة يمكنه الدخول بها"
+                      : "السماح للطالب بإعادة أداء الامتحان وتخطي حاجز المحاولة الواحدة"}
                   </div>
-                ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleGrantExtraAttempt(selectedStudentAttemptsModal.student.id, selectedStudentAttemptsModal.student.full_name)}
+                  disabled={grantingAttemptStudentId === selectedStudentAttemptsModal.student.id}
+                  className="px-3.5 py-2 bg-[#7D79F1] hover:bg-[#6c67ea] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-60 shrink-0"
+                >
+                  {grantingAttemptStudentId === selectedStudentAttemptsModal.student.id ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <RotateCcw size={14} />
+                  )}
+                  <span>السماح بمحاولة جديدة</span>
+                </button>
+              </div>
+
+              <div className="space-y-2.5">
+                {selectedStudentAttemptsModal.attemptsList.map((att: any, i: number) => {
+                  const isSubmitted = att.status === "submitted";
+                  return (
+                    <div key={att.id || i} className="p-4 rounded-2xl border bg-gray-50 flex justify-between items-center hover:bg-gray-100/60 transition">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-[#2D2B7A]">
+                            محاولة رقم {selectedStudentAttemptsModal.attemptsList.length - i}
+                          </span>
+                          {!isSubmitted && (
+                            <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold">
+                              قيد الحل / مفتوحة
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-gray-400 block">
+                          {att.submitted_at 
+                            ? new Date(att.submitted_at).toLocaleString("ar-EG")
+                            : att.started_at 
+                              ? `بدأت: ${new Date(att.started_at).toLocaleString("ar-EG")}`
+                              : "—"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-left">
+                          <span className="text-base font-black text-[#7D79F1] block">
+                            {isSubmitted ? `${att.score}%` : "—"}
+                          </span>
+                          {isSubmitted && att.total_questions ? (
+                            <span className="text-[10px] text-gray-500 font-bold">
+                              {att.correct_count} / {att.total_questions} صحيحة
+                            </span>
+                          ) : null}
+                        </div>
+                        {att.id && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteStudentAttempt(att.id, selectedStudentAttemptsModal.student.id, selectedStudentAttemptsModal.student.full_name)}
+                            disabled={deletingAttemptId === att.id}
+                            title="حذف هذه المحاولة"
+                            className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition cursor-pointer disabled:opacity-50"
+                          >
+                            {deletingAttemptId === att.id ? (
+                              <Loader2 size={15} className="animate-spin text-rose-600" />
+                            ) : (
+                              <Trash2 size={15} />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

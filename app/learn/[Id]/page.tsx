@@ -1017,13 +1017,17 @@ export default function LearnPage() {
                               <h4 className="font-extrabold text-[#2D2B7A] text-xs">
                                 {finalExam.title || "الامتحان النهائي الشامل"}
                               </h4>
-                              {isSubmitted ? (
+                              {isSubmitted && !finalExam.canRetake ? (
                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                                   finalExam.isPassed
                                     ? "bg-green-50 text-green-700 border-green-200"
                                     : "bg-red-50 text-red-700 border-red-200"
                                 }`}>
                                   {finalExam.isPassed ? "تم الاجتياز ✓" : "لم يتم الاجتياز"}
+                                </span>
+                              ) : finalExam.canRetake ? (
+                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-bold animate-pulse">
+                                  🎉 محاولة جديدة متاحة
                                 </span>
                               ) : isUpcoming ? (
                                 <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-amber-200">
@@ -1045,9 +1049,16 @@ export default function LearnPage() {
                               {finalExam.passingScore && <span>🎯 درجة النجاح: {finalExam.passingScore}%</span>}
                             </div>
 
+                            {finalExam.canRetake && (
+                              <div className="bg-emerald-50/70 border border-emerald-200 p-2.5 rounded-xl text-[11px] font-bold text-emerald-800 flex items-center justify-between">
+                                <span>🎉 سمحت لك الإدارة بمحاولة جديدة!</span>
+                                <span className="text-[10px] text-emerald-600 bg-white px-2 py-0.5 rounded border border-emerald-200">محاولة جديدة</span>
+                              </div>
+                            )}
+
                             {isSubmitted ? (
                               <div className="bg-white p-2.5 rounded-xl border border-gray-100 text-xs font-semibold text-[#2D2B7A] flex justify-between items-center shadow-xs">
-                                <span>درجة الامتحان:</span>
+                                <span>أفضل درجة سابقة:</span>
                                 <span className="text-[#7D79F1] font-bold text-sm">{finalExam.score}%</span>
                               </div>
                             ) : isUpcoming ? (
@@ -1066,8 +1077,23 @@ export default function LearnPage() {
                               )
                             )}
 
-                            <div>
-                              {isSubmitted ? (
+                            <div className="space-y-2">
+                              {finalExam.canRetake ? (
+                                <>
+                                  <Link
+                                    href={`/learn/${courseId}/quiz/${finalExam.id}`}
+                                    className="w-full bg-gradient-to-r from-[#2D2B7A] to-[#7D79F1] hover:from-[#1E1C5A] hover:to-[#655EF0] text-white text-center py-2.5 rounded-xl text-xs font-bold block transition shadow-md hover:shadow-lg cursor-pointer"
+                                  >
+                                    بدء المحاولة الجديدة الآن 🚀
+                                  </Link>
+                                  <Link
+                                    href={`/learn/${courseId}/quiz/${finalExam.id}?review=true`}
+                                    className="w-full bg-white hover:bg-gray-50 border border-gray-200 text-gray-600 text-center py-2 rounded-xl text-[11px] font-bold block transition"
+                                  >
+                                    مراجعة المحاولة السابقة
+                                  </Link>
+                                </>
+                              ) : isSubmitted ? (
                                 <Link
                                   href={`/learn/${courseId}/quiz/${finalExam.id}`}
                                   className="w-full bg-white hover:bg-gray-50 border border-gray-200 text-[#7D79F1] text-center py-2.5 rounded-xl text-xs font-bold block transition shadow-sm"

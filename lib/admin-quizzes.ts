@@ -196,7 +196,7 @@ export async function getSingleQuizResultsReport(quizId: string) {
     throw new Error("لم يتم العثور على بيانات الامتحان.");
   }
 
-  // 2. Fetch all submitted attempts for this quiz
+  // 2. Fetch all attempts (submitted and in_progress) for this quiz
   const { data: attempts, error: attError } = await supabase
     .from("student_quiz_attempts")
     .select(`
@@ -213,10 +213,23 @@ export async function getSingleQuizResultsReport(quizId: string) {
       profiles:user_id (id, full_name, email, phone, parent_phone, governorate, grade, school)
     `)
     .eq("quiz_id", quizId)
-    .eq("status", "submitted")
     .order("submitted_at", { ascending: false });
 
   if (attError) throw attError;
+
+  // 2.b Fetch attempt allowances for this quiz (if table exists)
+  const allowancesMap = new Map<string, any>();
+  try {
+    const { data: allowances, error: alErr } = await supabase
+      .from("quiz_attempt_allowances")
+      .select("*")
+      .eq("quiz_id", quizId);
+    if (!alErr && allowances) {
+      allowances.forEach((al: any) => allowancesMap.set(al.user_id, al));
+    }
+  } catch (e) {
+    console.warn("quiz_attempt_allowances table query skipped:", e);
+  }
 
   const rawAttempts = attempts || [];
   const passingScore = Number(quiz.passing_score) || 50;
@@ -232,6 +245,10 @@ export async function getSingleQuizResultsReport(quizId: string) {
     isPassed: boolean;
     latestSubmittedAt: string | null;
     attemptsList: any[];
+    extraAttempts: number;
+    allowedAttemptsTotal: number;
+    hasActiveAllowance: boolean;
+    hasInProgressAttempt: boolean;
   }>();
 
   rawAttempts.forEach((att: any) => {
@@ -243,35 +260,55 @@ export async function getSingleQuizResultsReport(quizId: string) {
     };
 
     const sId = att.user_id;
+    const isSubmitted = att.status === "submitted";
     const scoreNum = Number(att.score) || 0;
 
     if (!studentMap.has(sId)) {
+      const allowance = allowancesMap.get(sId);
+      const extraAttempts = allowance?.extra_attempts || 0;
+
       studentMap.set(sId, {
         student,
         attemptsCount: 0,
-        bestScore: scoreNum,
-        latestScore: scoreNum,
+        bestScore: isSubmitted ? scoreNum : 0,
+        latestScore: isSubmitted ? scoreNum : 0,
         bestCorrectCount: att.correct_count || 0,
         totalQuestions: att.total_questions || 0,
-        isPassed: scoreNum >= passingScore,
-        latestSubmittedAt: att.submitted_at || att.created_at,
+        isPassed: isSubmitted && scoreNum >= passingScore,
+        latestSubmittedAt: att.submitted_at || (isSubmitted ? att.created_at : null),
         attemptsList: [],
+        extraAttempts,
+        allowedAttemptsTotal: 1 + extraAttempts,
+        hasActiveAllowance: false,
+        hasInProgressAttempt: false,
       });
     }
 
     const current = studentMap.get(sId)!;
-    current.attemptsCount += 1;
     current.attemptsList.push(att);
 
-    if (scoreNum > current.bestScore) {
-      current.bestScore = scoreNum;
-      current.bestCorrectCount = att.correct_count || 0;
-      current.totalQuestions = att.total_questions || current.totalQuestions;
+    if (isSubmitted) {
+      current.attemptsCount += 1;
+      if (scoreNum > current.bestScore) {
+        current.bestScore = scoreNum;
+        current.bestCorrectCount = att.correct_count || 0;
+        current.totalQuestions = att.total_questions || current.totalQuestions;
+      }
+      if (current.bestScore >= passingScore) {
+        current.isPassed = true;
+      }
+      if (!current.latestSubmittedAt && att.submitted_at) {
+        current.latestSubmittedAt = att.submitted_at;
+      }
+    } else {
+      current.hasInProgressAttempt = true;
     }
+  });
 
-    if (current.bestScore >= passingScore) {
-      current.isPassed = true;
-    }
+  // Calculate hasActiveAllowance for each student:
+  // True if they have an in_progress attempt OR their submitted attempts are less than allowed total
+  studentMap.forEach((current) => {
+    current.hasActiveAllowance = current.hasInProgressAttempt || (current.attemptsCount < current.allowedAttemptsTotal && current.extraAttempts > 0);
   });
 
   const studentsList = Array.from(studentMap.values()).sort((a, b) => b.bestScore - a.bestScore);
@@ -945,3 +982,123 @@ export async function getCourseStudentPerformance(courseId: string) {
     };
   });
 }
+
+// =========================================================================
+// Quiz Attempt Allowance & Retake Management Functions
+// =========================================================================
+
+export async function getQuizAttemptAllowance(quizId: string, userId: string) {
+  const supabase = createClient();
+  try {
+    const { data, error } = await supabase
+      .from("quiz_attempt_allowances")
+      .select("*")
+      .eq("quiz_id", quizId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+export async function grantStudentQuizExtraAttempt(quizId: string, studentId: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // 1. First try to upsert into quiz_attempt_allowances table
+  let tableSuccess = false;
+  let newExtra = 1;
+  try {
+    const { data: existing, error: fetchErr } = await supabase
+      .from("quiz_attempt_allowances")
+      .select("id, extra_attempts")
+      .eq("quiz_id", quizId)
+      .eq("user_id", studentId)
+      .maybeSingle();
+
+    if (!fetchErr) {
+      newExtra = (existing?.extra_attempts || 0) + 1;
+      const { error: upsertErr } = await supabase
+        .from("quiz_attempt_allowances")
+        .upsert({
+          quiz_id: quizId,
+          user_id: studentId,
+          extra_attempts: newExtra,
+          granted_by: user?.id || null,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "quiz_id,user_id" });
+
+      if (!upsertErr) {
+        tableSuccess = true;
+      }
+    }
+  } catch (err) {
+    console.warn("quiz_attempt_allowances table not yet migrated, applying seamless fallback:", err);
+  }
+
+  // 2. Also ensure an active in_progress attempt is ready or refreshed for the student
+  // This guarantees that even without the table, the student can take their attempt immediately!
+  try {
+    // Check if there is an existing in_progress attempt
+    const { data: existingActive } = await supabase
+      .from("student_quiz_attempts")
+      .select("id")
+      .eq("quiz_id", quizId)
+      .eq("user_id", studentId)
+      .eq("status", "in_progress")
+      .maybeSingle();
+
+    if (existingActive) {
+      // Refresh its started_at to now
+      await supabase
+        .from("student_quiz_attempts")
+        .update({ started_at: new Date().toISOString() })
+        .eq("id", existingActive.id);
+    } else {
+      // Create new in_progress attempt for the student
+      await supabase
+        .from("student_quiz_attempts")
+        .insert([
+          {
+            user_id: studentId,
+            quiz_id: quizId,
+            status: "in_progress",
+            started_at: new Date().toISOString(),
+          }
+        ]);
+    }
+  } catch (err: any) {
+    console.warn("Could not insert active attempt fallback:", err?.message);
+    if (!tableSuccess) throw err;
+  }
+
+  return { success: true, extraAttempts: newExtra };
+}
+
+export async function deleteStudentQuizAttempt(attemptId: string) {
+  const supabase = createClient();
+  
+  // 1. Clean up student answers for this attempt
+  try {
+    await supabase.from("student_answers").delete().eq("attempt_id", attemptId);
+  } catch (e) {
+    console.warn("Could not delete student answers before attempt delete:", e);
+  }
+
+  // 2. Delete the attempt record itself
+  const { error } = await supabase
+    .from("student_quiz_attempts")
+    .delete()
+    .eq("id", attemptId);
+
+  if (error) {
+    console.error("فشل حذف محاولة الامتحان:", error.message);
+    throw error;
+  }
+
+  return { success: true };
+}
+

@@ -64,6 +64,23 @@ export async function getFinalExamForCourse(courseId: string) {
 // 2. Student Attempts Management
 // =========================================================================
 
+export async function getQuizAttemptAllowance(quizId: string, userId: string) {
+  const supabase = createClient();
+  try {
+    const { data, error } = await supabase
+      .from("quiz_attempt_allowances")
+      .select("*")
+      .eq("quiz_id", quizId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 export async function startQuizAttempt(quizId: string) {
   const supabase = createClient();
 
@@ -71,17 +88,35 @@ export async function startQuizAttempt(quizId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("يجب تسجيل الدخول أولاً لبدء الامتحان.");
 
-  // Check if they already have a 100% attempt
-  const { data: perfectAttempts, error: checkError } = await supabase
+  // Check if student already has an existing active in_progress attempt
+  const { data: existingActive } = await supabase
     .from("student_quiz_attempts")
-    .select("id")
+    .select("*")
     .eq("user_id", user.id)
     .eq("quiz_id", quizId)
-    .eq("status", "submitted")
-    .eq("score", 100.00);
+    .eq("status", "in_progress")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  if (perfectAttempts && perfectAttempts.length > 0) {
-    throw new Error("لقد حصلت بالفعل على الدرجة النهائية 100% في هذا الواجب. لا يمكنك إعادة المحاولة.");
+  if (existingActive) {
+    return existingActive;
+  }
+
+  // Check if they already have a 100% attempt (unless admin granted extra attempts)
+  const allowance = await getQuizAttemptAllowance(quizId, user.id);
+  if (!allowance || allowance.extra_attempts <= 0) {
+    const { data: perfectAttempts } = await supabase
+      .from("student_quiz_attempts")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("quiz_id", quizId)
+      .eq("status", "submitted")
+      .eq("score", 100.00);
+
+    if (perfectAttempts && perfectAttempts.length > 0) {
+      throw new Error("لقد حصلت بالفعل على الدرجة النهائية 100% في هذا الامتحان/الواجب.");
+    }
   }
 
   // 2. Create attempt
@@ -396,19 +431,35 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
     }
   });
 
-  // 3. Fetch all submitted attempts for this user and these quizzes
+  // 3. Fetch all attempts (submitted & in_progress) for this user and these quizzes
   const quizIds = (quizzes || []).map((q: any) => q.id);
   let attempts: any[] = [];
+  const allowancesByQuizMap = new Map<string, any>();
+
   if (quizIds.length > 0) {
     const { data: attemptsData, error: attemptsError } = await supabase
       .from("student_quiz_attempts")
       .select("*")
       .eq("user_id", userId)
-      .eq("status", "submitted")
       .in("quiz_id", quizIds);
 
     if (attemptsError) throw attemptsError;
     attempts = attemptsData || [];
+
+    // Also fetch any attempt allowances granted by admin
+    try {
+      const { data: allowances } = await supabase
+        .from("quiz_attempt_allowances")
+        .select("*")
+        .eq("user_id", userId)
+        .in("quiz_id", quizIds);
+
+      if (allowances) {
+        allowances.forEach((al: any) => allowancesByQuizMap.set(al.quiz_id, al));
+      }
+    } catch (e) {
+      // Table may not exist yet, fallback gracefully
+    }
   }
 
   const attemptsByQuizMap = new Map<string, any[]>();
@@ -421,13 +472,13 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
 
   // Helper to check if a quiz is passed (score >= passing_score)
   const isQuizPassed = (quizId: string, passingScore: number) => {
-    const atts = attemptsByQuizMap.get(quizId) || [];
+    const atts = (attemptsByQuizMap.get(quizId) || []).filter((a: any) => a.status === "submitted");
     return atts.some((att: any) => Number(att.score) >= passingScore);
   };
 
   // Helper to get highest score of a quiz
   const getQuizHighestScore = (quizId: string) => {
-    const atts = attemptsByQuizMap.get(quizId) || [];
+    const atts = (attemptsByQuizMap.get(quizId) || []).filter((a: any) => a.status === "submitted");
     if (atts.length === 0) return null;
     return Math.max(...atts.map((att: any) => Number(att.score)));
   };
@@ -471,7 +522,7 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
     if (lessonQuiz) {
       quizId = lessonQuiz.id;
       passingScore = lessonQuiz.passing_score;
-      const atts = attemptsByQuizMap.get(lessonQuiz.id) || [];
+      const atts = (attemptsByQuizMap.get(lessonQuiz.id) || []).filter((a: any) => a.status === "submitted");
       quizAttemptsCount = atts.length;
       highestScore = getQuizHighestScore(lessonQuiz.id);
 
@@ -518,10 +569,17 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
 
   const finalExamsList = rawFinalExams.map((fe: any) => {
     const feAtts = attemptsByQuizMap.get(fe.id) || [];
-    const hasSubmitted = feAtts.length > 0;
-    const highestScore = hasSubmitted ? Math.max(...feAtts.map((a: any) => Number(a.score))) : null;
+    const submittedAtts = feAtts.filter((a: any) => a.status === "submitted");
+    const hasSubmitted = submittedAtts.length > 0;
+    const highestScore = hasSubmitted ? Math.max(...submittedAtts.map((a: any) => Number(a.score))) : null;
     const isPassed = highestScore !== null ? highestScore >= (fe.passing_score || 50) : false;
     const totalQuestions = Array.isArray(fe.questions) ? fe.questions.length : undefined;
+
+    const allowance = allowancesByQuizMap.get(fe.id);
+    const extraAttempts = allowance?.extra_attempts || 0;
+    const maxAllowed = 1 + extraAttempts;
+    const hasInProgress = feAtts.some((a: any) => a.status === "in_progress");
+    const canRetake = hasSubmitted && (submittedAtts.length < maxAllowed || hasInProgress);
 
     return {
       id: fe.id,
@@ -534,9 +592,12 @@ export async function getCourseProgressAndLocks(userId: string, courseId: string
       passingScore: fe.passing_score || 50,
       showSolutions: Boolean(fe.show_solutions),
       totalQuestions,
-      attemptsCount: feAtts.length,
+      attemptsCount: submittedAtts.length,
       isPassed,
-      attempts: feAtts.map((a: any) => ({
+      canRetake,
+      extraAttempts,
+      maxAllowedAttempts: maxAllowed,
+      attempts: submittedAtts.map((a: any) => ({
         id: a.id,
         score: a.score,
         correctCount: a.correct_count,
